@@ -1,0 +1,200 @@
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 20px;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+}
+
+.datePicker {
+    padding: 10px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.9375rem;
+    cursor: pointer;
+}
+
+.datePicker::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+.dateLabel {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    text-transform: capitalize;
+}
+
+/* Loading */
+.loading {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Main Card */
+.mainCard {
+    padding: 32px !important;
+    margin-bottom: 32px;
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-tertiary) 100%);
+}
+
+.mainStat {
+    text-align: center;
+}
+
+.mainLabel {
+    display: block;
+    font-size: 0.9375rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.mainValue {
+    display: block;
+    font-size: 3rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+}
+
+.mainMeta {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.pendingAlert {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 24px;
+    padding: 16px;
+    background: rgba(253, 203, 110, 0.1);
+    border: 1px solid rgba(253, 203, 110, 0.3);
+    border-radius: var(--radius-md);
+}
+
+.pendingIcon {
+    font-size: 1.5rem;
+}
+
+.pendingLabel {
+    display: block;
+    font-size: 0.8125rem;
+    color: var(--warning);
+    margin-bottom: 2px;
+}
+
+.pendingValue {
+    display: block;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--warning);
+}
+
+/* Section Title */
+.sectionTitle {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+/* Grid */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.methodCard {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px !important;
+}
+
+.methodIcon {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.methodInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.methodName {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.methodValue {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Summary Card */
+.summaryCard {
+    padding: 20px !important;
+}
+
+.summaryRow {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+.summaryRow:last-child {
+    border-bottom: none;
+}
+
+.summaryValue {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .mainValue {
+        font-size: 2.25rem;
+    }
+
+    .header {
+        flex-direction: column;
+    }
+}

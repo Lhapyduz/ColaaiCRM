@@ -1,0 +1,225 @@
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Header */
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    gap: 20px;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+}
+
+/* Loading */
+.loading {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+}
+
+/* Empty State */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    text-align: center;
+}
+
+.emptyIcon {
+    font-size: 5rem;
+    margin-bottom: 20px;
+}
+
+.emptyState h3 {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+}
+
+.emptyState p {
+    color: var(--text-secondary);
+}
+
+/* Kitchen Grid */
+.kitchenGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    align-items: flex-start;
+}
+
+/* Column */
+.column {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.columnHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.columnTitle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.statusDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.columnCount {
+    padding: 4px 12px;
+    background: var(--bg-card);
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+/* Orders List */
+.ordersList {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+}
+
+/* Order Card */
+.orderCard {
+    padding: 16px !important;
+    animation: slideInUp 0.3s ease;
+}
+
+.orderCard.preparing {
+    border-color: var(--info);
+    box-shadow: 0 0 0 1px rgba(9, 132, 227, 0.2);
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.orderHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.orderInfo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.orderNumber {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.orderType {
+    font-size: 1.25rem;
+}
+
+.timer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-full);
+}
+
+.customerName {
+    font-weight: 500;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Items List */
+.itemsList {
+    margin-bottom: 16px;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+.item:not(:last-child) {
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.itemQuantity {
+    font-weight: 700;
+    color: var(--primary);
+    min-width: 32px;
+}
+
+.itemName {
+    flex: 1;
+    font-weight: 500;
+}
+
+.itemNotes {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .kitchenGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .loading {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+    }
+}
