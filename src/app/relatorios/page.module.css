@@ -1,77 +1,662 @@
 .container {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
 }
 
+/* Header */
 .header {
-    margin-bottom: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
 }
 
 .title {
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 8px;
-}
-
-.subtitle {
-    color: var(--text-secondary);
-}
-
-.comingSoon {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 60px 20px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-}
-
-.icon {
-    font-size: 5rem;
-    margin-bottom: 24px;
-}
-
-.comingSoon h2 {
-    font-size: 1.75rem;
-    font-weight: 700;
-    margin-bottom: 12px;
     background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
-.comingSoon p {
+.subtitle {
     color: var(--text-secondary);
-    max-width: 400px;
-    margin-bottom: 40px;
 }
 
-.features {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+/* Period Selector */
+.periodSelector {
+    margin-bottom: 32px;
 }
 
-.feature {
+.periodTabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.periodTab {
+    padding: 10px 20px;
+    border-radius: var(--radius-full);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.periodTab:hover {
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+.periodTab.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.customDates {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 14px 20px;
-    background: var(--bg-tertiary);
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dateInputGroup {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     color: var(--text-secondary);
 }
 
-.feature span:first-child {
+.dateInput {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.dateInput::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.6;
+    cursor: pointer;
+}
+
+.dateSeparator {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* Loading State */
+.loadingGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+}
+
+.loadingCard {
+    height: 140px;
+    border-radius: var(--radius-lg);
+}
+
+/* Stats Grid */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.statCard {
+    padding: 24px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.statIconWrapper {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.statContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.statLabel {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.statValue {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.statMeta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.statChange {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.statChange.positive {
+    color: var(--accent);
+}
+
+.statChange.negative {
+    color: var(--error);
+}
+
+.changeLabel {
+    color: var(--text-muted);
+    font-weight: 400;
+    font-size: 0.75rem;
+}
+
+.deliveryBar {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.deliveryProgress {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--warning) 100%);
+    border-radius: var(--radius-full);
+    transition: width var(--transition-normal);
+}
+
+/* Chart Card */
+.chartCard {
+    padding: 24px;
+    margin-bottom: 32px;
+}
+
+.cardHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.cardHeader h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+}
+
+.barChart {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 220px;
+    padding: 0 8px;
+    overflow-x: auto;
+}
+
+.barWrapper {
+    flex: 1;
+    min-width: 40px;
+    max-width: 80px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.bar {
+    width: 100%;
+    min-height: 4px;
+    background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    position: relative;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.bar:hover {
+    background: linear-gradient(180deg, var(--primary-light) 0%, var(--primary) 100%);
+    transform: scaleY(1.02);
+}
+
+.barTooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast);
+    box-shadow: var(--shadow-md);
+    z-index: 10;
+}
+
+.bar:hover .barTooltip {
+    opacity: 1;
+}
+
+.barLabel {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.noData {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 100%;
+    color: var(--text-muted);
+}
+
+.noData span {
+    font-size: 3rem;
+}
+
+.noData p {
+    font-size: 0.9rem;
+}
+
+/* Two Columns Layout */
+.twoColumns {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.sectionCard {
+    padding: 24px;
+}
+
+/* Product List */
+.productList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.productItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.productRank {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.productInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.productName {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.productBar {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-card);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.productProgress {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+    border-radius: var(--radius-full);
+    transition: width var(--transition-normal);
+}
+
+.productStats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.productQty {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.productRevenue {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+/* Category Grid */
+.categoryGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.categoryCard {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    border-left: 3px solid;
+    text-align: center;
+}
+
+.categoryIcon {
+    font-size: 1.75rem;
+}
+
+.categoryName {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.categoryValue {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.categoryPercent {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.noDataSmall {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.noDataText {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 20px;
+    font-size: 0.875rem;
+}
+
+/* Three Columns Layout */
+.threeColumns {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+.miniCard {
+    padding: 20px;
+}
+
+.cardHeaderMini {
+    margin-bottom: 16px;
+}
+
+.cardHeaderMini h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+}
+
+/* Payment List */
+.paymentList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.paymentItem {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.paymentHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.paymentMethod {
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.paymentValue {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.paymentBar {
+    width: 100%;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.paymentProgress {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-light) 100%);
+    border-radius: var(--radius-full);
+    transition: width var(--transition-normal);
+}
+
+/* Status List */
+.statusList {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.statusItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.statusDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.statusLabel {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.statusCount {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Peak Hours List */
+.peakList {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.peakItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.peakMedal {
     font-size: 1.25rem;
 }
 
-@media (max-width: 640px) {
-    .features {
+.peakHour {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.peakCount {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Responsive Styles */
+@media (max-width: 1200px) {
+    .statsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .loadingGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .header {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .twoColumns {
         grid-template-columns: 1fr;
+    }
+
+    .threeColumns {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .statsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .loadingGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .periodTabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 8px;
+    }
+
+    .periodTab {
+        white-space: nowrap;
+    }
+
+    .customDates {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .barChart {
+        min-height: 180px;
+    }
+
+    .categoryGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .header button {
+        display: none;
+    }
+
+    .periodSelector {
+        display: none;
+    }
+
+    .container {
+        max-width: 100%;
+    }
+
+    .statCard,
+    .chartCard,
+    .sectionCard,
+    .miniCard {
+        break-inside: avoid;
     }
 }
