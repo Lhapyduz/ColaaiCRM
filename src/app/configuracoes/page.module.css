@@ -292,3 +292,110 @@
         align-items: flex-start;
     }
 }
+
+/* Help Text */
+.helpText {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+.errorText {
+    font-size: 0.8125rem;
+    color: #e74c3c;
+    margin-top: 8px;
+}
+
+/* Slug Input */
+.slugInput {
+    display: flex;
+    align-items: center;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.slugPrefix {
+    padding: 0 12px;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    height: 44px;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.slugField {
+    border: none !important;
+    background: transparent !important;
+}
+
+/* QR Code Section */
+.qrCodeSection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.linkActions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 480px) {
+    .slugInput {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .slugPrefix {
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        justify-content: center;
+    }
+
+    .linkActions {
+        flex-direction: column;
+    }
+
+    .linkActions button {
+        width: 100%;
+    }
+}
+
+/* PIX Key Types */
+.pixKeyTypes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.keyTypeBtn {
+    padding: 10px 16px;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.keyTypeBtn:hover {
+    border-color: var(--border-light);
+    color: var(--text-primary);
+}
+
+.keyTypeBtn.active {
+    border-color: #32BCAD;
+    background: rgba(50, 188, 173, 0.1);
+    color: #32BCAD;
+}

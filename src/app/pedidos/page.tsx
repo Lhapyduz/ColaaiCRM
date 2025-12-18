@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
     FiPlus,
@@ -10,14 +10,17 @@ import {
     FiMoreVertical,
     FiEye,
     FiEdit,
-    FiTrash2
+    FiTrash2,
+    FiMessageCircle
 } from 'react-icons/fi';
+import { FaWhatsapp } from 'react-icons/fa';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { openWhatsAppNotification, shouldNotifyOnStatusChange, OrderDetails } from '@/lib/whatsapp';
 import styles from './page.module.css';
 
 interface Order {
@@ -25,12 +28,14 @@ interface Order {
     order_number: number;
     customer_name: string;
     customer_phone: string | null;
+    customer_address: string | null;
     status: string;
     payment_method: string;
     payment_status: string;
     total: number;
     is_delivery: boolean;
     created_at: string;
+    rating_token: string | null;
 }
 
 const statusOptions = [
@@ -44,18 +49,26 @@ const statusOptions = [
 ];
 
 export default function PedidosPage() {
-    const { user } = useAuth();
+    const { user, userSettings } = useAuth();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [showDropdown, setShowDropdown] = useState<string | null>(null);
+    const [showWhatsAppModal, setShowWhatsAppModal] = useState<Order | null>(null);
 
     useEffect(() => {
         if (user) {
             fetchOrders();
         }
     }, [user, statusFilter]);
+
+    // Create Map for O(1) order lookup instead of O(n) find()
+    const ordersMap = useMemo(() => {
+        const map = new Map<string, Order>();
+        orders.forEach(o => map.set(o.id, o));
+        return map;
+    }, [orders]);
 
     const fetchOrders = async () => {
         if (!user) return;
@@ -82,29 +95,127 @@ export default function PedidosPage() {
         }
     };
 
-    const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    const sendWhatsAppNotification = (order: Order, newStatus: string) => {
+        if (!order.customer_phone || !userSettings?.whatsapp_number) return;
+
+        const orderDetails: OrderDetails = {
+            order_number: order.order_number,
+            customer_name: order.customer_name,
+            customer_phone: order.customer_phone,
+            total: order.total,
+            status: newStatus,
+            is_delivery: order.is_delivery,
+            customer_address: order.customer_address || undefined,
+            rating_token: order.rating_token || undefined
+        };
+
+        const notificationSettings = {
+            whatsapp_number: userSettings.whatsapp_number,
+            app_name: userSettings.app_name || 'Cola Aí'
+        };
+
+        const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+        openWhatsAppNotification(orderDetails, notificationSettings, newStatus, baseUrl);
+    };
+
+    const updateOrderStatus = async (orderId: string, newStatus: string, sendNotification: boolean = false) => {
         try {
+            // O(1) lookup using Map
+            const order = ordersMap.get(orderId);
+
             const { error } = await supabase
                 .from('orders')
                 .update({ status: newStatus, updated_at: new Date().toISOString() })
                 .eq('id', orderId);
 
             if (error) throw error;
+
+            // Send WhatsApp notification if enabled and order has phone
+            if (sendNotification && order?.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
+                sendWhatsAppNotification(order, newStatus);
+            }
+
             fetchOrders();
         } catch (error) {
             console.error('Error updating order:', error);
         }
         setShowDropdown(null);
+        setShowWhatsAppModal(null);
+    };
+
+    const handleStatusChangeWithNotification = (order: Order, newStatus: string) => {
+        if (order.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
+            setShowWhatsAppModal(order);
+            // Store the new status for the modal
+            (order as any)._pendingStatus = newStatus;
+        } else {
+            updateOrderStatus(order.id, newStatus, false);
+        }
     };
 
     const updatePaymentStatus = async (orderId: string) => {
         try {
+            // O(1) lookup using Map
+            const order = ordersMap.get(orderId);
+            if (!order) return;
+
             const { error } = await supabase
                 .from('orders')
                 .update({ payment_status: 'paid', updated_at: new Date().toISOString() })
                 .eq('id', orderId);
 
             if (error) throw error;
+
+            // Update customer's total_spent if the order has a phone number
+            if (order.customer_phone && user) {
+                try {
+                    const cleanPhone = order.customer_phone.replace(/\D/g, '');
+
+                    // Find the customer
+                    const { data: customer } = await supabase
+                        .from('customers')
+                        .select('id, total_spent, total_points')
+                        .eq('user_id', user.id)
+                        .eq('phone', cleanPhone)
+                        .single();
+
+                    if (customer) {
+                        // Get loyalty settings for points calculation
+                        const { data: settings } = await supabase
+                            .from('loyalty_settings')
+                            .select('points_per_real')
+                            .eq('user_id', user.id)
+                            .single();
+
+                        const pointsPerReal = settings?.points_per_real || 1;
+                        const pointsEarned = Math.floor(order.total * pointsPerReal);
+
+                        // Update customer with total_spent and points
+                        await supabase
+                            .from('customers')
+                            .update({
+                                total_spent: (customer.total_spent || 0) + order.total,
+                                total_points: (customer.total_points || 0) + pointsEarned
+                            })
+                            .eq('id', customer.id);
+
+                        // Add points transaction if earned
+                        if (pointsEarned > 0) {
+                            await supabase.from('points_transactions').insert({
+                                user_id: user.id,
+                                customer_id: customer.id,
+                                points: pointsEarned,
+                                type: 'earned',
+                                description: `Pedido #${order.order_number}`,
+                                order_id: order.id
+                            });
+                        }
+                    }
+                } catch (loyaltyErr) {
+                    console.warn('Failed to update customer loyalty data:', loyaltyErr);
+                }
+            }
+
             fetchOrders();
         } catch (error) {
             console.error('Error updating payment status:', error);
@@ -225,6 +336,11 @@ export default function PedidosPage() {
                                             <span className={`${styles.orderType} ${order.is_delivery ? styles.delivery : styles.pickup}`}>
                                                 {order.is_delivery ? '🚚 Entrega' : '🏪 Balcão'}
                                             </span>
+                                            {order.customer_phone && (
+                                                <span className={styles.hasPhone} title="Cliente com WhatsApp">
+                                                    <FaWhatsapp />
+                                                </span>
+                                            )}
                                         </div>
                                         <div className={styles.orderActions}>
                                             <span className={`${styles.statusBadge} status-${order.status}`}>
@@ -245,6 +361,17 @@ export default function PedidosPage() {
                                                         <Link href={`/pedidos/${order.id}/editar`} className={styles.dropdownItem}>
                                                             <FiEdit /> Editar
                                                         </Link>
+                                                        {order.customer_phone && (
+                                                            <button
+                                                                className={`${styles.dropdownItem} ${styles.whatsapp}`}
+                                                                onClick={() => {
+                                                                    sendWhatsAppNotification(order, order.status);
+                                                                    setShowDropdown(null);
+                                                                }}
+                                                            >
+                                                                <FaWhatsapp /> Enviar WhatsApp
+                                                            </button>
+                                                        )}
                                                         <div className={styles.dropdownDivider} />
                                                         <button
                                                             className={`${styles.dropdownItem} ${styles.danger}`}
@@ -303,7 +430,7 @@ export default function PedidosPage() {
                                             {order.status === 'pending' && (
                                                 <button
                                                     className={styles.quickActionBtn}
-                                                    onClick={() => updateOrderStatus(order.id, 'preparing')}
+                                                    onClick={() => handleStatusChangeWithNotification(order, 'preparing')}
                                                 >
                                                     Iniciar Preparo
                                                 </button>
@@ -311,7 +438,7 @@ export default function PedidosPage() {
                                             {order.status === 'preparing' && (
                                                 <button
                                                     className={styles.quickActionBtn}
-                                                    onClick={() => updateOrderStatus(order.id, 'ready')}
+                                                    onClick={() => handleStatusChangeWithNotification(order, 'ready')}
                                                 >
                                                     Marcar Pronto
                                                 </button>
@@ -319,15 +446,15 @@ export default function PedidosPage() {
                                             {order.status === 'ready' && order.is_delivery && (
                                                 <button
                                                     className={styles.quickActionBtn}
-                                                    onClick={() => updateOrderStatus(order.id, 'delivering')}
+                                                    onClick={() => handleStatusChangeWithNotification(order, 'delivering')}
                                                 >
                                                     Saiu para Entrega
                                                 </button>
                                             )}
-                                            {(order.status === 'ready' && !order.is_delivery) || order.status === 'delivering' && (
+                                            {((order.status === 'ready' && !order.is_delivery) || order.status === 'delivering') && (
                                                 <button
                                                     className={`${styles.quickActionBtn} ${styles.success}`}
-                                                    onClick={() => updateOrderStatus(order.id, 'delivered')}
+                                                    onClick={() => handleStatusChangeWithNotification(order, 'delivered')}
                                                 >
                                                     Finalizar
                                                 </button>
@@ -348,6 +475,42 @@ export default function PedidosPage() {
                         </div>
                     )}
                 </div>
+
+                {/* WhatsApp Notification Modal */}
+                {showWhatsAppModal && (
+                    <div className={styles.modalOverlay} onClick={() => setShowWhatsAppModal(null)}>
+                        <div className={styles.modal} onClick={e => e.stopPropagation()}>
+                            <div className={styles.modalHeader}>
+                                <FaWhatsapp className={styles.whatsappIcon} />
+                                <h3>Notificar Cliente?</h3>
+                            </div>
+                            <p className={styles.modalText}>
+                                Deseja enviar uma notificação via WhatsApp para <strong>{showWhatsAppModal.customer_name}</strong> sobre a atualização do pedido?
+                            </p>
+                            <div className={styles.modalActions}>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        const pendingStatus = (showWhatsAppModal as any)._pendingStatus;
+                                        updateOrderStatus(showWhatsAppModal.id, pendingStatus, false);
+                                    }}
+                                >
+                                    Não Notificar
+                                </Button>
+                                <Button
+                                    leftIcon={<FaWhatsapp />}
+                                    onClick={() => {
+                                        const pendingStatus = (showWhatsAppModal as any)._pendingStatus;
+                                        updateOrderStatus(showWhatsAppModal.id, pendingStatus, true);
+                                    }}
+                                    style={{ background: '#25D366' }}
+                                >
+                                    Enviar WhatsApp
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </MainLayout>
     );

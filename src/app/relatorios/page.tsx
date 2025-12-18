@@ -13,9 +13,27 @@ import {
     FiBarChart2,
     FiPieChart,
     FiUsers,
-    FiPackage
+    FiPackage,
+    FiActivity
 } from 'react-icons/fi';
 import { BsCash } from 'react-icons/bs';
+import {
+    LineChart,
+    Line,
+    AreaChart,
+    Area,
+    BarChart,
+    Bar,
+    PieChart,
+    Pie,
+    Cell,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer
+} from 'recharts';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -24,6 +42,7 @@ import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
 type PeriodType = 'today' | 'week' | 'month' | '30days' | 'custom';
+type ComparisonType = 'previous' | 'lastWeek' | 'lastMonth' | 'lastYear';
 
 interface Order {
     id: string;
@@ -74,11 +93,25 @@ interface ReportStats {
     byDay: { [key: string]: number };
     topProducts: { name: string; quantity: number; revenue: number }[];
     byCategory: { categoryId: string; name: string; icon: string; color: string; total: number }[];
+    // Comparison data
+    comparisonRevenue: number;
+    comparisonOrders: number;
+    comparisonByDay: { [key: string]: number };
 }
+
+// Colors for charts
+const CHART_COLORS = ['#ff6b35', '#00b894', '#0984e3', '#fdcb6e', '#e84393', '#6c5ce7', '#00cec9', '#fd79a8'];
+const PAYMENT_COLORS: Record<string, string> = {
+    money: '#00b894',
+    pix: '#0984e3',
+    credit: '#fdcb6e',
+    debit: '#e84393'
+};
 
 export default function RelatoriosPage() {
     const { user } = useAuth();
     const [period, setPeriod] = useState<PeriodType>('month');
+    const [comparison, setComparison] = useState<ComparisonType>('previous');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [loading, setLoading] = useState(true);
@@ -95,7 +128,10 @@ export default function RelatoriosPage() {
         byHour: {},
         byDay: {},
         topProducts: [],
-        byCategory: []
+        byCategory: [],
+        comparisonRevenue: 0,
+        comparisonOrders: 0,
+        comparisonByDay: {}
     });
 
     // Calculate date range based on selected period
@@ -105,6 +141,8 @@ export default function RelatoriosPage() {
         let endDate = new Date(now);
         let previousStartDate: Date;
         let previousEndDate: Date;
+        let comparisonStartDate: Date;
+        let comparisonEndDate: Date;
 
         switch (period) {
             case 'today':
@@ -165,8 +203,33 @@ export default function RelatoriosPage() {
                 previousEndDate = new Date(now.getFullYear(), now.getMonth(), 0);
         }
 
-        return { startDate, endDate, previousStartDate, previousEndDate };
-    }, [period, customStartDate, customEndDate]);
+        // Calculate comparison period based on comparison type
+        switch (comparison) {
+            case 'lastWeek':
+                comparisonStartDate = new Date(startDate);
+                comparisonStartDate.setDate(comparisonStartDate.getDate() - 7);
+                comparisonEndDate = new Date(endDate);
+                comparisonEndDate.setDate(comparisonEndDate.getDate() - 7);
+                break;
+            case 'lastMonth':
+                comparisonStartDate = new Date(startDate);
+                comparisonStartDate.setMonth(comparisonStartDate.getMonth() - 1);
+                comparisonEndDate = new Date(endDate);
+                comparisonEndDate.setMonth(comparisonEndDate.getMonth() - 1);
+                break;
+            case 'lastYear':
+                comparisonStartDate = new Date(startDate);
+                comparisonStartDate.setFullYear(comparisonStartDate.getFullYear() - 1);
+                comparisonEndDate = new Date(endDate);
+                comparisonEndDate.setFullYear(comparisonEndDate.getFullYear() - 1);
+                break;
+            default:
+                comparisonStartDate = previousStartDate;
+                comparisonEndDate = previousEndDate;
+        }
+
+        return { startDate, endDate, previousStartDate, previousEndDate, comparisonStartDate, comparisonEndDate };
+    }, [period, customStartDate, customEndDate, comparison]);
 
     useEffect(() => {
         if (user) {
@@ -179,7 +242,7 @@ export default function RelatoriosPage() {
 
         setLoading(true);
         try {
-            const { startDate, endDate, previousStartDate, previousEndDate } = dateRange;
+            const { startDate, endDate, previousStartDate, previousEndDate, comparisonStartDate, comparisonEndDate } = dateRange;
 
             // Fetch current period orders
             const { data: currentOrders } = await supabase
@@ -197,6 +260,15 @@ export default function RelatoriosPage() {
                 .eq('user_id', user.id)
                 .gte('created_at', previousStartDate.toISOString())
                 .lte('created_at', previousEndDate.toISOString())
+                .neq('status', 'cancelled');
+
+            // Fetch comparison period orders
+            const { data: comparisonOrders } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('user_id', user.id)
+                .gte('created_at', comparisonStartDate.toISOString())
+                .lte('created_at', comparisonEndDate.toISOString())
                 .neq('status', 'cancelled');
 
             // Fetch order items for current period
@@ -225,45 +297,66 @@ export default function RelatoriosPage() {
             // Calculate stats
             const orders = currentOrders || [];
             const prevOrders = previousOrders || [];
+            const compOrders = comparisonOrders || [];
             const cats = categories || [];
             const prods = products || [];
 
-            // Basic stats
-            const paidOrders = orders.filter(o => o.payment_status === 'paid');
-            const totalRevenue = paidOrders.reduce((sum: number, o: Order) => sum + o.total, 0);
-            const previousRevenue = prevOrders
-                .filter((o: Order) => o.payment_status === 'paid')
-                .reduce((sum: number, o: Order) => sum + o.total, 0);
-
-            // By payment method
+            // OPTIMIZED: Single pass through orders for all metrics - O(n) instead of 4×O(n)
+            // Initialize all tracking objects
             const byPaymentMethod: { [key: string]: number } = {};
-            paidOrders.forEach((o: Order) => {
-                byPaymentMethod[o.payment_method] = (byPaymentMethod[o.payment_method] || 0) + o.total;
-            });
-
-            // By status
             const byStatus: { [key: string]: number } = {};
-            orders.forEach((o: Order) => {
-                byStatus[o.status] = (byStatus[o.status] || 0) + 1;
-            });
-
-            // By hour
             const byHour: { [key: number]: number } = {};
+            const byDay: { [key: string]: number } = {};
+            let totalRevenue = 0;
+            let paidOrdersCount = 0;
+            let deliveryCount = 0;
+            let pickupCount = 0;
+
+            // Single loop for all order metrics
             orders.forEach((o: Order) => {
+                // byStatus - count all orders
+                byStatus[o.status] = (byStatus[o.status] || 0) + 1;
+
+                // byHour - count all orders
                 const hour = new Date(o.created_at).getHours();
                 byHour[hour] = (byHour[hour] || 0) + 1;
+
+                // Delivery vs Pickup
+                if (o.is_delivery) {
+                    deliveryCount++;
+                } else {
+                    pickupCount++;
+                }
+
+                // Paid order specific metrics
+                if (o.payment_status === 'paid') {
+                    paidOrdersCount++;
+                    totalRevenue += o.total;
+
+                    // byPaymentMethod - only paid orders
+                    byPaymentMethod[o.payment_method] = (byPaymentMethod[o.payment_method] || 0) + o.total;
+
+                    // byDay - only paid orders
+                    const day = new Date(o.created_at).toISOString().split('T')[0];
+                    byDay[day] = (byDay[day] || 0) + o.total;
+                }
             });
 
-            // By day
-            const byDay: { [key: string]: number } = {};
-            paidOrders.forEach((o: Order) => {
-                const day = new Date(o.created_at).toISOString().split('T')[0];
-                byDay[day] = (byDay[day] || 0) + o.total;
-            });
+            // Previous period revenue - single reduce
+            const previousRevenue = prevOrders.reduce((sum: number, o: Order) =>
+                o.payment_status === 'paid' ? sum + o.total : sum, 0);
 
-            // Delivery vs Pickup
-            const deliveryCount = orders.filter((o: Order) => o.is_delivery).length;
-            const pickupCount = orders.filter((o: Order) => !o.is_delivery).length;
+            // Comparison stats - optimized single loop
+            const comparisonByDay: { [key: string]: number } = {};
+            let comparisonRevenue = 0;
+            compOrders.forEach((o: Order) => {
+                if (o.payment_status === 'paid') {
+                    comparisonRevenue += o.total;
+                    const day = new Date(o.created_at).toISOString().split('T')[0];
+                    comparisonByDay[day] = (comparisonByDay[day] || 0) + o.total;
+                }
+            });
+            const comparisonOrdersCount = compOrders.length;
 
             // Top products
             const productSales: { [key: string]: { name: string; quantity: number; revenue: number } } = {};
@@ -302,7 +395,7 @@ export default function RelatoriosPage() {
             setStats({
                 totalRevenue,
                 totalOrders: orders.length,
-                averageTicket: paidOrders.length > 0 ? totalRevenue / paidOrders.length : 0,
+                averageTicket: paidOrdersCount > 0 ? totalRevenue / paidOrdersCount : 0,
                 previousRevenue,
                 previousOrders: prevOrders.length,
                 deliveryCount,
@@ -312,7 +405,10 @@ export default function RelatoriosPage() {
                 byHour,
                 byDay,
                 topProducts,
-                byCategory
+                byCategory,
+                comparisonRevenue,
+                comparisonOrders: comparisonOrdersCount,
+                comparisonByDay
             });
         } catch (error) {
             console.error('Error fetching report data:', error);
@@ -326,6 +422,13 @@ export default function RelatoriosPage() {
             style: 'currency',
             currency: 'BRL'
         }).format(value);
+    };
+
+    const formatCurrencyShort = (value: number) => {
+        if (value >= 1000) {
+            return `R$ ${(value / 1000).toFixed(1)}k`;
+        }
+        return formatCurrency(value);
     };
 
     const getPercentChange = (current: number, previous: number) => {
@@ -358,6 +461,71 @@ export default function RelatoriosPage() {
         return labels[status] || status;
     };
 
+    const getComparisonLabel = (type: ComparisonType) => {
+        const labels: Record<ComparisonType, string> = {
+            previous: 'Período anterior',
+            lastWeek: 'Semana passada',
+            lastMonth: 'Mês passado',
+            lastYear: 'Ano passado'
+        };
+        return labels[type];
+    };
+
+    // Prepare chart data
+    const dailySalesData = useMemo(() => {
+        const days = Object.entries(stats.byDay)
+            .map(([day, total]) => ({
+                day,
+                date: new Date(day + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+                atual: total,
+                comparacao: stats.comparisonByDay[day] || 0
+            }))
+            .sort((a, b) => a.day.localeCompare(b.day));
+        return days;
+    }, [stats.byDay, stats.comparisonByDay]);
+
+    const hourlyData = useMemo(() => {
+        const hours = [];
+        for (let i = 0; i < 24; i++) {
+            hours.push({
+                hour: `${i.toString().padStart(2, '0')}:00`,
+                pedidos: stats.byHour[i] || 0
+            });
+        }
+        return hours;
+    }, [stats.byHour]);
+
+    const paymentData = useMemo(() => {
+        return Object.entries(stats.byPaymentMethod).map(([method, total]) => ({
+            name: getPaymentMethodLabel(method),
+            value: total,
+            color: PAYMENT_COLORS[method] || '#6c5ce7'
+        }));
+    }, [stats.byPaymentMethod]);
+
+    const categoryData = useMemo(() => {
+        return stats.byCategory.map(cat => ({
+            name: cat.name,
+            value: cat.total,
+            color: cat.color
+        }));
+    }, [stats.byCategory]);
+
+    const deliveryData = useMemo(() => {
+        return [
+            { name: 'Entrega', value: stats.deliveryCount, color: '#ff6b35' },
+            { name: 'Balcão', value: stats.pickupCount, color: '#00b894' }
+        ];
+    }, [stats.deliveryCount, stats.pickupCount]);
+
+    const topProductsData = useMemo(() => {
+        return stats.topProducts.slice(0, 5).map(p => ({
+            name: p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name,
+            quantidade: p.quantity,
+            receita: p.revenue
+        }));
+    }, [stats.topProducts]);
+
     const getPeakHours = () => {
         const hours = Object.entries(stats.byHour)
             .map(([hour, count]) => ({ hour: parseInt(hour), count }))
@@ -366,16 +534,7 @@ export default function RelatoriosPage() {
         return hours;
     };
 
-    const getDailySales = () => {
-        const days = Object.entries(stats.byDay)
-            .map(([day, total]) => ({ day, total }))
-            .sort((a, b) => a.day.localeCompare(b.day));
-        const maxValue = Math.max(...days.map(d => d.total), 1);
-        return { days, maxValue };
-    };
-
     const handleExportPDF = () => {
-        // For now, just print the page
         window.print();
     };
 
@@ -385,6 +544,23 @@ export default function RelatoriosPage() {
         month: 'Este Mês',
         '30days': 'Últimos 30 dias',
         custom: 'Personalizado'
+    };
+
+    // Custom tooltip for charts
+    const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string; color: string }>; label?: string }) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className={styles.chartTooltip}>
+                    <p className={styles.tooltipLabel}>{label}</p>
+                    {payload.map((entry, index) => (
+                        <p key={index} style={{ color: entry.color }}>
+                            {entry.name}: {entry.name.includes('receita') || entry.name === 'atual' ? formatCurrency(entry.value) : entry.value}
+                        </p>
+                    ))}
+                </div>
+            );
+        }
+        return null;
     };
 
     return (
@@ -437,6 +613,24 @@ export default function RelatoriosPage() {
                             </div>
                         </div>
                     )}
+                </div>
+
+                {/* Comparison Selector */}
+                <div className={styles.comparisonSelector}>
+                    <span className={styles.comparisonLabel}>
+                        <FiActivity /> Comparar com:
+                    </span>
+                    <div className={styles.comparisonTabs}>
+                        {(['previous', 'lastWeek', 'lastMonth', 'lastYear'] as ComparisonType[]).map((c) => (
+                            <button
+                                key={c}
+                                className={`${styles.comparisonTab} ${comparison === c ? styles.active : ''}`}
+                                onClick={() => setComparison(c)}
+                            >
+                                {getComparisonLabel(c)}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {loading ? (
@@ -509,28 +703,70 @@ export default function RelatoriosPage() {
                             </Card>
                         </div>
 
-                        {/* Sales Chart */}
+                        {/* Interactive Sales Chart */}
                         <Card className={styles.chartCard}>
                             <div className={styles.cardHeader}>
                                 <h2><FiBarChart2 /> Vendas por Dia</h2>
+                                <div className={styles.chartLegend}>
+                                    <span className={styles.legendItem}>
+                                        <span className={styles.legendDot} style={{ background: '#ff6b35' }}></span>
+                                        Período atual
+                                    </span>
+                                    <span className={styles.legendItem}>
+                                        <span className={styles.legendDot} style={{ background: 'rgba(0, 184, 148, 0.5)' }}></span>
+                                        {getComparisonLabel(comparison)}
+                                    </span>
+                                </div>
                             </div>
-                            <div className={styles.barChart}>
-                                {getDailySales().days.length > 0 ? (
-                                    getDailySales().days.map(({ day, total }) => (
-                                        <div key={day} className={styles.barWrapper}>
-                                            <div
-                                                className={styles.bar}
-                                                style={{
-                                                    height: `${(total / getDailySales().maxValue) * 100}%`
-                                                }}
-                                            >
-                                                <span className={styles.barTooltip}>{formatCurrency(total)}</span>
-                                            </div>
-                                            <span className={styles.barLabel}>
-                                                {new Date(day + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
-                                            </span>
-                                        </div>
-                                    ))
+                            <div className={styles.chartContainer}>
+                                {dailySalesData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <AreaChart data={dailySalesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="colorAtual" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.8} />
+                                                    <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1} />
+                                                </linearGradient>
+                                                <linearGradient id="colorComparacao" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#00b894" stopOpacity={0.5} />
+                                                    <stop offset="95%" stopColor="#00b894" stopOpacity={0.1} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                                            <XAxis
+                                                dataKey="date"
+                                                stroke="#888"
+                                                fontSize={12}
+                                                tickLine={false}
+                                            />
+                                            <YAxis
+                                                stroke="#888"
+                                                fontSize={12}
+                                                tickFormatter={(value) => formatCurrencyShort(value)}
+                                                tickLine={false}
+                                                axisLine={false}
+                                            />
+                                            <Tooltip content={<CustomTooltip />} />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="comparacao"
+                                                stroke="#00b894"
+                                                fillOpacity={1}
+                                                fill="url(#colorComparacao)"
+                                                name="comparação"
+                                                strokeWidth={2}
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="atual"
+                                                stroke="#ff6b35"
+                                                fillOpacity={1}
+                                                fill="url(#colorAtual)"
+                                                name="atual"
+                                                strokeWidth={2}
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
                                 ) : (
                                     <div className={styles.noData}>
                                         <span>📊</span>
@@ -540,52 +776,163 @@ export default function RelatoriosPage() {
                             </div>
                         </Card>
 
-                        {/* Two Column Layout */}
+                        {/* Two Column Charts Layout */}
                         <div className={styles.twoColumns}>
-                            {/* Top Products */}
+                            {/* Payment Methods Pie Chart */}
                             <Card className={styles.sectionCard}>
                                 <div className={styles.cardHeader}>
-                                    <h2><FiPackage /> Produtos Mais Vendidos</h2>
+                                    <h2><BsCash /> Formas de Pagamento</h2>
                                 </div>
-                                {stats.topProducts.length > 0 ? (
-                                    <div className={styles.productList}>
-                                        {stats.topProducts.map((product, index) => {
-                                            const maxQty = stats.topProducts[0]?.quantity || 1;
-                                            return (
-                                                <div key={product.name} className={styles.productItem}>
-                                                    <span className={styles.productRank}>#{index + 1}</span>
-                                                    <div className={styles.productInfo}>
-                                                        <span className={styles.productName}>{product.name}</span>
-                                                        <div className={styles.productBar}>
-                                                            <div
-                                                                className={styles.productProgress}
-                                                                style={{ width: `${(product.quantity / maxQty) * 100}%` }}
-                                                            />
-                                                        </div>
+                                <div className={styles.pieChartContainer}>
+                                    {paymentData.length > 0 ? (
+                                        <>
+                                            <ResponsiveContainer width="100%" height={250}>
+                                                <PieChart>
+                                                    <Pie
+                                                        data={paymentData}
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        innerRadius={60}
+                                                        outerRadius={90}
+                                                        paddingAngle={5}
+                                                        dataKey="value"
+                                                    >
+                                                        {paymentData.map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip
+                                                        formatter={(value: number) => formatCurrency(value)}
+                                                    />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                            <div className={styles.pieLegend}>
+                                                {paymentData.map((entry, index) => (
+                                                    <div key={index} className={styles.pieLegendItem}>
+                                                        <span
+                                                            className={styles.pieLegendDot}
+                                                            style={{ backgroundColor: entry.color }}
+                                                        />
+                                                        <span className={styles.pieLegendLabel}>{entry.name}</span>
+                                                        <span className={styles.pieLegendValue}>{formatCurrency(entry.value)}</span>
                                                     </div>
-                                                    <div className={styles.productStats}>
-                                                        <span className={styles.productQty}>{product.quantity}x</span>
-                                                        <span className={styles.productRevenue}>{formatCurrency(product.revenue)}</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className={styles.noDataSmall}>
-                                        <p>Nenhum produto vendido</p>
-                                    </div>
-                                )}
+                                                ))}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className={styles.noDataSmall}>
+                                            <p>Nenhum pagamento no período</p>
+                                        </div>
+                                    )}
+                                </div>
                             </Card>
 
-                            {/* Categories */}
+                            {/* Hourly Orders Bar Chart */}
                             <Card className={styles.sectionCard}>
                                 <div className={styles.cardHeader}>
-                                    <h2><FiPieChart /> Vendas por Categoria</h2>
+                                    <h2><FiClock /> Pedidos por Hora</h2>
                                 </div>
-                                {stats.byCategory.length > 0 ? (
-                                    <div className={styles.categoryGrid}>
-                                        {stats.byCategory.map((cat) => {
+                                <div className={styles.chartContainer}>
+                                    <ResponsiveContainer width="100%" height={250}>
+                                        <BarChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                                            <XAxis
+                                                dataKey="hour"
+                                                stroke="#888"
+                                                fontSize={10}
+                                                tickLine={false}
+                                                interval={2}
+                                            />
+                                            <YAxis
+                                                stroke="#888"
+                                                fontSize={12}
+                                                tickLine={false}
+                                                axisLine={false}
+                                            />
+                                            <Tooltip
+                                                formatter={(value: number) => [value, 'Pedidos']}
+                                                contentStyle={{
+                                                    background: 'rgba(45, 52, 54, 0.95)',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                                                }}
+                                            />
+                                            <Bar
+                                                dataKey="pedidos"
+                                                fill="#ff6b35"
+                                                radius={[4, 4, 0, 0]}
+                                            />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </Card>
+                        </div>
+
+                        {/* Top Products Bar Chart */}
+                        <Card className={styles.chartCard}>
+                            <div className={styles.cardHeader}>
+                                <h2><FiPackage /> Top 5 Produtos Mais Vendidos</h2>
+                            </div>
+                            <div className={styles.chartContainer}>
+                                {topProductsData.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <BarChart
+                                            data={topProductsData}
+                                            layout="vertical"
+                                            margin={{ top: 10, right: 30, left: 100, bottom: 10 }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" horizontal={false} />
+                                            <XAxis
+                                                type="number"
+                                                stroke="#888"
+                                                fontSize={12}
+                                                tickLine={false}
+                                            />
+                                            <YAxis
+                                                dataKey="name"
+                                                type="category"
+                                                stroke="#888"
+                                                fontSize={12}
+                                                tickLine={false}
+                                                axisLine={false}
+                                            />
+                                            <Tooltip
+                                                formatter={(value: number, name: string) => [
+                                                    name === 'receita' ? formatCurrency(value) : value + 'x',
+                                                    name === 'receita' ? 'Receita' : 'Quantidade'
+                                                ]}
+                                                contentStyle={{
+                                                    background: 'rgba(45, 52, 54, 0.95)',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                                                }}
+                                            />
+                                            <Legend />
+                                            <Bar dataKey="quantidade" fill="#ff6b35" name="Quantidade" radius={[0, 4, 4, 0]} />
+                                            <Bar dataKey="receita" fill="#00b894" name="Receita" radius={[0, 4, 4, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className={styles.noData}>
+                                        <span>📦</span>
+                                        <p>Nenhum produto vendido no período</p>
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+
+                        {/* Three Column Layout */}
+                        <div className={styles.threeColumns}>
+                            {/* Categories */}
+                            <Card className={styles.miniCard}>
+                                <div className={styles.cardHeaderMini}>
+                                    <h3><FiPieChart /> Categorias</h3>
+                                </div>
+                                <div className={styles.categoryGrid}>
+                                    {stats.byCategory.length > 0 ? (
+                                        stats.byCategory.map((cat) => {
                                             const totalCategorySales = stats.byCategory.reduce((sum, c) => sum + c.total, 0);
                                             const percentage = totalCategorySales > 0 ? (cat.total / totalCategorySales) * 100 : 0;
                                             return (
@@ -600,46 +947,9 @@ export default function RelatoriosPage() {
                                                     <span className={styles.categoryPercent}>{percentage.toFixed(1)}%</span>
                                                 </div>
                                             );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className={styles.noDataSmall}>
-                                        <p>Nenhuma categoria com vendas</p>
-                                    </div>
-                                )}
-                            </Card>
-                        </div>
-
-                        {/* Three Column Layout */}
-                        <div className={styles.threeColumns}>
-                            {/* Payment Methods */}
-                            <Card className={styles.miniCard}>
-                                <div className={styles.cardHeaderMini}>
-                                    <h3><BsCash /> Formas de Pagamento</h3>
-                                </div>
-                                <div className={styles.paymentList}>
-                                    {Object.entries(stats.byPaymentMethod).length > 0 ? (
-                                        Object.entries(stats.byPaymentMethod)
-                                            .sort(([, a], [, b]) => b - a)
-                                            .map(([method, total]) => {
-                                                const maxPayment = Math.max(...Object.values(stats.byPaymentMethod), 1);
-                                                return (
-                                                    <div key={method} className={styles.paymentItem}>
-                                                        <div className={styles.paymentHeader}>
-                                                            <span className={styles.paymentMethod}>{getPaymentMethodLabel(method)}</span>
-                                                            <span className={styles.paymentValue}>{formatCurrency(total)}</span>
-                                                        </div>
-                                                        <div className={styles.paymentBar}>
-                                                            <div
-                                                                className={styles.paymentProgress}
-                                                                style={{ width: `${(total / maxPayment) * 100}%` }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
+                                        })
                                     ) : (
-                                        <p className={styles.noDataText}>Nenhum pagamento</p>
+                                        <p className={styles.noDataText}>Nenhuma categoria</p>
                                     )}
                                 </div>
                             </Card>
@@ -690,6 +1000,33 @@ export default function RelatoriosPage() {
                                 </div>
                             </Card>
                         </div>
+
+                        {/* Period Comparison Summary */}
+                        <Card className={styles.comparisonCard}>
+                            <div className={styles.cardHeader}>
+                                <h2><FiActivity /> Comparativo de Períodos</h2>
+                            </div>
+                            <div className={styles.comparisonGrid}>
+                                <div className={styles.comparisonItem}>
+                                    <span className={styles.comparisonTitle}>Receita Atual</span>
+                                    <span className={styles.comparisonValue}>{formatCurrency(stats.totalRevenue)}</span>
+                                </div>
+                                <div className={styles.comparisonVs}>VS</div>
+                                <div className={styles.comparisonItem}>
+                                    <span className={styles.comparisonTitle}>{getComparisonLabel(comparison)}</span>
+                                    <span className={styles.comparisonValue}>{formatCurrency(stats.comparisonRevenue)}</span>
+                                </div>
+                                <div className={`${styles.comparisonResult} ${stats.totalRevenue >= stats.comparisonRevenue ? styles.positive : styles.negative}`}>
+                                    <span className={styles.comparisonDiff}>
+                                        {stats.totalRevenue >= stats.comparisonRevenue ? '+' : ''}
+                                        {formatCurrency(stats.totalRevenue - stats.comparisonRevenue)}
+                                    </span>
+                                    <span className={styles.comparisonPercent}>
+                                        ({getPercentChange(stats.totalRevenue, stats.comparisonRevenue).toFixed(1)}%)
+                                    </span>
+                                </div>
+                            </div>
+                        </Card>
                     </>
                 )}
             </div>

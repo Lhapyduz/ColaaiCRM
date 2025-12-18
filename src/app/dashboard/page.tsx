@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
     FiShoppingBag,
@@ -10,7 +10,9 @@ import {
     FiPlus,
     FiArrowRight,
     FiTrendingUp,
-    FiTrendingDown
+    FiTrendingDown,
+    FiTarget,
+    FiActivity
 } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
 import MainLayout from '@/components/layout/MainLayout';
@@ -18,6 +20,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { predictRemainingToday, predictSalesForDate, getConfidenceLabel, getConfidencePercentage } from '@/lib/salesPrediction';
 import styles from './page.module.css';
 
 interface Stats {
@@ -25,6 +28,8 @@ interface Stats {
     totalRevenue: number;
     pendingOrders: number;
     pendingDeliveries: number;
+    yesterdayRevenue: number;
+    yesterdayOrders: number;
 }
 
 interface RecentOrder {
@@ -36,16 +41,33 @@ interface RecentOrder {
     created_at: string;
 }
 
+interface HistoricalData {
+    date: string;
+    dayOfWeek: number;
+    revenue: number;
+    orders: number;
+}
+
+interface Prediction {
+    predictedRevenue: number;
+    predictedOrders: number;
+    confidence: 'low' | 'medium' | 'high';
+    basedOn: string;
+}
+
 export default function DashboardPage() {
     const { user, userSettings } = useAuth();
     const [stats, setStats] = useState<Stats>({
         totalOrders: 0,
         totalRevenue: 0,
         pendingOrders: 0,
-        pendingDeliveries: 0
+        pendingDeliveries: 0,
+        yesterdayRevenue: 0,
+        yesterdayOrders: 0
     });
     const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
     const [loading, setLoading] = useState(true);
+    const [prediction, setPrediction] = useState<Prediction | null>(null);
 
     const appName = userSettings?.app_name || 'Cola Aí';
 
@@ -63,12 +85,36 @@ export default function DashboardPage() {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            // Get 30 days ago for prediction
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
             const { data: orders } = await supabase
                 .from('orders')
                 .select('*')
                 .eq('user_id', user.id)
                 .gte('created_at', today.toISOString())
                 .order('created_at', { ascending: false });
+
+            // Fetch yesterday's orders
+            const { data: yesterdayOrders } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('user_id', user.id)
+                .gte('created_at', yesterday.toISOString())
+                .lt('created_at', today.toISOString())
+                .neq('status', 'cancelled');
+
+            // Fetch historical data for prediction (last 30 days)
+            const { data: historicalOrders } = await supabase
+                .from('orders')
+                .select('created_at, total, payment_status')
+                .eq('user_id', user.id)
+                .gte('created_at', thirtyDaysAgo.toISOString())
+                .neq('status', 'cancelled');
 
             if (orders) {
                 const totalRevenue = orders
@@ -83,14 +129,53 @@ export default function DashboardPage() {
                     o => o.status === 'delivering' || (o.status === 'ready' && o.is_delivery)
                 ).length;
 
+                const yesterdayRevenue = yesterdayOrders
+                    ?.filter(o => o.payment_status === 'paid')
+                    ?.reduce((sum, o) => sum + o.total, 0) || 0;
+
                 setStats({
                     totalOrders: orders.length,
                     totalRevenue,
                     pendingOrders,
-                    pendingDeliveries
+                    pendingDeliveries,
+                    yesterdayRevenue,
+                    yesterdayOrders: yesterdayOrders?.length || 0
                 });
 
                 setRecentOrders(orders.slice(0, 5));
+            }
+
+            // Calculate prediction
+            if (historicalOrders && historicalOrders.length > 0) {
+                // Process historical data by day
+                const dailyData: Record<string, { revenue: number; orders: number }> = {};
+
+                historicalOrders.forEach(order => {
+                    const date = new Date(order.created_at).toISOString().split('T')[0];
+                    if (!dailyData[date]) {
+                        dailyData[date] = { revenue: 0, orders: 0 };
+                    }
+                    if (order.payment_status === 'paid') {
+                        dailyData[date].revenue += order.total;
+                    }
+                    dailyData[date].orders++;
+                });
+
+                const historicalData: HistoricalData[] = Object.entries(dailyData).map(([date, data]) => ({
+                    date,
+                    dayOfWeek: new Date(date + 'T12:00:00').getDay(),
+                    revenue: data.revenue,
+                    orders: data.orders
+                }));
+
+                // Get prediction for remaining day
+                const pred = predictRemainingToday(
+                    historicalData,
+                    orders?.filter(o => o.payment_status === 'paid').reduce((sum, o) => sum + o.total, 0) || 0,
+                    orders?.length || 0
+                );
+
+                setPrediction(pred);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -131,6 +216,21 @@ export default function DashboardPage() {
         return `${Math.floor(diffHours / 24)}d`;
     };
 
+    const revenueChange = useMemo(() => {
+        if (stats.yesterdayRevenue === 0) return stats.totalRevenue > 0 ? 100 : 0;
+        return ((stats.totalRevenue - stats.yesterdayRevenue) / stats.yesterdayRevenue) * 100;
+    }, [stats.totalRevenue, stats.yesterdayRevenue]);
+
+    const ordersChange = useMemo(() => {
+        if (stats.yesterdayOrders === 0) return stats.totalOrders > 0 ? 100 : 0;
+        return ((stats.totalOrders - stats.yesterdayOrders) / stats.yesterdayOrders) * 100;
+    }, [stats.totalOrders, stats.yesterdayOrders]);
+
+    const progressToGoal = useMemo(() => {
+        if (!prediction) return 0;
+        return Math.min(100, (stats.totalRevenue / prediction.predictedRevenue) * 100);
+    }, [stats.totalRevenue, prediction]);
+
     return (
         <MainLayout>
             <div className={styles.container}>
@@ -157,9 +257,9 @@ export default function DashboardPage() {
                             <span className={styles.statLabel}>Pedidos Hoje</span>
                             <span className={styles.statValue}>{stats.totalOrders}</span>
                         </div>
-                        <div className={styles.statTrend}>
-                            <FiTrendingUp />
-                            <span>+12%</span>
+                        <div className={`${styles.statTrend} ${ordersChange >= 0 ? styles.positive : styles.negative}`}>
+                            {ordersChange >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
+                            <span>{ordersChange >= 0 ? '+' : ''}{ordersChange.toFixed(0)}%</span>
                         </div>
                     </Card>
 
@@ -171,9 +271,9 @@ export default function DashboardPage() {
                             <span className={styles.statLabel}>Receita do Dia</span>
                             <span className={styles.statValue}>{formatCurrency(stats.totalRevenue)}</span>
                         </div>
-                        <div className={styles.statTrend} style={{ color: 'var(--accent)' }}>
-                            <FiTrendingUp />
-                            <span>+8%</span>
+                        <div className={`${styles.statTrend} ${revenueChange >= 0 ? styles.positive : styles.negative}`}>
+                            {revenueChange >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
+                            <span>{revenueChange >= 0 ? '+' : ''}{revenueChange.toFixed(0)}%</span>
                         </div>
                     </Card>
 
@@ -207,6 +307,51 @@ export default function DashboardPage() {
                         )}
                     </Card>
                 </div>
+
+                {/* Sales Prediction Card */}
+                {prediction && (
+                    <Card className={styles.predictionCard}>
+                        <div className={styles.predictionHeader}>
+                            <div className={styles.predictionTitle}>
+                                <FiTarget className={styles.predictionIcon} />
+                                <h2>Previsão para Hoje</h2>
+                            </div>
+                            <div className={styles.confidenceBadge} data-confidence={prediction.confidence}>
+                                <FiActivity />
+                                {getConfidenceLabel(prediction.confidence)}
+                            </div>
+                        </div>
+
+                        <div className={styles.predictionContent}>
+                            <div className={styles.predictionStats}>
+                                <div className={styles.predictionStat}>
+                                    <span className={styles.predictionStatLabel}>Receita Prevista</span>
+                                    <span className={styles.predictionStatValue}>{formatCurrency(prediction.predictedRevenue)}</span>
+                                </div>
+                                <div className={styles.predictionStat}>
+                                    <span className={styles.predictionStatLabel}>Pedidos Previstos</span>
+                                    <span className={styles.predictionStatValue}>{prediction.predictedOrders}</span>
+                                </div>
+                            </div>
+
+                            <div className={styles.predictionProgress}>
+                                <div className={styles.progressHeader}>
+                                    <span>Progresso do Dia</span>
+                                    <span className={styles.progressPercent}>{progressToGoal.toFixed(0)}%</span>
+                                </div>
+                                <div className={styles.progressBar}>
+                                    <div
+                                        className={styles.progressFill}
+                                        style={{ width: `${progressToGoal}%` }}
+                                    />
+                                </div>
+                                <span className={styles.predictionMeta}>
+                                    Baseado em: {prediction.basedOn}
+                                </span>
+                            </div>
+                        </div>
+                    </Card>
+                )}
 
                 {/* Content Grid */}
                 <div className={styles.contentGrid}>

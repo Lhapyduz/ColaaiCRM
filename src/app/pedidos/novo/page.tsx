@@ -10,7 +10,9 @@ import {
     FiUser,
     FiPhone,
     FiMapPin,
-    FiCheck
+    FiCheck,
+    FiTag,
+    FiGift
 } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
@@ -67,6 +69,23 @@ export default function NovoPedidoPage() {
     const [notes, setNotes] = useState('');
     const [deliveryFee, setDeliveryFee] = useState(0);
 
+    // Coupon state
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<{
+        id: string;
+        code: string;
+        discount_type: 'percentage' | 'fixed';
+        discount_value: number;
+    } | null>(null);
+    const [couponError, setCouponError] = useState('');
+    const [validatingCoupon, setValidatingCoupon] = useState(false);
+
+    // Loyalty state
+    const [loyaltyCustomer, setLoyaltyCustomer] = useState<{ id: string; name: string; total_points: number } | null>(null);
+
+    // App settings (for feature toggles)
+    const [appSettings, setAppSettings] = useState<{ coupons_enabled: boolean; loyalty_enabled: boolean } | null>(null);
+
     useEffect(() => {
         if (user) {
             fetchData();
@@ -77,9 +96,10 @@ export default function NovoPedidoPage() {
         if (!user) return;
 
         try {
-            const [categoriesRes, productsRes] = await Promise.all([
+            const [categoriesRes, productsRes, appSettingsRes] = await Promise.all([
                 supabase.from('categories').select('*').eq('user_id', user.id),
-                supabase.from('products').select('*').eq('user_id', user.id).eq('available', true)
+                supabase.from('products').select('*').eq('user_id', user.id).eq('available', true),
+                supabase.from('app_settings').select('coupons_enabled, loyalty_enabled').eq('user_id', user.id).single()
             ]);
 
             if (categoriesRes.data) {
@@ -91,6 +111,13 @@ export default function NovoPedidoPage() {
 
             if (productsRes.data) {
                 setProducts(productsRes.data);
+            }
+
+            if (appSettingsRes.data) {
+                setAppSettings(appSettingsRes.data);
+            } else {
+                // Default to enabled if no settings
+                setAppSettings({ coupons_enabled: true, loyalty_enabled: true });
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -141,7 +168,105 @@ export default function NovoPedidoPage() {
     };
 
     const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-    const total = subtotal + (isDelivery ? deliveryFee : 0);
+
+    // Calculate discount
+    const discount = appliedCoupon
+        ? appliedCoupon.discount_type === 'percentage'
+            ? subtotal * (appliedCoupon.discount_value / 100)
+            : appliedCoupon.discount_value
+        : 0;
+
+    const total = subtotal - discount + (isDelivery ? deliveryFee : 0);
+
+
+    // Validate coupon
+    const validateCoupon = async () => {
+        if (!couponCode.trim() || !user) return;
+
+        setCouponError('');
+        setValidatingCoupon(true);
+
+        try {
+            const now = new Date().toISOString();
+
+            const { data: coupon, error } = await supabase
+                .from('coupons')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('code', couponCode.toUpperCase())
+                .eq('active', true)
+                .single();
+
+            if (error || !coupon) {
+                setCouponError('Cupom inválido ou expirado');
+                setAppliedCoupon(null);
+                return;
+            }
+
+            // Check validity period
+            if (coupon.valid_from && now < coupon.valid_from) {
+                setCouponError('Cupom ainda não está válido');
+                return;
+            }
+            if (coupon.valid_until && now > coupon.valid_until) {
+                setCouponError('Cupom expirado');
+                return;
+            }
+
+            // Check usage limit
+            if (coupon.usage_limit && coupon.usage_count >= coupon.usage_limit) {
+                setCouponError('Cupom esgotado');
+                return;
+            }
+
+            // Check minimum order
+            if (coupon.min_order_value && subtotal < coupon.min_order_value) {
+                setCouponError(`Pedido mínimo: R$ ${coupon.min_order_value.toFixed(2)}`);
+                return;
+            }
+
+            setAppliedCoupon({
+                id: coupon.id,
+                code: coupon.code,
+                discount_type: coupon.discount_type,
+                discount_value: coupon.discount_value
+            });
+        } catch (err) {
+            setCouponError('Erro ao validar cupom');
+        } finally {
+            setValidatingCoupon(false);
+        }
+    };
+
+    // Search loyalty customer by phone
+    const searchLoyaltyCustomer = async (phone: string) => {
+        if (!phone || phone.length < 10 || !user) return;
+
+        const { data } = await supabase
+            .from('customers')
+            .select('id, name, total_points')
+            .eq('user_id', user.id)
+            .eq('phone', phone.replace(/\D/g, ''))
+            .single();
+
+        if (data) {
+            setLoyaltyCustomer(data);
+        } else {
+            setLoyaltyCustomer(null);
+        }
+    };
+
+    // Effect to search customer when phone changes
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (customerPhone.length >= 10) {
+                searchLoyaltyCustomer(customerPhone);
+            } else {
+                setLoyaltyCustomer(null);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [customerPhone]);
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-BR', {
@@ -168,27 +293,38 @@ export default function NovoPedidoPage() {
             const orderNumber = (lastOrder?.order_number || 0) + 1;
 
             // Create order
+            const orderData: Record<string, unknown> = {
+                user_id: user.id,
+                order_number: orderNumber,
+                customer_name: customerName,
+                customer_phone: customerPhone || null,
+                customer_address: isDelivery ? customerAddress : null,
+                status: 'pending',
+                payment_method: paymentMethod,
+                payment_status: isPaid ? 'paid' : 'pending',
+                subtotal,
+                delivery_fee: isDelivery ? deliveryFee : 0,
+                total,
+                notes: notes || null,
+                is_delivery: isDelivery
+            };
+
+            // Add coupon fields if coupon is applied (fields may not exist in older schemas)
+            if (appliedCoupon) {
+                orderData.discount_amount = discount;
+                orderData.coupon_code = appliedCoupon.code;
+            }
+
             const { data: order, error: orderError } = await supabase
                 .from('orders')
-                .insert({
-                    user_id: user.id,
-                    order_number: orderNumber,
-                    customer_name: customerName,
-                    customer_phone: customerPhone || null,
-                    customer_address: isDelivery ? customerAddress : null,
-                    status: 'pending',
-                    payment_method: paymentMethod,
-                    payment_status: isPaid ? 'paid' : 'pending',
-                    subtotal,
-                    delivery_fee: isDelivery ? deliveryFee : 0,
-                    total,
-                    notes: notes || null,
-                    is_delivery: isDelivery
-                })
+                .insert(orderData)
                 .select()
                 .single();
 
-            if (orderError) throw orderError;
+            if (orderError) {
+                console.error('Order creation error:', orderError);
+                throw new Error(orderError.message || 'Failed to create order');
+            }
 
             // Create order items
             const orderItems = cart.map(item => ({
@@ -205,12 +341,149 @@ export default function NovoPedidoPage() {
                 .from('order_items')
                 .insert(orderItems);
 
-            if (itemsError) throw itemsError;
+            if (itemsError) {
+                console.error('Order items error:', itemsError);
+                throw new Error(itemsError.message || 'Failed to create order items');
+            }
+
+            // Update coupon usage if applied (non-blocking errors)
+            if (appliedCoupon) {
+                try {
+                    // Get current count and increment
+                    const { data: couponData } = await supabase
+                        .from('coupons')
+                        .select('usage_count')
+                        .eq('id', appliedCoupon.id)
+                        .single();
+
+                    if (couponData) {
+                        await supabase
+                            .from('coupons')
+                            .update({ usage_count: (couponData.usage_count || 0) + 1 })
+                            .eq('id', appliedCoupon.id);
+                    }
+
+                    // Record coupon usage
+                    await supabase.from('coupon_usage').insert({
+                        coupon_id: appliedCoupon.id,
+                        order_id: order.id,
+                        customer_phone: customerPhone || null,
+                        discount_applied: discount
+                    });
+                } catch (couponErr) {
+                    console.warn('Coupon usage tracking failed:', couponErr);
+                }
+            }
+
+            // Register customer in loyalty program if phone provided (always, not just when paid)
+            if (customerPhone) {
+                try {
+                    // Normalize phone number - remove all non-digits
+                    const cleanPhone = customerPhone.replace(/\D/g, '');
+
+                    // Skip if phone is too short after cleaning
+                    if (cleanPhone.length < 10) {
+                        console.warn('Phone number too short for loyalty registration:', cleanPhone);
+                    } else {
+                        // Get or create customer
+                        let { data: customer, error: fetchError } = await supabase
+                            .from('customers')
+                            .select('id, total_points, total_spent, total_orders')
+                            .eq('user_id', user.id)
+                            .eq('phone', cleanPhone)
+                            .single();
+
+                        if (fetchError && fetchError.code === 'PGRST116') {
+                            // Customer doesn't exist - create new one
+                            const { data: newCustomer, error: insertError } = await supabase
+                                .from('customers')
+                                .insert({
+                                    user_id: user.id,
+                                    name: customerName.trim(),
+                                    phone: cleanPhone,
+                                    total_points: 0,
+                                    total_spent: 0,
+                                    total_orders: 0,
+                                    tier: 'bronze'
+                                })
+                                .select()
+                                .single();
+
+                            if (insertError) {
+                                console.error('Failed to create customer:', insertError);
+                            } else {
+                                customer = newCustomer;
+                            }
+                        }
+
+                        if (customer) {
+                            // Calculate points only if order is paid
+                            let pointsEarned = 0;
+
+                            if (isPaid) {
+                                // Get loyalty settings
+                                const { data: settings } = await supabase
+                                    .from('loyalty_settings')
+                                    .select('points_per_real')
+                                    .eq('user_id', user.id)
+                                    .single();
+
+                                const pointsPerReal = settings?.points_per_real || 1;
+                                pointsEarned = Math.floor(total * pointsPerReal);
+
+                                // Add points transaction if earned
+                                if (pointsEarned > 0) {
+                                    await supabase.from('points_transactions').insert({
+                                        user_id: user.id,
+                                        customer_id: customer.id,
+                                        points: pointsEarned,
+                                        type: 'earned',
+                                        description: `Pedido #${orderNumber}`,
+                                        order_id: order.id
+                                    });
+                                }
+                            }
+
+                            // Get current customer data for coupon tracking
+                            const { data: currentCustomer } = await supabase
+                                .from('customers')
+                                .select('coupons_used, total_discount_savings')
+                                .eq('id', customer.id)
+                                .single();
+
+                            // Build update data - always update orders count
+                            const updateData: Record<string, number> = {
+                                total_orders: (customer.total_orders || 0) + 1
+                            };
+
+                            // Add spent and points if paid
+                            if (isPaid) {
+                                updateData.total_spent = (customer.total_spent || 0) + total;
+                                updateData.total_points = (customer.total_points || 0) + pointsEarned;
+                            }
+
+                            // Add coupon tracking if coupon was applied
+                            if (appliedCoupon && discount > 0) {
+                                updateData.coupons_used = (currentCustomer?.coupons_used || 0) + 1;
+                                updateData.total_discount_savings = (currentCustomer?.total_discount_savings || 0) + discount;
+                            }
+
+                            await supabase
+                                .from('customers')
+                                .update(updateData)
+                                .eq('id', customer.id);
+                        }
+                    }
+                } catch (loyaltyErr) {
+                    console.warn('Loyalty registration failed:', loyaltyErr);
+                }
+            }
 
             router.push('/pedidos');
         } catch (error) {
             console.error('Error creating order:', error);
-            alert('Erro ao criar pedido');
+            const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+            alert(`Erro ao criar pedido: ${errorMessage}`);
         } finally {
             setSubmitting(false);
         }
@@ -417,12 +690,59 @@ export default function NovoPedidoPage() {
 
                                     <div className={styles.cartDivider} />
 
+                                    {/* Coupon Section - only show if coupons are enabled */}
+                                    {appSettings?.coupons_enabled !== false && (
+                                        <div className={styles.couponSection}>
+                                            <label className={styles.sectionLabel}>Cupom de Desconto</label>
+                                            <div className={styles.couponInput}>
+                                                <Input
+                                                    placeholder="Digite o cupom"
+                                                    value={couponCode}
+                                                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                                    leftIcon={<FiTag />}
+                                                    disabled={!!appliedCoupon}
+                                                />
+                                                {appliedCoupon ? (
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}
+                                                    >
+                                                        Remover
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={validateCoupon}
+                                                        isLoading={validatingCoupon}
+                                                        disabled={!couponCode.trim()}
+                                                    >
+                                                        Aplicar
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            {couponError && <p className={styles.couponError}>{couponError}</p>}
+                                            {appliedCoupon && (
+                                                <p className={styles.couponSuccess}>
+                                                    ✓ Desconto de {appliedCoupon.discount_type === 'percentage'
+                                                        ? `${appliedCoupon.discount_value}%`
+                                                        : formatCurrency(appliedCoupon.discount_value)} aplicado!
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Totals */}
                                     <div className={styles.totals}>
                                         <div className={styles.totalRow}>
                                             <span>Subtotal</span>
                                             <span>{formatCurrency(subtotal)}</span>
                                         </div>
+                                        {appliedCoupon && (
+                                            <div className={`${styles.totalRow} ${styles.discountRow}`}>
+                                                <span>🎫 {appliedCoupon.code}</span>
+                                                <span>-{formatCurrency(discount)}</span>
+                                            </div>
+                                        )}
                                         {isDelivery && deliveryFee > 0 && (
                                             <div className={styles.totalRow}>
                                                 <span>Taxa de Entrega</span>
@@ -433,6 +753,12 @@ export default function NovoPedidoPage() {
                                             <span>Total</span>
                                             <span>{formatCurrency(total)}</span>
                                         </div>
+                                        {loyaltyCustomer && (
+                                            <div className={styles.loyaltyInfo}>
+                                                <FiGift />
+                                                <span>Cliente: {loyaltyCustomer.name} • {loyaltyCustomer.total_points} pts</span>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <Button

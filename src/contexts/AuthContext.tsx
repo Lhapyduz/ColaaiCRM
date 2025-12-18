@@ -12,6 +12,11 @@ interface UserSettings {
     logo_url: string | null;
     primary_color: string;
     secondary_color: string;
+    whatsapp_number: string | null;
+    public_slug: string | null;
+    pix_key: string | null;
+    pix_key_type: 'cpf' | 'cnpj' | 'email' | 'phone' | 'random' | null;
+    merchant_city: string | null;
 }
 
 interface AuthContextType {
@@ -79,7 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             user_id: userId,
                             app_name: 'Cola Aí',
                             primary_color: '#ff6b35',
-                            secondary_color: '#2d3436'
+                            secondary_color: '#2d3436',
+                            whatsapp_number: null,
+                            public_slug: null
                         })
                         .select()
                         .single();
@@ -157,7 +164,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     user_id: data.user.id,
                     app_name: name || 'Cola Aí',
                     primary_color: '#ff6b35',
-                    secondary_color: '#2d3436'
+                    secondary_color: '#2d3436',
+                    whatsapp_number: null,
+                    public_slug: null
                 });
 
                 // Create default categories

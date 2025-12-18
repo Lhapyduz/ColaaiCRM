@@ -1,18 +1,23 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { FiClock, FiCheck, FiVolume2, FiVolumeX } from 'react-icons/fi';
+import { FiClock, FiCheck, FiVolume2, FiVolumeX, FiPrinter } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { printKitchenTicket } from '@/lib/print';
 import styles from './page.module.css';
 
 interface OrderItem {
     id: string;
     product_name: string;
     quantity: number;
+    unit_price: number;
+    total: number;
     notes: string | null;
 }
 
@@ -20,7 +25,15 @@ interface Order {
     id: string;
     order_number: number;
     customer_name: string;
+    customer_phone: string | null;
+    customer_address: string | null;
     status: string;
+    payment_method: string;
+    payment_status: string;
+    subtotal: number;
+    delivery_fee: number;
+    total: number;
+    notes: string | null;
     is_delivery: boolean;
     created_at: string;
     items: OrderItem[];
@@ -28,10 +41,25 @@ interface Order {
 
 export default function CozinhaPage() {
     const { user } = useAuth();
+    const { plan, canAccess } = useSubscription();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    // Check if user has access to kitchen feature
+    if (!canAccess('kitchen')) {
+        return (
+            <MainLayout>
+                <UpgradePrompt
+                    feature="Tela de Cozinha"
+                    requiredPlan="professional"
+                    currentPlan={plan}
+                    fullPage
+                />
+            </MainLayout>
+        );
+    }
 
     useEffect(() => {
         if (user) {
@@ -218,13 +246,21 @@ export default function CozinhaPage() {
                                             ))}
                                         </div>
 
-                                        <Button
-                                            fullWidth
-                                            variant="primary"
-                                            onClick={() => updateOrderStatus(order.id, 'preparing')}
-                                        >
-                                            Iniciar Preparo
-                                        </Button>
+                                        <div className={styles.orderActions}>
+                                            <Button
+                                                fullWidth
+                                                variant="primary"
+                                                onClick={() => updateOrderStatus(order.id, 'preparing')}
+                                            >
+                                                Iniciar Preparo
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                leftIcon={<FiPrinter />}
+                                                onClick={() => printKitchenTicket(order)}
+                                                title="Imprimir comanda"
+                                            />
+                                        </div>
                                     </Card>
                                 ))}
                             </div>
@@ -274,15 +310,23 @@ export default function CozinhaPage() {
                                             ))}
                                         </div>
 
-                                        <Button
-                                            fullWidth
-                                            variant="primary"
-                                            leftIcon={<FiCheck />}
-                                            onClick={() => updateOrderStatus(order.id, 'ready')}
-                                            style={{ background: 'var(--accent)' }}
-                                        >
-                                            Marcar Pronto
-                                        </Button>
+                                        <div className={styles.orderActions}>
+                                            <Button
+                                                fullWidth
+                                                variant="primary"
+                                                leftIcon={<FiCheck />}
+                                                onClick={() => updateOrderStatus(order.id, 'ready')}
+                                                style={{ background: 'var(--accent)' }}
+                                            >
+                                                Marcar Pronto
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                leftIcon={<FiPrinter />}
+                                                onClick={() => printKitchenTicket(order)}
+                                                title="Imprimir comanda"
+                                            />
+                                        </div>
                                     </Card>
                                 ))}
                             </div>

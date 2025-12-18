@@ -219,3 +219,33 @@
         display: block;
     }
 }
+
+/* Shortcuts Button */
+.shortcutsBtn {
+    margin-top: 8px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px !important;
+}
+
+.shortcutsBtn .navLabel {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex: 1;
+}
+
+.kbd {
+    font-family: monospace;
+    font-size: 0.6875rem;
+    padding: 2px 6px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+.collapsed .kbd {
+    display: none;
+}

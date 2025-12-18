@@ -1,7 +1,9 @@
 'use client';
 
 import React, { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import RouteGuard from '@/components/auth/RouteGuard';
 import Sidebar from './Sidebar';
 import styles from './MainLayout.module.css';
 
@@ -11,6 +13,7 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
     const { loading } = useAuth();
+    const pathname = usePathname();
 
     if (loading) {
         return (
@@ -27,7 +30,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
         <div className={styles.layout}>
             <Sidebar />
             <main className={styles.main}>
-                {children}
+                <RouteGuard pathname={pathname}>
+                    {children}
+                </RouteGuard>
             </main>
         </div>
     );

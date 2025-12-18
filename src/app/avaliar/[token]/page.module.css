@@ -1,0 +1,265 @@
+.container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+/* Loading */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: #fff;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--primary, #ff6b35);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Error State */
+.errorState {
+    text-align: center;
+    color: #fff;
+}
+
+.errorIcon {
+    font-size: 4rem;
+    color: #e74c3c;
+    margin-bottom: 1rem;
+}
+
+.errorState h2 {
+    margin: 0 0 0.5rem;
+}
+
+.errorState p {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Success State */
+.successState {
+    text-align: center;
+    color: #fff;
+}
+
+.successIcon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #00b894, #00cec9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    margin: 0 auto 1.5rem;
+    animation: scaleIn 0.5s ease;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.successState h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.5rem;
+}
+
+.successState p {
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+}
+
+.businessName {
+    margin-top: 1.5rem !important;
+    color: var(--primary, #ff6b35) !important;
+    font-weight: 600;
+}
+
+/* Card */
+.card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 400px;
+    color: #fff;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.logo {
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 1rem;
+    overflow: hidden;
+}
+
+.logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+/* Order Info */
+.orderInfo {
+    text-align: center;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+}
+
+.orderBadge {
+    display: inline-block;
+    padding: 0.35rem 1rem;
+    background: var(--primary, #ff6b35);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.customerName {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+}
+
+.orderTotal {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary, #ff6b35);
+}
+
+/* Form */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.ratingSection {
+    text-align: center;
+}
+
+.ratingSection label {
+    display: block;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.ratingSection>div {
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+
+.ratingLabels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    padding: 0 0.5rem;
+}
+
+/* Comment Section */
+.commentSection label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.commentSection textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    resize: none;
+    font-family: inherit;
+}
+
+.commentSection textarea::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.commentSection textarea:focus {
+    outline: none;
+    border-color: var(--primary, #ff6b35);
+}
+
+/* Error Message */
+.errorMessage {
+    color: #e74c3c;
+    font-size: 0.875rem;
+    text-align: center;
+    margin: 0;
+}
+
+/* Submit Button */
+.submitBtn {
+    width: 100%;
+    padding: 1rem;
+    background: var(--primary, #ff6b35);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.submitBtn:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.submitBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

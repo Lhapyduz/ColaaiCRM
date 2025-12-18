@@ -1,0 +1,234 @@
+/* PixQRCode.module.css */
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    max-width: 320px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.pixIcon {
+    width: 48px;
+    height: 48px;
+    color: #32BCAD;
+}
+
+.pixIcon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+/* Loading */
+.loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px 20px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-color);
+    border-top-color: #32BCAD;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+/* Amount */
+.amount {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 20px;
+    padding: 12px 24px;
+    background: rgba(50, 188, 173, 0.1);
+    border-radius: var(--radius-md);
+    width: 100%;
+}
+
+.amountLabel {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.amountValue {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #32BCAD;
+}
+
+/* QR Code */
+.qrWrapper {
+    padding: 16px;
+    background: #fff;
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+}
+
+.qrCode {
+    display: block;
+    width: 200px;
+    height: 200px;
+}
+
+/* Instructions */
+.instructions {
+    width: 100%;
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    margin-bottom: 16px;
+}
+
+.instructions p {
+    margin: 0;
+    padding: 4px 0;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+/* Copy Section */
+.copySection {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.codePreview {
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.codePreview code {
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    word-break: break-all;
+}
+
+.copyButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: #32BCAD;
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.copyButton:hover {
+    background: #2aa89a;
+}
+
+.copyButton.copied {
+    background: var(--accent);
+}
+
+/* Confirm Button */
+.confirmButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px 20px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    margin-bottom: 12px;
+}
+
+.confirmButton:hover {
+    opacity: 0.9;
+}
+
+/* Refresh Button */
+.refreshButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.refreshButton:hover {
+    color: var(--text-primary);
+    border-color: var(--text-muted);
+}
+
+/* Error */
+.error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px;
+    text-align: center;
+}
+
+.error span {
+    font-size: 2rem;
+}
+
+.error p {
+    color: var(--error);
+    font-size: 0.875rem;
+}

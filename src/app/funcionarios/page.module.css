@@ -1,0 +1,418 @@
+/* Employees Page Styles */
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Header */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    color: var(--text-secondary);
+}
+
+/* Stats Grid */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.statCard {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px !important;
+}
+
+.statCard.active .statIcon {
+    color: #27ae60;
+}
+
+.statIcon {
+    font-size: 1.5rem;
+    color: var(--primary);
+    padding: 12px;
+    background: rgba(var(--primary-rgb), 0.1);
+    border-radius: var(--radius-md);
+}
+
+.roleEmoji {
+    font-size: 1.5rem;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.statContent {
+    display: flex;
+    flex-direction: column;
+}
+
+.statValue {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.statLabel {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
+/* Employees List */
+.employeesList {
+    display: flex;
+    flex-direction: column;
+}
+
+.employeeRow {
+    display: grid;
+    grid-template-columns: 50px 1fr 120px 60px 80px;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    transition: all var(--transition-fast);
+}
+
+.employeeRow:hover {
+    background: var(--bg-tertiary);
+}
+
+.employeeRow:last-child {
+    border-bottom: none;
+}
+
+.employeeRow.inactive {
+    opacity: 0.5;
+}
+
+.employeeAvatar {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-radius: 50%;
+    font-size: 1.5rem;
+}
+
+.employeeInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.employeeName {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.employeeMeta {
+    display: flex;
+    gap: 16px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.employeeMeta span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.employeeRole {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.employeeStatus {
+    display: flex;
+    justify-content: center;
+}
+
+.toggleBtn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.toggleBtn.active {
+    color: #27ae60;
+}
+
+.toggleBtn:hover {
+    color: var(--text-primary);
+}
+
+.employeeActions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.employeeActions button {
+    padding: 8px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.employeeActions button:hover {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modalContent {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modalContent h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 24px;
+}
+
+.formGroup {
+    margin-bottom: 16px;
+}
+
+.formGroup label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.formRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Role Grid */
+.roleGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.roleBtn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 8px;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.roleBtn:hover {
+    border-color: var(--role-color, var(--primary));
+}
+
+.roleBtn.selected {
+    border-color: var(--role-color, var(--primary));
+    background: color-mix(in srgb, var(--role-color, var(--primary)) 10%, transparent);
+}
+
+.roleIcon {
+    font-size: 1.5rem;
+}
+
+.roleLabel {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.roleBtn.selected .roleLabel {
+    color: var(--role-color, var(--primary));
+}
+
+/* PIN Input */
+.pinInput {
+    display: flex;
+    gap: 8px;
+}
+
+.pinInput input {
+    flex: 1;
+    font-family: monospace;
+    letter-spacing: 4px;
+}
+
+/* Permissions Preview */
+.permissionsPreview {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+}
+
+.permissionsPreview h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.permissionsList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.permissionsList span {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: capitalize;
+}
+
+.allowed {
+    background: rgba(39, 174, 96, 0.1);
+    color: #27ae60;
+}
+
+.denied {
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+}
+
+.modalActions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Empty State */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.emptyState svg {
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.emptyState h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.loading {
+    padding: 48px;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .statsGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .employeeRow {
+        grid-template-columns: 50px 1fr 100px 80px;
+    }
+
+    .employeeStatus {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .employeeRow {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .employeeAvatar {
+        display: none;
+    }
+
+    .employeeStatus {
+        display: flex;
+    }
+
+    .formRow {
+        grid-template-columns: 1fr;
+    }
+
+    .roleGrid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .statsGrid {
+        grid-template-columns: 1fr;
+    }
+}

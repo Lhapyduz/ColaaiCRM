@@ -10,13 +10,17 @@ import {
     FiMapPin,
     FiCreditCard,
     FiPrinter,
-    FiCheck
+    FiCheck,
+    FiChevronDown
 } from 'react-icons/fi';
+import { GiCookingPot } from 'react-icons/gi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import PixQRCode from '@/components/pix/PixQRCode';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { printOrder, printCustomerReceipt, printKitchenTicket } from '@/lib/print';
 import styles from './page.module.css';
 
 interface OrderItem {
@@ -44,14 +48,19 @@ interface Order {
     is_delivery: boolean;
     created_at: string;
     items: OrderItem[];
+    coupon_discount?: number;
 }
 
 export default function OrderDetailsPage() {
-    const { user } = useAuth();
+    const { user, userSettings } = useAuth();
     const router = useRouter();
     const params = useParams();
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
+    const [showPrintMenu, setShowPrintMenu] = useState(false);
+    const [printing, setPrinting] = useState(false);
+
+    const appName = userSettings?.app_name || 'Cola Aí';
 
     useEffect(() => {
         if (user && params.id) {
@@ -107,7 +116,7 @@ export default function OrderDetailsPage() {
     };
 
     const updatePaymentStatus = async () => {
-        if (!order) return;
+        if (!order || !user) return;
         try {
             const { error } = await supabase
                 .from('orders')
@@ -115,6 +124,57 @@ export default function OrderDetailsPage() {
                 .eq('id', order.id);
 
             if (error) throw error;
+
+            // Update customer's total_spent if the order has a phone number
+            if (order.customer_phone) {
+                try {
+                    const cleanPhone = order.customer_phone.replace(/\D/g, '');
+
+                    // Find the customer
+                    const { data: customer } = await supabase
+                        .from('customers')
+                        .select('id, total_spent, total_points')
+                        .eq('user_id', user.id)
+                        .eq('phone', cleanPhone)
+                        .single();
+
+                    if (customer) {
+                        // Get loyalty settings for points calculation
+                        const { data: settings } = await supabase
+                            .from('loyalty_settings')
+                            .select('points_per_real')
+                            .eq('user_id', user.id)
+                            .single();
+
+                        const pointsPerReal = settings?.points_per_real || 1;
+                        const pointsEarned = Math.floor(order.total * pointsPerReal);
+
+                        // Update customer with total_spent and points
+                        await supabase
+                            .from('customers')
+                            .update({
+                                total_spent: (customer.total_spent || 0) + order.total,
+                                total_points: (customer.total_points || 0) + pointsEarned
+                            })
+                            .eq('id', customer.id);
+
+                        // Add points transaction if earned
+                        if (pointsEarned > 0) {
+                            await supabase.from('points_transactions').insert({
+                                user_id: user.id,
+                                customer_id: customer.id,
+                                points: pointsEarned,
+                                type: 'earned',
+                                description: `Pedido #${order.order_number}`,
+                                order_id: order.id
+                            });
+                        }
+                    }
+                } catch (loyaltyErr) {
+                    console.warn('Failed to update customer loyalty data:', loyaltyErr);
+                }
+            }
+
             setOrder({ ...order, payment_status: 'paid' });
         } catch (error) {
             console.error('Error updating payment status:', error);
@@ -142,6 +202,40 @@ export default function OrderDetailsPage() {
             pix: 'PIX'
         };
         return labels[method] || method;
+    };
+
+    // Print handlers
+    const handlePrintBoth = async () => {
+        if (!order) return;
+        setPrinting(true);
+        setShowPrintMenu(false);
+        try {
+            await printOrder(order, { type: 'both', appName });
+        } finally {
+            setPrinting(false);
+        }
+    };
+
+    const handlePrintCustomer = async () => {
+        if (!order) return;
+        setPrinting(true);
+        setShowPrintMenu(false);
+        try {
+            await printCustomerReceipt(order, appName);
+        } finally {
+            setPrinting(false);
+        }
+    };
+
+    const handlePrintKitchen = async () => {
+        if (!order) return;
+        setPrinting(true);
+        setShowPrintMenu(false);
+        try {
+            await printKitchenTicket(order);
+        } finally {
+            setPrinting(false);
+        }
     };
 
     if (loading) {
@@ -173,13 +267,36 @@ export default function OrderDetailsPage() {
                             <FiClock /> {formatDate(order.created_at)}
                         </p>
                     </div>
-                    <Button
-                        variant="secondary"
-                        leftIcon={<FiPrinter />}
-                        onClick={() => window.print()}
-                    >
-                        Imprimir
-                    </Button>
+                    <div className={styles.printContainer}>
+                        <Button
+                            variant="secondary"
+                            leftIcon={<FiPrinter />}
+                            rightIcon={<FiChevronDown />}
+                            onClick={() => setShowPrintMenu(!showPrintMenu)}
+                            disabled={printing}
+                        >
+                            {printing ? 'Imprimindo...' : 'Imprimir'}
+                        </Button>
+                        {showPrintMenu && (
+                            <div className={styles.printMenu}>
+                                <button onClick={handlePrintBoth} className={styles.printOption}>
+                                    <FiPrinter />
+                                    <span>Imprimir Tudo</span>
+                                    <small>Cliente + Cozinha</small>
+                                </button>
+                                <button onClick={handlePrintCustomer} className={styles.printOption}>
+                                    <FiUser />
+                                    <span>Via do Cliente</span>
+                                    <small>Comprovante</small>
+                                </button>
+                                <button onClick={handlePrintKitchen} className={styles.printOption}>
+                                    <GiCookingPot />
+                                    <span>Comanda Cozinha</span>
+                                    <small>Para preparo</small>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className={styles.content}>
@@ -252,6 +369,24 @@ export default function OrderDetailsPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* PIX QR Code */}
+                        {order.payment_method === 'pix' && order.payment_status === 'pending' && userSettings?.pix_key && (
+                            <>
+                                <div className={styles.divider} />
+                                <div className={styles.pixSection}>
+                                    <PixQRCode
+                                        pixKey={userSettings.pix_key}
+                                        pixKeyType={userSettings.pix_key_type || 'cpf'}
+                                        merchantName={appName}
+                                        merchantCity={userSettings.merchant_city || 'Brasil'}
+                                        amount={order.total}
+                                        orderId={order.order_number}
+                                        onPaymentConfirmed={updatePaymentStatus}
+                                    />
+                                </div>
+                            </>
+                        )}
                     </Card>
 
                     {/* Order Items */}
@@ -288,6 +423,12 @@ export default function OrderDetailsPage() {
                                 <div className={styles.totalRow}>
                                     <span>Taxa de Entrega</span>
                                     <span>{formatCurrency(order.delivery_fee)}</span>
+                                </div>
+                            )}
+                            {order.coupon_discount && order.coupon_discount > 0 && (
+                                <div className={`${styles.totalRow} ${styles.discountRow}`}>
+                                    <span>Desconto</span>
+                                    <span>-{formatCurrency(order.coupon_discount)}</span>
                                 </div>
                             )}
                             <div className={styles.totalRow}>

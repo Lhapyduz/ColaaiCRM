@@ -207,6 +207,17 @@
     font-style: italic;
 }
 
+/* Order Actions */
+.orderActions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.orderActions button:first-child {
+    flex: 1;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .kitchenGrid {

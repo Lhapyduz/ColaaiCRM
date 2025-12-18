@@ -314,3 +314,159 @@
         gap: 4px;
     }
 }
+
+/* Stat Trend Styles */
+.statTrend.positive {
+    color: var(--accent);
+}
+
+.statTrend.negative {
+    color: var(--error);
+}
+
+/* Prediction Card */
+.predictionCard {
+    padding: 24px !important;
+    margin-bottom: 32px;
+    background: linear-gradient(135deg, rgba(108, 92, 231, 0.1) 0%, rgba(0, 184, 148, 0.05) 100%);
+    border: 1px solid rgba(108, 92, 231, 0.2);
+}
+
+.predictionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.predictionTitle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.predictionTitle h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.predictionIcon {
+    font-size: 1.25rem;
+    color: #6c5ce7;
+}
+
+.confidenceBadge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.confidenceBadge[data-confidence="high"] {
+    background: rgba(0, 184, 148, 0.1);
+    color: var(--accent);
+}
+
+.confidenceBadge[data-confidence="medium"] {
+    background: rgba(253, 203, 110, 0.1);
+    color: var(--warning);
+}
+
+.confidenceBadge[data-confidence="low"] {
+    background: rgba(255, 107, 53, 0.1);
+    color: var(--primary);
+}
+
+.predictionContent {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 32px;
+    align-items: center;
+}
+
+.predictionStats {
+    display: flex;
+    gap: 32px;
+}
+
+.predictionStat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.predictionStatLabel {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.predictionStatValue {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.predictionProgress {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.progressHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.progressPercent {
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.progressBar {
+    width: 100%;
+    height: 10px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    background: linear-gradient(90deg, #6c5ce7 0%, var(--accent) 100%);
+    border-radius: var(--radius-full);
+    transition: width 0.5s ease-out;
+}
+
+.predictionMeta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+@media (max-width: 900px) {
+    .predictionContent {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .predictionStats {
+        justify-content: space-around;
+    }
+}
+
+@media (max-width: 480px) {
+    .predictionStats {
+        flex-direction: column;
+        gap: 16px;
+    }
+}

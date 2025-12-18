@@ -414,6 +414,52 @@
     border-top: 1px solid var(--border-color);
 }
 
+.totalRow.discountRow {
+    color: #27ae60;
+}
+
+/* Coupon Section */
+.couponSection {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.couponInput {
+    display: flex;
+    gap: 8px;
+}
+
+.couponInput>*:first-child {
+    flex: 1;
+}
+
+.couponError {
+    font-size: 0.8125rem;
+    color: #e74c3c;
+    margin: 0;
+}
+
+.couponSuccess {
+    font-size: 0.8125rem;
+    color: #27ae60;
+    margin: 0;
+}
+
+/* Loyalty Info */
+.loyaltyInfo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(155, 89, 182, 0.1);
+    border-radius: var(--radius-md);
+    color: #9b59b6;
+    font-size: 0.875rem;
+    margin-top: 8px;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .content {

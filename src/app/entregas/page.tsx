@@ -5,7 +5,9 @@ import { FiCheck, FiPhone, FiMapPin, FiClock } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
@@ -22,9 +24,24 @@ interface Order {
 
 export default function EntregasPage() {
     const { user } = useAuth();
+    const { plan, canAccess } = useSubscription();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+
+    // Check if user has access to deliveries feature
+    if (!canAccess('deliveries')) {
+        return (
+            <MainLayout>
+                <UpgradePrompt
+                    feature="Gestão de Entregas"
+                    requiredPlan="professional"
+                    currentPlan={plan}
+                    fullPage
+                />
+            </MainLayout>
+        );
+    }
 
     useEffect(() => {
         if (user) {
