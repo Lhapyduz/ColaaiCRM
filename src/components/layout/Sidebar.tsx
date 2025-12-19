@@ -24,7 +24,8 @@ import {
     FiActivity,
     FiFileText,
     FiTrendingUp,
-    FiUsers
+    FiUsers,
+    FiCreditCard
 } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,6 +50,7 @@ const menuItems = [
     { href: '/funcionarios', icon: FiUsers, label: 'Funcionários' },
     { href: '/relatorios', icon: FiBarChart2, label: 'Relatórios' },
     { href: '/historico', icon: FiActivity, label: 'Histórico' },
+    { href: '/assinatura', icon: FiCreditCard, label: 'Assinatura' },
 ];
 
 export default function Sidebar() {
