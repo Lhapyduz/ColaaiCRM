@@ -14,7 +14,14 @@ export async function POST(req: NextRequest) {
             data: { user },
         } = await supabase.auth.getUser();
 
+        console.log('[API Checkout] User Auth Check:', {
+            found: !!user,
+            id: user?.id,
+            email: user?.email
+        });
+
         if (!user || !user.email) {
+            console.log('[API Checkout] Unauthorized: No user or email');
             return new NextResponse('Unauthorized', { status: 401 });
         }
 
@@ -23,6 +30,8 @@ export async function POST(req: NextRequest) {
         if (!customer) {
             return new NextResponse('Customer creation failed', { status: 500 });
         }
+
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
         const session = await stripe.checkout.sessions.create({
             customer: customer.id,
@@ -33,8 +42,8 @@ export async function POST(req: NextRequest) {
                 },
             ],
             mode: 'subscription',
-            success_url: `${process.env.NEXT_PUBLIC_APP_URL}/assinatura?success=true`,
-            cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/assinatura?canceled=true`,
+            success_url: `${appUrl}/assinatura?success=true`,
+            cancel_url: `${appUrl}/assinatura?canceled=true`,
             metadata: {
                 userId: user.id,
                 planType: planType,
@@ -51,6 +60,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ url: session.url });
     } catch (error) {
         console.error('Stripe checkout error:', error);
-        return new NextResponse('Internal Error', { status: 500 });
+        return new NextResponse(`Internal Error: ${(error as Error).message}`, { status: 500 });
     }
 }

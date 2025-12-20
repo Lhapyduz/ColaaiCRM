@@ -4,7 +4,9 @@ import React, { useState } from 'react';
 import { FiCheck, FiX, FiCreditCard } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import Button from '@/components/ui/Button';
+import { useRouter } from 'next/navigation';
 import { useSubscription, PlanType } from '@/contexts/SubscriptionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import styles from './page.module.css';
 
 const PLANS = [
@@ -62,14 +64,22 @@ const PLANS = [
     }
 ];
 
-export default function AssinaturaPage() {
+const AssinaturaPage = () => {
     const { subscription, loading } = useSubscription();
+    const { user } = useAuth();
+    const router = useRouter();
     const [loadingCheckout, setLoadingCheckout] = useState<string | null>(null);
     const [loadingPortal, setLoadingPortal] = useState(false);
 
     const handleSubscribe = async (priceId: string | undefined, planType: string) => {
+        if (!user) {
+            router.push('/login?redirect=/assinatura');
+            return;
+        }
+
         if (!priceId) {
-            alert('Configuração de preço ausente.');
+            console.error('Missing Price ID for plan:', planType);
+            alert('Configuração de preço ausente. Verifique o console.');
             return;
         }
 
@@ -87,13 +97,16 @@ export default function AssinaturaPage() {
                 }),
             });
 
-            if (!response.ok) throw new Error('Falha ao iniciar checkout');
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Falha ao iniciar checkout');
+            }
 
             const { url } = await response.json();
             window.location.href = url;
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error:', error);
-            alert('Erro ao iniciar o pagamento. Tente novamente.');
+            alert(`Erro ao iniciar pagamento: ${error.message}`);
             setLoadingCheckout(null);
         }
     };
@@ -105,13 +118,16 @@ export default function AssinaturaPage() {
                 method: 'POST',
             });
 
-            if (!response.ok) throw new Error('Falha ao abrir portal');
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Falha ao abrir portal');
+            }
 
             const { url } = await response.json();
             window.location.href = url;
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error:', error);
-            alert('Erro ao abrir o portal de assinatura.');
+            alert(`Erro ao abrir o portal: ${error.message}`);
             setLoadingPortal(false);
         }
     };
@@ -176,6 +192,9 @@ export default function AssinaturaPage() {
                                     {plan.price}
                                     <span className={styles.planPeriod}>{plan.period}</span>
                                 </div>
+                                <div style={{ fontSize: '0.8rem', color: '#2ecc71', marginBottom: '1rem', fontWeight: 500 }}>
+                                    7 dias de teste grátis
+                                </div>
 
                                 <div className={styles.featuresList}>
                                     {plan.features.map((feature, index) => (
@@ -199,7 +218,7 @@ export default function AssinaturaPage() {
                                         variant={plan.recommended ? 'primary' : 'outline'}
                                         onClick={() => handleSubscribe(plan.priceId, plan.id)}
                                         isLoading={loadingCheckout === plan.id}
-                                        disabled={!!loadingCheckout || (subscription?.status === 'active')} // Disable subscribing to other plans directly if active (force use Portal) - or implement upgrade flow via checkout (Stripe handles it nicely if configured)
+                                        disabled={!!loadingCheckout}
                                     >
                                         {subscription ? 'Mudar Plano' : 'Assinar Agora'}
                                     </Button>
@@ -212,3 +231,5 @@ export default function AssinaturaPage() {
         </MainLayout>
     );
 }
+
+export default AssinaturaPage;

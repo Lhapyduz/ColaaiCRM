@@ -64,7 +64,7 @@ export default function Sidebar() {
     // Employee Context
     // We import dynamically or use optional chaining if context might be missing during dev
     // But since we added it to layout, it should be fine.
-    const { activeEmployee, logoutEmployee, loginWithPin, hasPermission, isLocked, lockScreen } = require('@/contexts/EmployeeContext').useEmployee();
+    const { activeEmployee, logoutEmployee, loginWithPin, hasPermission, isLocked, lockScreen, unlockScreen, hasAdmin } = require('@/contexts/EmployeeContext').useEmployee();
 
     const appName = userSettings?.app_name || 'Cola Aí';
 
@@ -264,6 +264,7 @@ export default function Sidebar() {
                 onSignOutOwner={signOut}
                 title={isLocked ? "Tela Bloqueada" : "Trocar Usuário"}
                 isLocked={isLocked}
+                onBack={!hasAdmin ? unlockScreen : undefined}
             />
         </>
     );

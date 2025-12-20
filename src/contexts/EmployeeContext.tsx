@@ -21,7 +21,9 @@ interface EmployeeContextType {
     loginWithPin: (pin: string) => Promise<{ success: boolean; error?: string }>;
     logoutEmployee: () => void;
     lockScreen: () => void;
+    unlockScreen: () => void;
     hasPermission: (permission: string) => boolean;
+    hasAdmin: boolean;
 }
 
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
@@ -32,8 +34,29 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
     const [isLocked, setIsLocked] = useState(false);
     const [loading, setLoading] = useState(true);
 
+    const [hasAdmin, setHasAdmin] = useState(false);
+
     // Use ref to store employee data in memory instead of sessionStorage
     const employeeSessionRef = useRef<Employee | null>(null);
+
+    // Check for admin existence
+    const checkAdminExistence = async () => {
+        if (!user) return;
+
+        const { data, error } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('role', 'admin')
+            .eq('is_active', true)
+            .limit(1);
+
+        if (data && data.length > 0) {
+            setHasAdmin(true);
+        } else {
+            setHasAdmin(false);
+        }
+    };
 
     // Load active employee from memory ref on mount
     useEffect(() => {
@@ -49,8 +72,9 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
             setActiveEmployee(employeeSessionRef.current);
         }
 
+        checkAdminExistence();
         setLoading(false);
-    }, []);
+    }, [user]);
 
     const loginWithPin = async (pin: string): Promise<{ success: boolean; error?: string }> => {
         if (!user) {
@@ -78,6 +102,10 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
             if (error) {
                 return { success: false, error: 'Erro ao buscar funcionários' };
             }
+
+            // Update hasAdmin state based on fetch
+            const adminExists = employees?.some(e => e.role === 'admin');
+            setHasAdmin(!!adminExists);
 
             if (!employees || employees.length === 0) {
                 return { success: false, error: 'Nenhum funcionário ativo encontrado' };
@@ -160,6 +188,11 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
         logoutEmployee();
     };
 
+    const unlockScreen = () => {
+        setIsLocked(false);
+        sessionStorage.setItem('isLocked', 'false');
+    }
+
     const hasPermission = (permission: string): boolean => {
         if (isLocked) return false; // No permissions if locked
 
@@ -180,7 +213,9 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
             loginWithPin,
             logoutEmployee,
             lockScreen,
-            hasPermission
+            unlockScreen,
+            hasPermission,
+            hasAdmin
         }}>
             {children}
         </EmployeeContext.Provider>

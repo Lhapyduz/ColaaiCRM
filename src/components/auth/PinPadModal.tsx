@@ -13,9 +13,10 @@ interface PinPadModalProps {
     onSignOutOwner?: () => void;
     title?: string;
     isLocked?: boolean; // If true, cannot be closed without success (for Lock Screen mode)
+    onBack?: () => void; // Optional back action (e.g. if no admin configured)
 }
 
-export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner, title = 'Acesso de Funcionário', isLocked = false }: PinPadModalProps) {
+export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner, title = 'Acesso de Funcionário', isLocked = false, onBack }: PinPadModalProps) {
     const [pin, setPin] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -196,6 +197,17 @@ export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner
                             Sair da Conta (Proprietário)
                         </Button>
                     )}
+
+                    {isLocked && onBack && (
+                        <Button
+                            variant="outline"
+                            onClick={onBack}
+                            disabled={loading}
+                        >
+                            Voltar
+                        </Button>
+                    )}
+
                     <Button
                         fullWidth
                         size="lg"

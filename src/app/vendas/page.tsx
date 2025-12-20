@@ -61,7 +61,7 @@ const features: PlanFeature[] = [
 const faqs: FAQ[] = [
     {
         question: 'Posso testar antes de assinar?',
-        answer: 'Sim! Oferecemos 14 dias de teste grátis em todos os planos, sem necessidade de cartão de crédito. Você terá acesso a todas as funcionalidades do plano escolhido.'
+        answer: 'Sim! Oferecemos 7 dias de teste grátis em todos os planos, sem necessidade de cartão de crédito. Você terá acesso a todas as funcionalidades do plano escolhido.'
     },
     {
         question: 'Como funciona a cobrança?',
@@ -240,9 +240,9 @@ export default function VendasPage() {
                         O sistema completo para gerenciar pedidos, fidelizar clientes e aumentar seu faturamento. Tudo em um só lugar, sem complicação.
                     </p>
                     <div className={styles.heroCtas}>
-                        <a href="#pricing" className={styles.primaryCta}>
-                            Começar Agora - 14 Dias Grátis
-                        </a>
+                        <Link href="/assinatura" className={styles.primaryCta}>
+                            Começar Agora - 7 Dias Grátis
+                        </Link>
                         <Link href="/menu" className={styles.secondaryCta}>
                             Ver Demo <FiChevronDown />
                         </Link>
@@ -288,7 +288,7 @@ export default function VendasPage() {
                 <div className={styles.sectionHeader}>
                     <h2 className={styles.sectionTitle}>Escolha o plano ideal para você</h2>
                     <p className={styles.sectionSubtitle}>
-                        Comece grátis por 14 dias. Cancele quando quiser.
+                        Comece grátis por 7 dias. Cancele quando quiser.
                     </p>
                 </div>
 
@@ -335,7 +335,7 @@ export default function VendasPage() {
                             <li><FiCheck /> Relatórios básicos</li>
                             <li><FiCheck /> Suporte por email</li>
                         </ul>
-                        <button className={styles.planCta}>Começar Grátis</button>
+                        <Link href="/assinatura" className={styles.planCta}>Começar Grátis</Link>
                     </div>
 
                     {/* Professional Plan */}
@@ -367,7 +367,7 @@ export default function VendasPage() {
                             <li><FiCheck /> Até 5 funcionários</li>
                             <li><FiCheck /> Suporte via chat</li>
                         </ul>
-                        <button className={`${styles.planCta} ${styles.primaryPlanCta}`}>Começar Grátis</button>
+                        <Link href="/assinatura" className={`${styles.planCta} ${styles.primaryPlanCta}`}>Começar Grátis</Link>
                     </div>
 
                     {/* Enterprise Plan */}
@@ -395,7 +395,7 @@ export default function VendasPage() {
                             <li><FiCheck /> Relatórios completos</li>
                             <li><FiCheck /> Suporte prioritário 24/7</li>
                         </ul>
-                        <button className={styles.planCta}>Começar Grátis</button>
+                        <Link href="/assinatura" className={styles.planCta}>Começar Grátis</Link>
                     </div>
                 </div>
 
@@ -504,10 +504,10 @@ export default function VendasPage() {
             <section className={styles.finalCta}>
                 <div className={styles.ctaContent}>
                     <h2>Pronto para turbinar seu negócio?</h2>
-                    <p>Comece seus 14 dias grátis agora. Sem cartão de crédito.</p>
-                    <a href="#pricing" className={styles.ctaButton}>
+                    <p>Comece seus 7 dias grátis agora. Sem cartão de crédito.</p>
+                    <Link href="/assinatura" className={styles.ctaButton}>
                         Começar Agora - É Grátis!
-                    </a>
+                    </Link>
                 </div>
             </section>
 

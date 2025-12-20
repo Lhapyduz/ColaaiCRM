@@ -77,9 +77,9 @@ export async function POST(req: Request) {
                         .from('subscriptions')
                         .update({
                             status: sub.status,
-                            current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-                            current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-                            stripe_current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+                            current_period_start: new Date((sub as any).current_period_start * 1000).toISOString(),
+                            current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
+                            stripe_current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
                         } as any)
                         .eq('user_id', userData.user_id);
                 }
