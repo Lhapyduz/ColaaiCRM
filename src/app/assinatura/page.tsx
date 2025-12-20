@@ -65,11 +65,36 @@ const PLANS = [
 ];
 
 const AssinaturaPage = () => {
-    const { subscription, loading } = useSubscription();
+    const { subscription, loading, refreshSubscription } = useSubscription();
     const { user } = useAuth();
     const router = useRouter();
     const [loadingCheckout, setLoadingCheckout] = useState<string | null>(null);
     const [loadingPortal, setLoadingPortal] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+
+    // Sync with Stripe on return from checkout
+    React.useEffect(() => {
+        const query = new URLSearchParams(window.location.search);
+        if (query.get('success') === 'true') {
+            handleSync();
+        }
+    }, []);
+
+    const handleSync = async () => {
+        try {
+            setSyncing(true);
+            const res = await fetch('/api/stripe/sync', { method: 'POST' });
+            if (res.ok) {
+                await refreshSubscription();
+                // Clear the query param
+                window.history.replaceState({}, '', '/assinatura');
+            }
+        } catch (error) {
+            console.error('Sync failed:', error);
+        } finally {
+            setSyncing(false);
+        }
+    };
 
     const handleSubscribe = async (priceId: string | undefined, planType: string) => {
         if (!user) {
@@ -173,6 +198,17 @@ const AssinaturaPage = () => {
                         >
                             Gerenciar Assinatura
                         </Button>
+                        <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleSync}
+                                isLoading={syncing}
+                            >
+                                Sincronizar Status
+                            </Button>
+                            {syncing && <span style={{ fontSize: '0.8rem', color: '#666' }}>Atualizando...</span>}
+                        </div>
                     </div>
                 )}
 

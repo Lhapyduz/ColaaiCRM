@@ -134,6 +134,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
             if (error) {
                 if (error.code === 'PGRST116') {
                     // No subscription found, create default trial
+                    const now = new Date();
+                    const trialEnd = new Date(now);
+                    trialEnd.setDate(now.getDate() + 7); // 7 days trial
+
                     const { data: newSub, error: insertError } = await supabase
                         .from('subscriptions')
                         .insert({
@@ -141,6 +145,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                             plan_type: 'professional',
                             status: 'trial',
                             billing_period: 'monthly',
+                            trial_ends_at: trialEnd.toISOString(),
+                            current_period_start: now.toISOString(),
+                            current_period_end: trialEnd.toISOString(),
                         })
                         .select()
                         .single();
