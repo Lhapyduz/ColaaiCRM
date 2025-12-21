@@ -44,14 +44,14 @@ export async function POST(req: NextRequest) {
 
         // Map Price ID to Plan Type
         const priceId = (stripeSub as any).items.data[0].price.id;
-        let planType = 'professional'; // Default fallback
+        let planType = 'Avançado'; // Default fallback
 
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC) {
-            planType = 'basic';
+            planType = 'Basico';
         } else if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PROFESSIONAL) {
-            planType = 'professional';
+            planType = 'Avançado';
         } else if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE) {
-            planType = 'enterprise';
+            planType = 'Profissional';
         }
 
         // Update local database

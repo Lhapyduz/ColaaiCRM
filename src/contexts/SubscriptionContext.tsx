@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 
-export type PlanType = 'basic' | 'professional' | 'enterprise';
+export type PlanType = 'Basico' | 'Avançado' | 'Profissional';
 export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'trial';
 
 export interface Subscription {
@@ -20,17 +20,17 @@ export interface Subscription {
 
 // Plan features and limits configuration
 const PLAN_LIMITS = {
-    basic: {
+    Basico: {
         products: 30,
         categories: 5,
         employees: 1,
     },
-    professional: {
+    Avançado: {
         products: 100,
         categories: 15,
         employees: 5,
     },
-    enterprise: {
+    Profissional: {
         products: Infinity,
         categories: Infinity,
         employees: Infinity,
@@ -38,7 +38,7 @@ const PLAN_LIMITS = {
 };
 
 const PLAN_FEATURES = {
-    basic: {
+    Basico: {
         dashboard: true,
         orders: true,
         products: true,
@@ -54,7 +54,7 @@ const PLAN_FEATURES = {
         digitalMenu: false,
         customization: 'basic',
     },
-    professional: {
+    Avançado: {
         dashboard: true,
         orders: true,
         products: true,
@@ -70,7 +70,7 @@ const PLAN_FEATURES = {
         digitalMenu: true,
         customization: 'full',
     },
-    enterprise: {
+    Profissional: {
         dashboard: true,
         orders: true,
         products: true,
@@ -88,8 +88,8 @@ const PLAN_FEATURES = {
     }
 };
 
-type FeatureKey = keyof typeof PLAN_FEATURES.basic;
-type LimitKey = keyof typeof PLAN_LIMITS.basic;
+type FeatureKey = keyof typeof PLAN_FEATURES.Basico;
+type LimitKey = keyof typeof PLAN_LIMITS.Basico;
 
 interface SubscriptionContextType {
     subscription: Subscription | null;
@@ -136,13 +136,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                     // No subscription found, create default trial
                     const now = new Date();
                     const trialEnd = new Date(now);
-                    trialEnd.setDate(now.getDate() + 7); // 7 days trial
+                    trialEnd.setDate(now.getDate() + 3); // 3 days trial
 
                     const { data: newSub, error: insertError } = await supabase
                         .from('subscriptions')
                         .insert({
                             user_id: user.id,
-                            plan_type: 'professional',
+                            plan_type: 'Avançado',
                             status: 'trial',
                             billing_period: 'monthly',
                             trial_ends_at: trialEnd.toISOString(),
@@ -168,12 +168,41 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    useEffect(() => {
+        if (!user) return;
+
+        const channel = supabase
+            .channel('subscription_changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'subscriptions',
+                    filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                    console.log('Subscription change received:', payload);
+                    if (payload.eventType === 'DELETE') {
+                        setSubscription(null);
+                    } else {
+                        setSubscription(payload.new as Subscription);
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user]);
+
     const refreshSubscription = async () => {
         await fetchSubscription();
     };
 
     // Get current plan (default to basic if no subscription)
-    const plan: PlanType = subscription?.plan_type || 'basic';
+    const plan: PlanType = subscription?.plan_type || 'Basico';
 
     // Check if trial has expired
     const isTrialExpired: boolean = !!(subscription?.status === 'trial' &&
@@ -246,17 +275,12 @@ export function useSubscription() {
 
 // Helper function to get plan display name
 export function getPlanDisplayName(plan: PlanType): string {
-    const names = {
-        basic: 'Básico',
-        professional: 'Avançado',
-        enterprise: 'Profissional'
-    };
-    return names[plan];
+    return plan;
 }
 
 // Helper function to get minimum plan for a feature
 export function getMinimumPlanForFeature(feature: FeatureKey): PlanType {
-    if (PLAN_FEATURES.basic[feature]) return 'basic';
-    if (PLAN_FEATURES.professional[feature]) return 'professional';
-    return 'enterprise';
+    if (PLAN_FEATURES.Basico[feature]) return 'Basico';
+    if (PLAN_FEATURES.Avançado[feature]) return 'Avançado';
+    return 'Profissional';
 }

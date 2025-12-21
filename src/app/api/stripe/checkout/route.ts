@@ -31,9 +31,18 @@ export async function POST(req: NextRequest) {
             return new NextResponse('Customer creation failed', { status: 500 });
         }
 
+        // Check for existing subscription
+        const { data: existingSub } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', user.id)
+            .in('status', ['active', 'trialing'])
+            .maybeSingle();
+
+        const hasActiveSubscription = !!existingSub;
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-        const session = await stripe.checkout.sessions.create({
+        const sessionConfig: any = {
             customer: customer.id,
             line_items: [
                 {
@@ -49,13 +58,19 @@ export async function POST(req: NextRequest) {
                 planType: planType,
             },
             subscription_data: {
-                trial_period_days: 7,
                 metadata: {
                     userId: user.id,
                     planType: planType
                 }
             }
-        });
+        };
+
+        // Only add trial if user DOES NOT have an active subscription
+        if (!hasActiveSubscription) {
+            sessionConfig.subscription_data.trial_period_days = 3;
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
 
         return NextResponse.json({ url: session.url });
     } catch (error) {

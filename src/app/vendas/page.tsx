@@ -61,7 +61,7 @@ const features: PlanFeature[] = [
 const faqs: FAQ[] = [
     {
         question: 'Posso testar antes de assinar?',
-        answer: 'Sim! Oferecemos 7 dias de teste grátis em todos os planos, sem necessidade de cartão de crédito. Você terá acesso a todas as funcionalidades do plano escolhido.'
+        answer: 'Sim! Oferecemos 3 dias de teste grátis em todos os planos, sem necessidade de cartão de crédito. Você terá acesso a todas as funcionalidades do plano escolhido.'
     },
     {
         question: 'Como funciona a cobrança?',
@@ -241,7 +241,7 @@ export default function VendasPage() {
                     </p>
                     <div className={styles.heroCtas}>
                         <Link href="/assinatura" className={styles.primaryCta}>
-                            Começar Agora - 7 Dias Grátis
+                            Começar Agora - 3 Dias Grátis
                         </Link>
                         <Link href="/menu" className={styles.secondaryCta}>
                             Ver Demo <FiChevronDown />
@@ -288,7 +288,7 @@ export default function VendasPage() {
                 <div className={styles.sectionHeader}>
                     <h2 className={styles.sectionTitle}>Escolha o plano ideal para você</h2>
                     <p className={styles.sectionSubtitle}>
-                        Comece grátis por 7 dias. Cancele quando quiser.
+                        Comece grátis por 3 dias. Cancele quando quiser.
                     </p>
                 </div>
 
@@ -504,7 +504,7 @@ export default function VendasPage() {
             <section className={styles.finalCta}>
                 <div className={styles.ctaContent}>
                     <h2>Pronto para turbinar seu negócio?</h2>
-                    <p>Comece seus 7 dias grátis agora. Sem cartão de crédito.</p>
+                    <p>Comece seus 3 dias grátis agora. Sem cartão de crédito.</p>
                     <Link href="/assinatura" className={styles.ctaButton}>
                         Começar Agora - É Grátis!
                     </Link>

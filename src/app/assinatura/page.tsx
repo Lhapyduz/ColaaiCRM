@@ -11,55 +11,54 @@ import styles from './page.module.css';
 
 const PLANS = [
     {
-        id: 'basic' as PlanType,
+        id: 'Basico' as PlanType,
         name: 'Básico',
-        price: 'R$ 49,90',
+        price: 'R$ 49,00',
         period: '/mês',
         priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC,
         features: [
-            { name: 'Dashboard de Vendas', included: true },
+            { name: 'Dashboard em Tempo Real', included: true },
             { name: 'Gestão de Pedidos', included: true },
-            { name: 'Produtos e Categorias', included: true },
+            { name: 'Até 30 Produtos', included: true },
+            { name: 'Até 5 Categorias', included: true },
+            { name: 'Relatórios Básicos', included: true },
+            { name: 'Suporte por Email', included: true },
+            { name: 'Cardápio Online', included: false },
             { name: 'Gestão de Cozinha', included: false },
-            { name: 'Gestão de Entregas', included: false },
-            { name: 'Controle de Estoque', included: false },
-            { name: 'Programa de Fidelidade', included: false },
-            { name: 'Múltiplas Lojas', included: false },
         ]
     },
     {
-        id: 'professional' as PlanType,
-        name: 'Profissional',
-        price: 'R$ 79,90',
+        id: 'Avançado' as PlanType,
+        name: 'Avançado',
+        price: 'R$ 79,00',
         period: '/mês',
         priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_PROFESSIONAL,
         recommended: true,
         features: [
-            { name: 'Dashboard de Vendas', included: true },
-            { name: 'Gestão de Pedidos', included: true },
-            { name: 'Produtos e Categorias', included: true },
-            { name: 'Gestão de Cozinha', included: true },
+            { name: 'Tudo do Básico +', included: true },
+            { name: 'Até 100 Produtos', included: true },
+            { name: 'Tela de Cozinha', included: true },
             { name: 'Gestão de Entregas', included: true },
             { name: 'Controle de Estoque', included: true },
             { name: 'Programa de Fidelidade', included: true },
-            { name: 'Múltiplas Lojas', included: false },
+            { name: 'Cardápio Online', included: true },
+            { name: 'Até 5 Funcionários', included: true },
         ]
     },
     {
-        id: 'enterprise' as PlanType,
-        name: 'Enterprise',
-        price: 'R$ 149,90',
+        id: 'Profissional' as PlanType,
+        name: 'Profissional',
+        price: 'R$ 149,00',
         period: '/mês',
         priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE,
         features: [
-            { name: 'Dashboard de Vendas', included: true },
-            { name: 'Gestão de Pedidos', included: true },
-            { name: 'Produtos e Categorias', included: true },
-            { name: 'Gestão de Cozinha', included: true },
-            { name: 'Gestão de Entregas', included: true },
-            { name: 'Controle de Estoque', included: true },
-            { name: 'Programa de Fidelidade', included: true },
-            { name: 'Múltiplas Lojas', included: true },
+            { name: 'Tudo do Avançado +', included: true },
+            { name: 'Produtos Ilimitados', included: true },
+            { name: 'Cupons de Desconto', included: true },
+            { name: 'Previsão de Vendas (IA)', included: true },
+            { name: 'Funcionários Ilimitados', included: true },
+            { name: 'Relatórios Completos', included: true },
+            { name: 'Suporte Prioritário 24/7', included: true },
         ]
     }
 ];
@@ -229,7 +228,7 @@ const AssinaturaPage = () => {
                                     <span className={styles.planPeriod}>{plan.period}</span>
                                 </div>
                                 <div style={{ fontSize: '0.8rem', color: '#2ecc71', marginBottom: '1rem', fontWeight: 500 }}>
-                                    7 dias de teste grátis
+                                    3 dias de teste grátis
                                 </div>
 
                                 <div className={styles.featuresList}>

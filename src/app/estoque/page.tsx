@@ -60,19 +60,6 @@ export default function EstoquePage() {
     const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
     const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
 
-    // Check if user has access to inventory feature
-    if (!canAccess('inventory')) {
-        return (
-            <MainLayout>
-                <UpgradePrompt
-                    feature="Controle de Estoque"
-                    requiredPlan="professional"
-                    currentPlan={plan}
-                    fullPage
-                />
-            </MainLayout>
-        );
-    }
 
     // Form states
     const [formName, setFormName] = useState('');
@@ -86,10 +73,10 @@ export default function EstoquePage() {
     const [movementNotes, setMovementNotes] = useState('');
 
     useEffect(() => {
-        if (user) {
+        if (user && canAccess('inventory')) {
             fetchIngredients();
         }
-    }, [user]);
+    }, [user, canAccess]);
 
     const fetchIngredients = async () => {
         if (!user) return;
@@ -246,6 +233,20 @@ export default function EstoquePage() {
     );
 
     const lowStockIngredients = getLowStockIngredients();
+
+    // Check if user has access to inventory feature
+    if (!canAccess('inventory')) {
+        return (
+            <MainLayout>
+                <UpgradePrompt
+                    feature="Controle de Estoque"
+                    requiredPlan="Avançado"
+                    currentPlan={plan}
+                    fullPage
+                />
+            </MainLayout>
+        );
+    }
 
     return (
         <MainLayout>
