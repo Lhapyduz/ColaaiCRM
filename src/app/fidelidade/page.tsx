@@ -95,7 +95,7 @@ export default function FidelidadePage() {
             <MainLayout>
                 <UpgradePrompt
                     feature="Programa de Fidelidade"
-                    requiredPlan="professional"
+                    requiredPlan="Avançado"
                     currentPlan={plan}
                     fullPage
                 />

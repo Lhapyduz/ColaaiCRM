@@ -13,13 +13,13 @@
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.87.1",
     "dotenv": "^17.2.3",
-    "next": "16.0.10",
+    "next": "16.1.1",
     "qrcode": "^1.5.4",
     "qrcode.react": "^4.2.0",
-    "react": "19.2.1",
-    "react-dom": "19.2.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-icons": "^5.5.0",
-    "recharts": "^3.5.1",
+    "recharts": "^3.6.0",
     "stripe": "^20.1.0",
     "uuid": "^13.0.0"
   },
@@ -29,7 +29,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.0.10",
+    "eslint-config-next": "16.1.1",
     "typescript": "^5"
   }
 }

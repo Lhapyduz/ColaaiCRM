@@ -802,7 +802,7 @@ export default function RelatoriosPage() {
                                                         ))}
                                                     </Pie>
                                                     <Tooltip
-                                                        formatter={(value: number) => formatCurrency(value)}
+                                                        formatter={(value) => formatCurrency(value as number)}
                                                     />
                                                 </PieChart>
                                             </ResponsiveContainer>
@@ -850,7 +850,7 @@ export default function RelatoriosPage() {
                                                 axisLine={false}
                                             />
                                             <Tooltip
-                                                formatter={(value: number) => [value, 'Pedidos']}
+                                                formatter={(value) => [value as number, 'Pedidos']}
                                                 contentStyle={{
                                                     background: 'rgba(45, 52, 54, 0.95)',
                                                     border: 'none',
@@ -898,8 +898,8 @@ export default function RelatoriosPage() {
                                                 axisLine={false}
                                             />
                                             <Tooltip
-                                                formatter={(value: number, name: string) => [
-                                                    name === 'receita' ? formatCurrency(value) : value + 'x',
+                                                formatter={(value, name) => [
+                                                    name === 'receita' ? formatCurrency(value as number) : (value as number) + 'x',
                                                     name === 'receita' ? 'Receita' : 'Quantidade'
                                                 ]}
                                                 contentStyle={{

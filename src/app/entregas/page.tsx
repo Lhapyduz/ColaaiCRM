@@ -35,7 +35,7 @@ export default function EntregasPage() {
             <MainLayout>
                 <UpgradePrompt
                     feature="Gestão de Entregas"
-                    requiredPlan="professional"
+                    requiredPlan="Avançado"
                     currentPlan={plan}
                     fullPage
                 />

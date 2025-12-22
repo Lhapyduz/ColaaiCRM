@@ -408,7 +408,7 @@ export default function FuncionariosPage() {
                         <div className={styles.modalContent} style={{ maxWidth: 600 }}>
                             <UpgradePrompt
                                 feature="Limite de Funcionários Atingido"
-                                requiredPlan={plan === 'basic' ? 'professional' : 'enterprise'}
+                                requiredPlan={plan === 'Basico' ? 'Avançado' : 'Profissional'}
                                 currentPlan={plan}
                             />
                             <div style={{ marginTop: '1rem', textAlign: 'center' }}>

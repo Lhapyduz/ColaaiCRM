@@ -53,7 +53,7 @@ export default function CozinhaPage() {
             <MainLayout>
                 <UpgradePrompt
                     feature="Tela de Cozinha"
-                    requiredPlan="professional"
+                    requiredPlan="Profissional"
                     currentPlan={plan}
                     fullPage
                 />

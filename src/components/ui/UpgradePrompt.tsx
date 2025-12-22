@@ -28,7 +28,7 @@ export default function UpgradePrompt({ feature, requiredPlan, currentPlan, full
                     <span className={styles.planBadge}>
                         <FiStar /> {getPlanDisplayName(requiredPlan)}
                     </span>
-                    {requiredPlan === 'enterprise' ? ' ou superior' : ' ou superior'}.
+                    {requiredPlan === 'Profissional' ? ' ou superior' : ' ou superior'}.
                 </p>
 
                 <p className={styles.currentPlan}>
@@ -38,7 +38,7 @@ export default function UpgradePrompt({ feature, requiredPlan, currentPlan, full
                 <div className={styles.benefits}>
                     <h4>Com o plano {getPlanDisplayName(requiredPlan)} você tem acesso a:</h4>
                     <ul>
-                        {requiredPlan === 'professional' && (
+                        {requiredPlan === 'Avançado' && (
                             <>
                                 <li>✓ Até 100 produtos</li>
                                 <li>✓ Tela de cozinha</li>
@@ -49,7 +49,7 @@ export default function UpgradePrompt({ feature, requiredPlan, currentPlan, full
                                 <li>✓ Relatórios avançados</li>
                             </>
                         )}
-                        {requiredPlan === 'enterprise' && (
+                        {requiredPlan === 'Profissional' && (
                             <>
                                 <li>✓ Produtos ilimitados</li>
                                 <li>✓ Cupons de desconto</li>

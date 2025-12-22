@@ -51,7 +51,7 @@ export default function CuponsPage() {
             <MainLayout>
                 <UpgradePrompt
                     feature="Cupons de Desconto"
-                    requiredPlan="enterprise"
+                    requiredPlan="Profissional"
                     currentPlan={plan}
                     fullPage
                 />
