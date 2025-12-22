@@ -78,9 +78,9 @@ export async function POST(req: Request) {
                         stripe_price_id: priceId,
                         plan_type: finalPlanType || 'Basico', // Fallback
                         status: sub.status, // Use actual status from Stripe (might be active if trial skipped)
-                        current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-                        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-                        stripe_current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+                        current_period_start: new Date((sub as any).current_period_start * 1000).toISOString(),
+                        current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
+                        stripe_current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
                         billing_period: 'monthly'
                     } as any);
 
@@ -109,9 +109,9 @@ export async function POST(req: Request) {
 
                     const updateData: any = {
                         status: sub.status,
-                        current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-                        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-                        stripe_current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+                        current_period_start: new Date((sub as any).current_period_start * 1000).toISOString(),
+                        current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
+                        stripe_current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
                         stripe_price_id: priceId,
                     };
 
