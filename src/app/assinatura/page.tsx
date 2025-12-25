@@ -71,11 +71,14 @@ const AssinaturaPage = () => {
     const [loadingPortal, setLoadingPortal] = useState(false);
     const [syncing, setSyncing] = useState(false);
 
-    // Sync with Stripe on return from checkout
+    // Sync with Stripe on return from checkout or portal
     React.useEffect(() => {
         const query = new URLSearchParams(window.location.search);
-        if (query.get('success') === 'true') {
+        if (query.get('success') === 'true' || query.get('portal') === 'true') {
             handleSync();
+        } else {
+            // Always refresh subscription data on mount to get latest from database
+            refreshSubscription();
         }
     }, []);
 
@@ -156,11 +159,14 @@ const AssinaturaPage = () => {
         }
     };
 
-    // Helper to get status label
-    const getStatusLabel = (status: string) => {
+    // Helper to get status label - includes plan name for trial status
+    const getStatusLabel = (status: string, planType?: string) => {
         switch (status) {
             case 'active': return { label: 'Ativa', class: styles.statusActive };
-            case 'trial': return { label: 'Período de Teste', class: styles.statusTrial };
+            case 'trial':
+            case 'trialing':
+                const planName = PLANS.find(p => p.id === planType)?.name || planType;
+                return { label: `Período de Teste - ${planName}`, class: styles.statusTrial };
             case 'cancelled': return { label: 'Cancelada', class: styles.statusCancelled };
             case 'expired': return { label: 'Expirada', class: styles.statusCancelled };
             default: return { label: status, class: '' };
@@ -179,8 +185,8 @@ const AssinaturaPage = () => {
                     <div className={styles.manageContainer} style={{ marginBottom: '2rem' }}>
                         <h3>Sua Assinatura Atual</h3>
                         <div style={{ margin: '1rem 0' }}>
-                            <span className={`${styles.statusBadge} ${getStatusLabel(subscription.status).class}`}>
-                                {getStatusLabel(subscription.status).label}
+                            <span className={`${styles.statusBadge} ${getStatusLabel(subscription.status, subscription.plan_type).class}`}>
+                                {getStatusLabel(subscription.status, subscription.plan_type).label}
                             </span>
                             <p>Plano: <strong>{PLANS.find(p => p.id === subscription.plan_type)?.name || subscription.plan_type}</strong></p>
                             {subscription.current_period_end && (

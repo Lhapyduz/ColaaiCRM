@@ -1,0 +1,1387 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "evt_1Si1YLCgg8LVNGbfdRwYrCna",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766619193,
+      "data": {
+        "object": {
+          "id": "cs_test_a1DOxIW2gkm4scSX4QmRn5EmXxhrXtp3i8Uf34nZvwl5wyPVVEvMFkxBty",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": false
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 0,
+          "amount_total": 0,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "http://localhost:3000/assinatura?canceled=true",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": {
+            "business_name": null,
+            "individual_name": null,
+            "shipping_details": null
+          },
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766619171,
+          "currency": "brl",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_creation": null,
+          "customer_details": {
+            "address": {
+              "city": null,
+              "country": "BR",
+              "line1": null,
+              "line2": null,
+              "postal_code": null,
+              "state": null
+            },
+            "business_name": null,
+            "email": "teste@teste.com",
+            "individual_name": null,
+            "name": "Greg teste",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766705571,
+          "invoice": "in_1Si1YICgg8LVNGbfnWa60iE8",
+          "invoice_creation": null,
+          "livemode": false,
+          "locale": null,
+          "metadata": {
+            "planType": "Avan├ºado",
+            "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+          },
+          "mode": "subscription",
+          "origin_context": null,
+          "payment_intent": null,
+          "payment_link": null,
+          "payment_method_collection": "always",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": {
+            "allow_redisplay_filters": [
+              "always"
+            ],
+            "payment_method_remove": "disabled",
+            "payment_method_save": null
+          },
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": "sub_1Si1YJCgg8LVNGbfNlrGpGxT",
+          "success_url": "http://localhost:3000/assinatura?success=true",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si1UHCgg8LVNGbfHKG0PSHL",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618941,
+      "data": {
+        "object": {
+          "id": "cs_test_a15l69kZGlVbiVQcjYgy3rP6aT6lBNJQa1RvHl1wmWFpJt93rtEEUg5oaX",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": false
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 0,
+          "amount_total": 0,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "http://localhost:3000/assinatura?canceled=true",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": {
+            "business_name": null,
+            "individual_name": null,
+            "shipping_details": null
+          },
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766618919,
+          "currency": "brl",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_creation": null,
+          "customer_details": {
+            "address": {
+              "city": null,
+              "country": "BR",
+              "line1": null,
+              "line2": null,
+              "postal_code": null,
+              "state": null
+            },
+            "business_name": null,
+            "email": "teste@teste.com",
+            "individual_name": null,
+            "name": "Greg teste",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766705319,
+          "invoice": "in_1Si1UFCgg8LVNGbfaE6idnbs",
+          "invoice_creation": null,
+          "livemode": false,
+          "locale": null,
+          "metadata": {
+            "planType": "Avan├ºado",
+            "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+          },
+          "mode": "subscription",
+          "origin_context": null,
+          "payment_intent": null,
+          "payment_link": null,
+          "payment_method_collection": "always",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": {
+            "allow_redisplay_filters": [
+              "always"
+            ],
+            "payment_method_remove": "disabled",
+            "payment_method_save": null
+          },
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": "sub_1Si1UGCgg8LVNGbfD9YvquwJ",
+          "success_url": "http://localhost:3000/assinatura?success=true",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si1RBCgg8LVNGbfPcNq3GSl",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618748,
+      "data": {
+        "object": {
+          "id": "cs_test_a1ZC4ob9oIKp7g1JVKhsZa0MouWV1Ho0BdMC1Eq6rsd7We0Hpbnbwi3QRM",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": true
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 3000,
+          "amount_total": 3000,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "https://httpbin.org/post",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": null,
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766618745,
+          "currency": "usd",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": null,
+          "customer_account": null,
+          "customer_creation": "if_required",
+          "customer_details": {
+            "address": {
+              "city": "South San Francisco",
+              "country": "US",
+              "line1": "354 Oyster Point Blvd",
+              "line2": null,
+              "postal_code": "94080",
+              "state": "CA"
+            },
+            "business_name": null,
+            "email": "stripe@example.com",
+            "individual_name": null,
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766705145,
+          "invoice": null,
+          "invoice_creation": {
+            "enabled": false,
+            "invoice_data": {
+              "account_tax_ids": null,
+              "custom_fields": null,
+              "description": null,
+              "footer": null,
+              "issuer": null,
+              "metadata": {},
+              "rendering_options": null
+            }
+          },
+          "livemode": false,
+          "locale": null,
+          "metadata": {},
+          "mode": "payment",
+          "origin_context": null,
+          "payment_intent": "pi_3Si1R9Cgg8LVNGbf0xGLqM2L",
+          "payment_link": null,
+          "payment_method_collection": "if_required",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": null,
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": null,
+          "success_url": "https://httpbin.org/post",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si1MECgg8LVNGbf6uxq8ZNc",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618442,
+      "data": {
+        "object": {
+          "id": "cs_test_a1vVdTyOFIbUwUL0g1o6aUSqLdLpamGFTbjE1Z91Tg6JBk1u7QEWqzgurZ",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": true
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 3000,
+          "amount_total": 3000,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "https://httpbin.org/post",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": null,
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766618439,
+          "currency": "usd",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": null,
+          "customer_account": null,
+          "customer_creation": "if_required",
+          "customer_details": {
+            "address": {
+              "city": "South San Francisco",
+              "country": "US",
+              "line1": "354 Oyster Point Blvd",
+              "line2": null,
+              "postal_code": "94080",
+              "state": "CA"
+            },
+            "business_name": null,
+            "email": "stripe@example.com",
+            "individual_name": null,
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766704839,
+          "invoice": null,
+          "invoice_creation": {
+            "enabled": false,
+            "invoice_data": {
+              "account_tax_ids": null,
+              "custom_fields": null,
+              "description": null,
+              "footer": null,
+              "issuer": null,
+              "metadata": {},
+              "rendering_options": null
+            }
+          },
+          "livemode": false,
+          "locale": null,
+          "metadata": {},
+          "mode": "payment",
+          "origin_context": null,
+          "payment_intent": "pi_3Si1MDCgg8LVNGbf0YmZzlpF",
+          "payment_link": null,
+          "payment_method_collection": "if_required",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": null,
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": null,
+          "success_url": "https://httpbin.org/post",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si1L0Cgg8LVNGbf1RsWV0lM",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618366,
+      "data": {
+        "object": {
+          "id": "cs_test_a18EVOm1qnkADhDLRm2sShWR6BPLCtSEBNacpNFrzQHMTB4cZq4ubLniWV",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": false
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 0,
+          "amount_total": 0,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "http://localhost:3000/assinatura?canceled=true",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": {
+            "business_name": null,
+            "individual_name": null,
+            "shipping_details": null
+          },
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766618350,
+          "currency": "brl",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_creation": null,
+          "customer_details": {
+            "address": {
+              "city": null,
+              "country": "BR",
+              "line1": null,
+              "line2": null,
+              "postal_code": null,
+              "state": null
+            },
+            "business_name": null,
+            "email": "teste@teste.com",
+            "individual_name": null,
+            "name": "Greg teste",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766704750,
+          "invoice": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+          "invoice_creation": null,
+          "livemode": false,
+          "locale": null,
+          "metadata": {
+            "planType": "Avan├ºado",
+            "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+          },
+          "mode": "subscription",
+          "origin_context": null,
+          "payment_intent": null,
+          "payment_link": null,
+          "payment_method_collection": "always",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": {
+            "allow_redisplay_filters": [
+              "always"
+            ],
+            "payment_method_remove": "disabled",
+            "payment_method_save": null
+          },
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c",
+          "success_url": "http://localhost:3000/assinatura?success=true",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si0lnCgg8LVNGbfC3wRHj3V",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766616183,
+      "data": {
+        "object": {
+          "id": "cs_test_a12KNn6dCWEgW3cZqxrl6Tm0N0UNCYDhcKRyTSYaMwpsgFmnsUssdBxsrk",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": false
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 0,
+          "amount_total": 0,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "http://localhost:3000/assinatura?canceled=true",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": {
+            "business_name": null,
+            "individual_name": null,
+            "shipping_details": null
+          },
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766616149,
+          "currency": "brl",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_creation": null,
+          "customer_details": {
+            "address": {
+              "city": null,
+              "country": "BR",
+              "line1": null,
+              "line2": null,
+              "postal_code": null,
+              "state": null
+            },
+            "business_name": null,
+            "email": "teste@teste.com",
+            "individual_name": null,
+            "name": "Greg teste",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766702549,
+          "invoice": "in_1Si0llCgg8LVNGbf0booYXRx",
+          "invoice_creation": null,
+          "livemode": false,
+          "locale": null,
+          "metadata": {
+            "planType": "Avan├ºado",
+            "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+          },
+          "mode": "subscription",
+          "origin_context": null,
+          "payment_intent": null,
+          "payment_link": null,
+          "payment_method_collection": "always",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": {
+            "allow_redisplay_filters": [
+              "always"
+            ],
+            "payment_method_remove": "disabled",
+            "payment_method_save": null
+          },
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9",
+          "success_url": "http://localhost:3000/assinatura?success=true",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si0awCgg8LVNGbfy8L45p36",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766615510,
+      "data": {
+        "object": {
+          "id": "cs_test_a14sUdoh3H1j3bLvhgKnP8ctzOHuCR7FihYVx2YFH1E9DHkMC7TkViKRbo",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": false
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 0,
+          "amount_total": 0,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "http://localhost:3000/assinatura?canceled=true",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": {
+            "business_name": null,
+            "individual_name": null,
+            "shipping_details": null
+          },
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766615491,
+          "currency": "brl",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_creation": null,
+          "customer_details": {
+            "address": {
+              "city": null,
+              "country": "BR",
+              "line1": null,
+              "line2": null,
+              "postal_code": null,
+              "state": null
+            },
+            "business_name": null,
+            "email": "teste@teste.com",
+            "individual_name": null,
+            "name": "Greg teste",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766701890,
+          "invoice": "in_1Si0auCgg8LVNGbfrs1HQeZx",
+          "invoice_creation": null,
+          "livemode": false,
+          "locale": null,
+          "metadata": {
+            "planType": "Avan├ºado",
+            "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+          },
+          "mode": "subscription",
+          "origin_context": null,
+          "payment_intent": null,
+          "payment_link": null,
+          "payment_method_collection": "always",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": {
+            "allow_redisplay_filters": [
+              "always"
+            ],
+            "payment_method_remove": "disabled",
+            "payment_method_save": null
+          },
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": "sub_1Si0avCgg8LVNGbfxIPMjIfl",
+          "success_url": "http://localhost:3000/assinatura?success=true",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si0YnCgg8LVNGbfRDAgHOXq",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766615377,
+      "data": {
+        "object": {
+          "id": "cs_test_a1K6GCG3jjP5Q0aJUI4uMm3ird2HGBtbwmzGrkKPRnkN6rDBYeSKukf7qR",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": true
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 3000,
+          "amount_total": 3000,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "https://httpbin.org/post",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": null,
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766615374,
+          "currency": "usd",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": null,
+          "customer_account": null,
+          "customer_creation": "if_required",
+          "customer_details": {
+            "address": {
+              "city": "South San Francisco",
+              "country": "US",
+              "line1": "354 Oyster Point Blvd",
+              "line2": null,
+              "postal_code": "94080",
+              "state": "CA"
+            },
+            "business_name": null,
+            "email": "stripe@example.com",
+            "individual_name": null,
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766701774,
+          "invoice": null,
+          "invoice_creation": {
+            "enabled": false,
+            "invoice_data": {
+              "account_tax_ids": null,
+              "custom_fields": null,
+              "description": null,
+              "footer": null,
+              "issuer": null,
+              "metadata": {},
+              "rendering_options": null
+            }
+          },
+          "livemode": false,
+          "locale": null,
+          "metadata": {},
+          "mode": "payment",
+          "origin_context": null,
+          "payment_intent": "pi_3Si0YmCgg8LVNGbf1eSMJ2PS",
+          "payment_link": null,
+          "payment_method_collection": "if_required",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": null,
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": null,
+          "success_url": "https://httpbin.org/post",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si0VqCgg8LVNGbfcqbUUlWv",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766615194,
+      "data": {
+        "object": {
+          "id": "cs_test_a19B6JBmuVJ8g9r2OJ10IbP8t5QizoI8bk7yKGuweTCeztjC6zlF70J3Zs",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": true
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 3000,
+          "amount_total": 3000,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "https://httpbin.org/post",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": null,
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766615191,
+          "currency": "usd",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": null,
+          "customer_account": null,
+          "customer_creation": "if_required",
+          "customer_details": {
+            "address": {
+              "city": "South San Francisco",
+              "country": "US",
+              "line1": "354 Oyster Point Blvd",
+              "line2": null,
+              "postal_code": "94080",
+              "state": "CA"
+            },
+            "business_name": null,
+            "email": "stripe@example.com",
+            "individual_name": null,
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766701591,
+          "invoice": null,
+          "invoice_creation": {
+            "enabled": false,
+            "invoice_data": {
+              "account_tax_ids": null,
+              "custom_fields": null,
+              "description": null,
+              "footer": null,
+              "issuer": null,
+              "metadata": {},
+              "rendering_options": null
+            }
+          },
+          "livemode": false,
+          "locale": null,
+          "metadata": {},
+          "mode": "payment",
+          "origin_context": null,
+          "payment_intent": "pi_3Si0VpCgg8LVNGbf0OWLPJqN",
+          "payment_link": null,
+          "payment_method_collection": "if_required",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": null,
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": null,
+          "success_url": "https://httpbin.org/post",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si0TXCgg8LVNGbfTBDUq7t2",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766615051,
+      "data": {
+        "object": {
+          "id": "cs_test_a1atHWhJlBRWwOHkhXtR1y75MxxiIrSjp0xuAW7ixAABrATKTTCNndTG0m",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": true
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 3000,
+          "amount_total": 3000,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "https://httpbin.org/post",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": null,
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766615048,
+          "currency": "usd",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": null,
+          "customer_account": null,
+          "customer_creation": "if_required",
+          "customer_details": {
+            "address": {
+              "city": "South San Francisco",
+              "country": "US",
+              "line1": "354 Oyster Point Blvd",
+              "line2": null,
+              "postal_code": "94080",
+              "state": "CA"
+            },
+            "business_name": null,
+            "email": "stripe@example.com",
+            "individual_name": null,
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766701448,
+          "invoice": null,
+          "invoice_creation": {
+            "enabled": false,
+            "invoice_data": {
+              "account_tax_ids": null,
+              "custom_fields": null,
+              "description": null,
+              "footer": null,
+              "issuer": null,
+              "metadata": {},
+              "rendering_options": null
+            }
+          },
+          "livemode": false,
+          "locale": null,
+          "metadata": {},
+          "mode": "payment",
+          "origin_context": null,
+          "payment_intent": "pi_3Si0TWCgg8LVNGbf0q0VMs1p",
+          "payment_link": null,
+          "payment_method_collection": "if_required",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": null,
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": null,
+          "success_url": "https://httpbin.org/post",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    }
+  ],
+  "has_more": true,
+  "url": "/v1/events"
+}

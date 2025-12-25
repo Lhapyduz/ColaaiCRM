@@ -1,0 +1,3733 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "evt_3Si1MDCgg8LVNGbf0uaBklwO",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618445,
+      "data": {
+        "object": {
+          "id": "ch_3Si1MDCgg8LVNGbf0inTSIXn",
+          "object": "charge",
+          "amount": 3000,
+          "amount_captured": 3000,
+          "amount_refunded": 0,
+          "application": null,
+          "application_fee": null,
+          "application_fee_amount": null,
+          "balance_transaction": "txn_3Si1MDCgg8LVNGbf0RqNpr35",
+          "billing_details": {
+            "address": {
+              "city": "South San Francisco",
+              "country": "US",
+              "line1": "354 Oyster Point Blvd",
+              "line2": null,
+              "postal_code": "94080",
+              "state": "CA"
+            },
+            "email": "stripe@example.com",
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tax_id": null
+          },
+          "calculated_statement_descriptor": "COLA AI",
+          "captured": true,
+          "created": 1766618442,
+          "currency": "usd",
+          "customer": null,
+          "description": null,
+          "destination": null,
+          "dispute": null,
+          "disputed": false,
+          "failure_balance_transaction": null,
+          "failure_code": null,
+          "failure_message": null,
+          "fraud_details": {},
+          "livemode": false,
+          "metadata": {},
+          "on_behalf_of": null,
+          "order": null,
+          "outcome": {
+            "advice_code": null,
+            "network_advice_code": null,
+            "network_decline_code": null,
+            "network_status": "approved_by_network",
+            "reason": null,
+            "risk_level": "normal",
+            "risk_score": 39,
+            "seller_message": "Payment complete.",
+            "type": "authorized"
+          },
+          "paid": true,
+          "payment_intent": "pi_3Si1MDCgg8LVNGbf0YmZzlpF",
+          "payment_method": "pm_1Si1MDCgg8LVNGbfZGaBuzN1",
+          "payment_method_details": {
+            "card": {
+              "amount_authorized": 3000,
+              "authorization_code": "285180",
+              "brand": "visa",
+              "checks": {
+                "address_line1_check": "pass",
+                "address_postal_code_check": "pass",
+                "cvc_check": "pass"
+              },
+              "country": "US",
+              "exp_month": 12,
+              "exp_year": 2026,
+              "extended_authorization": {
+                "status": "disabled"
+              },
+              "fingerprint": "K2o38MjRJeZYeUmf",
+              "funding": "credit",
+              "incremental_authorization": {
+                "status": "unavailable"
+              },
+              "installments": null,
+              "last4": "4242",
+              "mandate": null,
+              "multicapture": {
+                "status": "unavailable"
+              },
+              "network": "visa",
+              "network_token": {
+                "used": false
+              },
+              "network_transaction_id": "755011151567710",
+              "overcapture": {
+                "maximum_amount_capturable": 3000,
+                "status": "unavailable"
+              },
+              "regulated_status": "unregulated",
+              "three_d_secure": null,
+              "wallet": null
+            },
+            "type": "card"
+          },
+          "radar_options": {},
+          "receipt_email": null,
+          "receipt_number": null,
+          "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU2ZxVFZDZ2c4TFZOR2JmKM3qscoGMgZB6FMt-G46LBZOR8pgYPlbovbZNT-2VAS9oj559UTKO7KWiYfY0M2qQN2BeHHAt1Tc_GcM",
+          "refunded": false,
+          "review": null,
+          "shipping": {
+            "address": {
+              "city": "San Francisco",
+              "country": "US",
+              "line1": "510 Townsend St",
+              "line2": null,
+              "postal_code": "94103",
+              "state": "CA"
+            },
+            "carrier": null,
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tracking_number": null
+          },
+          "source": null,
+          "source_transfer": null,
+          "statement_descriptor": null,
+          "statement_descriptor_suffix": null,
+          "status": "succeeded",
+          "transfer_data": null,
+          "transfer_group": null
+        },
+        "previous_attributes": {
+          "balance_transaction": null,
+          "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU2ZxVFZDZ2c4TFZOR2JmKM3qscoGMgbt_wRHr7Y6LBZqXMhksoCbtoK8Fphv713AC4HjRK9ubUCQiwtkoCSKEGQglDLZVKFoEOJN"
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "charge.updated"
+    },
+    {
+      "id": "evt_1Si1MECgg8LVNGbf6uxq8ZNc",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618442,
+      "data": {
+        "object": {
+          "id": "cs_test_a1vVdTyOFIbUwUL0g1o6aUSqLdLpamGFTbjE1Z91Tg6JBk1u7QEWqzgurZ",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": true
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 3000,
+          "amount_total": 3000,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "https://httpbin.org/post",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": null,
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766618439,
+          "currency": "usd",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": null,
+          "customer_account": null,
+          "customer_creation": "if_required",
+          "customer_details": {
+            "address": {
+              "city": "South San Francisco",
+              "country": "US",
+              "line1": "354 Oyster Point Blvd",
+              "line2": null,
+              "postal_code": "94080",
+              "state": "CA"
+            },
+            "business_name": null,
+            "email": "stripe@example.com",
+            "individual_name": null,
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766704839,
+          "invoice": null,
+          "invoice_creation": {
+            "enabled": false,
+            "invoice_data": {
+              "account_tax_ids": null,
+              "custom_fields": null,
+              "description": null,
+              "footer": null,
+              "issuer": null,
+              "metadata": {},
+              "rendering_options": null
+            }
+          },
+          "livemode": false,
+          "locale": null,
+          "metadata": {},
+          "mode": "payment",
+          "origin_context": null,
+          "payment_intent": "pi_3Si1MDCgg8LVNGbf0YmZzlpF",
+          "payment_link": null,
+          "payment_method_collection": "if_required",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": null,
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": null,
+          "success_url": "https://httpbin.org/post",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_3Si1MDCgg8LVNGbf0vUWZFbW",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618442,
+      "data": {
+        "object": {
+          "id": "pi_3Si1MDCgg8LVNGbf0YmZzlpF",
+          "object": "payment_intent",
+          "amount": 3000,
+          "amount_capturable": 0,
+          "amount_details": {
+            "shipping": {
+              "amount": 0,
+              "from_postal_code": null,
+              "to_postal_code": null
+            },
+            "tax": {
+              "total_tax_amount": 0
+            },
+            "tip": {}
+          },
+          "amount_received": 3000,
+          "application": null,
+          "application_fee_amount": null,
+          "automatic_payment_methods": null,
+          "canceled_at": null,
+          "cancellation_reason": null,
+          "capture_method": "automatic_async",
+          "client_secret": "pi_3Si1MDCgg8LVNGbf0YmZzlpF_secret_QHl9i3fT8fXEfqJVMShYGK5OO",
+          "confirmation_method": "automatic",
+          "created": 1766618441,
+          "currency": "usd",
+          "customer": null,
+          "customer_account": null,
+          "description": null,
+          "excluded_payment_method_types": null,
+          "last_payment_error": null,
+          "latest_charge": "ch_3Si1MDCgg8LVNGbf0inTSIXn",
+          "livemode": false,
+          "metadata": {},
+          "next_action": null,
+          "on_behalf_of": null,
+          "payment_details": {
+            "customer_reference": null,
+            "order_reference": "prod_TfM40UXhYeoYTS"
+          },
+          "payment_method": "pm_1Si1MDCgg8LVNGbfZGaBuzN1",
+          "payment_method_configuration_details": null,
+          "payment_method_options": {
+            "card": {
+              "installments": null,
+              "mandate_options": null,
+              "network": null,
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "processing": null,
+          "receipt_email": null,
+          "review": null,
+          "setup_future_usage": null,
+          "shipping": {
+            "address": {
+              "city": "San Francisco",
+              "country": "US",
+              "line1": "510 Townsend St",
+              "line2": null,
+              "postal_code": "94103",
+              "state": "CA"
+            },
+            "carrier": null,
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tracking_number": null
+          },
+          "source": null,
+          "statement_descriptor": null,
+          "statement_descriptor_suffix": null,
+          "status": "succeeded",
+          "transfer_data": null,
+          "transfer_group": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "1b17c4ea-a91f-4a00-83cc-df8762856f73"
+      },
+      "type": "payment_intent.succeeded"
+    },
+    {
+      "id": "evt_3Si1MDCgg8LVNGbf0T9p9Zff",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618442,
+      "data": {
+        "object": {
+          "id": "ch_3Si1MDCgg8LVNGbf0inTSIXn",
+          "object": "charge",
+          "amount": 3000,
+          "amount_captured": 3000,
+          "amount_refunded": 0,
+          "application": null,
+          "application_fee": null,
+          "application_fee_amount": null,
+          "balance_transaction": null,
+          "billing_details": {
+            "address": {
+              "city": "South San Francisco",
+              "country": "US",
+              "line1": "354 Oyster Point Blvd",
+              "line2": null,
+              "postal_code": "94080",
+              "state": "CA"
+            },
+            "email": "stripe@example.com",
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tax_id": null
+          },
+          "calculated_statement_descriptor": "COLA AI",
+          "captured": true,
+          "created": 1766618442,
+          "currency": "usd",
+          "customer": null,
+          "description": null,
+          "destination": null,
+          "dispute": null,
+          "disputed": false,
+          "failure_balance_transaction": null,
+          "failure_code": null,
+          "failure_message": null,
+          "fraud_details": {},
+          "livemode": false,
+          "metadata": {},
+          "on_behalf_of": null,
+          "order": null,
+          "outcome": {
+            "advice_code": null,
+            "network_advice_code": null,
+            "network_decline_code": null,
+            "network_status": "approved_by_network",
+            "reason": null,
+            "risk_level": "normal",
+            "risk_score": 39,
+            "seller_message": "Payment complete.",
+            "type": "authorized"
+          },
+          "paid": true,
+          "payment_intent": "pi_3Si1MDCgg8LVNGbf0YmZzlpF",
+          "payment_method": "pm_1Si1MDCgg8LVNGbfZGaBuzN1",
+          "payment_method_details": {
+            "card": {
+              "amount_authorized": 3000,
+              "authorization_code": "285180",
+              "brand": "visa",
+              "checks": {
+                "address_line1_check": "pass",
+                "address_postal_code_check": "pass",
+                "cvc_check": "pass"
+              },
+              "country": "US",
+              "exp_month": 12,
+              "exp_year": 2026,
+              "extended_authorization": {
+                "status": "disabled"
+              },
+              "fingerprint": "K2o38MjRJeZYeUmf",
+              "funding": "credit",
+              "incremental_authorization": {
+                "status": "unavailable"
+              },
+              "installments": null,
+              "last4": "4242",
+              "mandate": null,
+              "multicapture": {
+                "status": "unavailable"
+              },
+              "network": "visa",
+              "network_token": {
+                "used": false
+              },
+              "network_transaction_id": "755011151567710",
+              "overcapture": {
+                "maximum_amount_capturable": 3000,
+                "status": "unavailable"
+              },
+              "regulated_status": "unregulated",
+              "three_d_secure": null,
+              "wallet": null
+            },
+            "type": "card"
+          },
+          "radar_options": {},
+          "receipt_email": null,
+          "receipt_number": null,
+          "receipt_url": "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xU2ZxVFZDZ2c4TFZOR2JmKMrqscoGMgbBuYIfxvw6LBbjhkmsVU6Q20-lfUJh8c441cnfvhHmrFH-49TvTgHbFVNtFdF7Lp2jJM9C",
+          "refunded": false,
+          "review": null,
+          "shipping": {
+            "address": {
+              "city": "San Francisco",
+              "country": "US",
+              "line1": "510 Townsend St",
+              "line2": null,
+              "postal_code": "94103",
+              "state": "CA"
+            },
+            "carrier": null,
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tracking_number": null
+          },
+          "source": null,
+          "source_transfer": null,
+          "statement_descriptor": null,
+          "statement_descriptor_suffix": null,
+          "status": "succeeded",
+          "transfer_data": null,
+          "transfer_group": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "1b17c4ea-a91f-4a00-83cc-df8762856f73"
+      },
+      "type": "charge.succeeded"
+    },
+    {
+      "id": "evt_3Si1MDCgg8LVNGbf0DQDWDQW",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618441,
+      "data": {
+        "object": {
+          "id": "pi_3Si1MDCgg8LVNGbf0YmZzlpF",
+          "object": "payment_intent",
+          "amount": 3000,
+          "amount_capturable": 0,
+          "amount_details": {
+            "tip": {}
+          },
+          "amount_received": 0,
+          "application": null,
+          "application_fee_amount": null,
+          "automatic_payment_methods": null,
+          "canceled_at": null,
+          "cancellation_reason": null,
+          "capture_method": "automatic_async",
+          "client_secret": "pi_3Si1MDCgg8LVNGbf0YmZzlpF_secret_QHl9i3fT8fXEfqJVMShYGK5OO",
+          "confirmation_method": "automatic",
+          "created": 1766618441,
+          "currency": "usd",
+          "customer": null,
+          "customer_account": null,
+          "description": null,
+          "excluded_payment_method_types": null,
+          "last_payment_error": null,
+          "latest_charge": null,
+          "livemode": false,
+          "metadata": {},
+          "next_action": null,
+          "on_behalf_of": null,
+          "payment_method": null,
+          "payment_method_configuration_details": null,
+          "payment_method_options": {
+            "card": {
+              "installments": null,
+              "mandate_options": null,
+              "network": null,
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "processing": null,
+          "receipt_email": null,
+          "review": null,
+          "setup_future_usage": null,
+          "shipping": {
+            "address": {
+              "city": "San Francisco",
+              "country": "US",
+              "line1": "510 Townsend St",
+              "line2": null,
+              "postal_code": "94103",
+              "state": "CA"
+            },
+            "carrier": null,
+            "name": "Jenny Rosen",
+            "phone": null,
+            "tracking_number": null
+          },
+          "source": null,
+          "statement_descriptor": null,
+          "statement_descriptor_suffix": null,
+          "status": "requires_payment_method",
+          "transfer_data": null,
+          "transfer_group": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "1b17c4ea-a91f-4a00-83cc-df8762856f73"
+      },
+      "type": "payment_intent.created"
+    },
+    {
+      "id": "evt_1Si1MBCgg8LVNGbfKdPkyhwq",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618439,
+      "data": {
+        "object": {
+          "id": "price_1Si1MBCgg8LVNGbfeFu1vYuv",
+          "object": "price",
+          "active": true,
+          "billing_scheme": "per_unit",
+          "created": 1766618439,
+          "currency": "usd",
+          "custom_unit_amount": null,
+          "livemode": false,
+          "lookup_key": null,
+          "metadata": {},
+          "nickname": null,
+          "product": "prod_TfM40UXhYeoYTS",
+          "recurring": null,
+          "tax_behavior": "unspecified",
+          "tiers_mode": null,
+          "transform_quantity": null,
+          "type": "one_time",
+          "unit_amount": 1500,
+          "unit_amount_decimal": "1500"
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": "req_SH3kuDW57qcOvd",
+        "idempotency_key": "dc49e276-b8b4-40fe-b9b1-227d0b66eae9"
+      },
+      "type": "price.created"
+    },
+    {
+      "id": "evt_1Si1MACgg8LVNGbff0G0hwTw",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618438,
+      "data": {
+        "object": {
+          "id": "prod_TfM40UXhYeoYTS",
+          "object": "product",
+          "active": true,
+          "attributes": [],
+          "created": 1766618438,
+          "default_price": null,
+          "description": "(created by Stripe CLI)",
+          "images": [],
+          "livemode": false,
+          "marketing_features": [],
+          "metadata": {},
+          "name": "myproduct",
+          "package_dimensions": null,
+          "shippable": null,
+          "statement_descriptor": null,
+          "tax_code": null,
+          "type": "service",
+          "unit_label": null,
+          "updated": 1766618438,
+          "url": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": "req_TamYxV2aiOKrsZ",
+        "idempotency_key": "6d6c1ae5-d7a3-445b-b511-fe549745c309"
+      },
+      "type": "product.created"
+    },
+    {
+      "id": "evt_1Si1L0Cgg8LVNGbf1RsWV0lM",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618366,
+      "data": {
+        "object": {
+          "id": "cs_test_a18EVOm1qnkADhDLRm2sShWR6BPLCtSEBNacpNFrzQHMTB4cZq4ubLniWV",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": false
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 0,
+          "amount_total": 0,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "http://localhost:3000/assinatura?canceled=true",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": {
+            "business_name": null,
+            "individual_name": null,
+            "shipping_details": null
+          },
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766618350,
+          "currency": "brl",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_creation": null,
+          "customer_details": {
+            "address": {
+              "city": null,
+              "country": "BR",
+              "line1": null,
+              "line2": null,
+              "postal_code": null,
+              "state": null
+            },
+            "business_name": null,
+            "email": "teste@teste.com",
+            "individual_name": null,
+            "name": "Greg teste",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766704750,
+          "invoice": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+          "invoice_creation": null,
+          "livemode": false,
+          "locale": null,
+          "metadata": {
+            "planType": "Avan├ºado",
+            "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+          },
+          "mode": "subscription",
+          "origin_context": null,
+          "payment_intent": null,
+          "payment_link": null,
+          "payment_method_collection": "always",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": {
+            "allow_redisplay_filters": [
+              "always"
+            ],
+            "payment_method_remove": "disabled",
+            "payment_method_save": null
+          },
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c",
+          "success_url": "http://localhost:3000/assinatura?success=true",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si1L0Cgg8LVNGbf7aAP5yTl",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618365,
+      "data": {
+        "object": {
+          "id": "sub_1Si1KzCgg8LVNGbfvIEuZl6c",
+          "object": "subscription",
+          "application": null,
+          "application_fee_percent": null,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null
+          },
+          "billing_cycle_anchor": 1767933000,
+          "billing_cycle_anchor_config": null,
+          "billing_mode": {
+            "flexible": {
+              "proration_discounts": "included"
+            },
+            "type": "flexible",
+            "updated_at": 1766618350
+          },
+          "billing_thresholds": null,
+          "cancel_at": null,
+          "cancel_at_period_end": false,
+          "canceled_at": null,
+          "cancellation_details": {
+            "comment": null,
+            "feedback": null,
+            "reason": null
+          },
+          "collection_method": "charge_automatically",
+          "created": 1767673800,
+          "currency": "brl",
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "days_until_due": null,
+          "default_payment_method": "pm_1Si1KxCgg8LVNGbfbT5v40rO",
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "ended_at": null,
+          "invoice_settings": {
+            "account_tax_ids": null,
+            "issuer": {
+              "type": "self"
+            }
+          },
+          "items": {
+            "object": "list",
+            "data": [
+              {
+                "id": "si_TfM3vpTz1onssz",
+                "object": "subscription_item",
+                "billing_thresholds": null,
+                "created": 1767673800,
+                "current_period_end": 1767933000,
+                "current_period_start": 1767673800,
+                "discounts": [],
+                "metadata": {},
+                "plan": {
+                  "id": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                  "object": "plan",
+                  "active": true,
+                  "amount": 7990,
+                  "amount_decimal": "7990",
+                  "billing_scheme": "per_unit",
+                  "created": 1766111186,
+                  "currency": "brl",
+                  "interval": "month",
+                  "interval_count": 1,
+                  "livemode": false,
+                  "metadata": {},
+                  "meter": null,
+                  "nickname": null,
+                  "product": "prod_Td9id3KSGQBGtr",
+                  "tiers_mode": null,
+                  "transform_usage": null,
+                  "trial_period_days": null,
+                  "usage_type": "licensed"
+                },
+                "price": {
+                  "id": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                  "object": "price",
+                  "active": true,
+                  "billing_scheme": "per_unit",
+                  "created": 1766111186,
+                  "currency": "brl",
+                  "custom_unit_amount": null,
+                  "livemode": false,
+                  "lookup_key": null,
+                  "metadata": {},
+                  "nickname": null,
+                  "product": "prod_Td9id3KSGQBGtr",
+                  "recurring": {
+                    "interval": "month",
+                    "interval_count": 1,
+                    "meter": null,
+                    "trial_period_days": null,
+                    "usage_type": "licensed"
+                  },
+                  "tax_behavior": "unspecified",
+                  "tiers_mode": null,
+                  "transform_quantity": null,
+                  "type": "recurring",
+                  "unit_amount": 7990,
+                  "unit_amount_decimal": "7990"
+                },
+                "quantity": 1,
+                "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c",
+                "tax_rates": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/subscription_items?subscription=sub_1Si1KzCgg8LVNGbfvIEuZl6c"
+          },
+          "latest_invoice": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+          "livemode": false,
+          "metadata": {
+            "planType": "Avan├ºado",
+            "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+          },
+          "next_pending_invoice_item_invoice": null,
+          "on_behalf_of": null,
+          "pause_collection": null,
+          "payment_settings": {
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "network": null,
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null,
+            "save_default_payment_method": "off"
+          },
+          "pending_invoice_item_interval": null,
+          "pending_setup_intent": null,
+          "pending_update": null,
+          "plan": {
+            "id": "price_1SftOgCgg8LVNGbfmm4UREXj",
+            "object": "plan",
+            "active": true,
+            "amount": 7990,
+            "amount_decimal": "7990",
+            "billing_scheme": "per_unit",
+            "created": 1766111186,
+            "currency": "brl",
+            "interval": "month",
+            "interval_count": 1,
+            "livemode": false,
+            "metadata": {},
+            "meter": null,
+            "nickname": null,
+            "product": "prod_Td9id3KSGQBGtr",
+            "tiers_mode": null,
+            "transform_usage": null,
+            "trial_period_days": null,
+            "usage_type": "licensed"
+          },
+          "quantity": 1,
+          "schedule": null,
+          "start_date": 1767673800,
+          "status": "trialing",
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "transfer_data": null,
+          "trial_end": 1767933000,
+          "trial_settings": {
+            "end_behavior": {
+              "missing_payment_method": "create_invoice"
+            }
+          },
+          "trial_start": 1767673800
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "4e335988-67a2-414a-850d-445c94341218"
+      },
+      "type": "customer.subscription.created"
+    },
+    {
+      "id": "evt_1Si1L0Cgg8LVNGbf0bmQ5teq",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618365,
+      "data": {
+        "object": {
+          "id": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 0,
+          "amount_overpaid": 0,
+          "amount_paid": 0,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 0,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_create",
+          "collection_method": "charge_automatically",
+          "created": 1767673800,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767673800,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZk0zeVpRT28zdHFzYWt6S0JiZE1TTEtjRGNNWlQzLDE1NzE1OTE2Ng0200Rk0VqxHh?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZk0zeVpRT28zdHFzYWt6S0JiZE1TTEtjRGNNWlQzLDE1NzE1OTE2Ng0200Rk0VqxHh/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1Si1KxCgg8LVNGbfsPxwpGaP",
+                "object": "line_item",
+                "amount": 0,
+                "currency": "brl",
+                "description": "Free trial for 1 ├ù Avan├ºado",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c",
+                    "subscription_item": "si_TfM3vpTz1onssz"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1767933000,
+                  "start": 1767673800
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "0"
+                },
+                "quantity": 1,
+                "subtotal": 0,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si1KxCgg8LVNGbfz8MIUvqE/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0017",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767673800,
+          "period_start": 1767673800,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767673800,
+            "marked_uncollectible_at": null,
+            "paid_at": 1766618363,
+            "voided_at": null
+          },
+          "subtotal": 0,
+          "subtotal_excluding_tax": 0,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 0,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 0,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "4e335988-67a2-414a-850d-445c94341218"
+      },
+      "type": "invoice.payment_succeeded"
+    },
+    {
+      "id": "evt_1Si1L0Cgg8LVNGbfxbybDU4G",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618365,
+      "data": {
+        "object": {
+          "id": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 0,
+          "amount_overpaid": 0,
+          "amount_paid": 0,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 0,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_create",
+          "collection_method": "charge_automatically",
+          "created": 1767673800,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767673800,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZk0zeVpRT28zdHFzYWt6S0JiZE1TTEtjRGNNWlQzLDE1NzE1OTE2Ng0200Rk0VqxHh?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZk0zeVpRT28zdHFzYWt6S0JiZE1TTEtjRGNNWlQzLDE1NzE1OTE2Ng0200Rk0VqxHh/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1Si1KxCgg8LVNGbfsPxwpGaP",
+                "object": "line_item",
+                "amount": 0,
+                "currency": "brl",
+                "description": "Free trial for 1 ├ù Avan├ºado",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c",
+                    "subscription_item": "si_TfM3vpTz1onssz"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1767933000,
+                  "start": 1767673800
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "0"
+                },
+                "quantity": 1,
+                "subtotal": 0,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si1KxCgg8LVNGbfz8MIUvqE/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0017",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767673800,
+          "period_start": 1767673800,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767673800,
+            "marked_uncollectible_at": null,
+            "paid_at": 1766618363,
+            "voided_at": null
+          },
+          "subtotal": 0,
+          "subtotal_excluding_tax": 0,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 0,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 0,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "4e335988-67a2-414a-850d-445c94341218"
+      },
+      "type": "invoice.paid"
+    },
+    {
+      "id": "evt_1Si1L0Cgg8LVNGbfpls1C3K0",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618365,
+      "data": {
+        "object": {
+          "id": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 0,
+          "amount_overpaid": 0,
+          "amount_paid": 0,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 0,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_create",
+          "collection_method": "charge_automatically",
+          "created": 1767673800,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767673800,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZk0zeVpRT28zdHFzYWt6S0JiZE1TTEtjRGNNWlQzLDE1NzE1OTE2Ng0200Rk0VqxHh?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZk0zeVpRT28zdHFzYWt6S0JiZE1TTEtjRGNNWlQzLDE1NzE1OTE2Ng0200Rk0VqxHh/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1Si1KxCgg8LVNGbfsPxwpGaP",
+                "object": "line_item",
+                "amount": 0,
+                "currency": "brl",
+                "description": "Free trial for 1 ├ù Avan├ºado",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c",
+                    "subscription_item": "si_TfM3vpTz1onssz"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1767933000,
+                  "start": 1767673800
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "0"
+                },
+                "quantity": 1,
+                "subtotal": 0,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si1KxCgg8LVNGbfz8MIUvqE/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0017",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767673800,
+          "period_start": 1767673800,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767673800,
+            "marked_uncollectible_at": null,
+            "paid_at": 1766618363,
+            "voided_at": null
+          },
+          "subtotal": 0,
+          "subtotal_excluding_tax": 0,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 0,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 0,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "4e335988-67a2-414a-850d-445c94341218"
+      },
+      "type": "invoice.finalized"
+    },
+    {
+      "id": "evt_1Si1L0Cgg8LVNGbfq4xVvgqc",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618365,
+      "data": {
+        "object": {
+          "id": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 0,
+          "amount_overpaid": 0,
+          "amount_paid": 0,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 0,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_create",
+          "collection_method": "charge_automatically",
+          "created": 1767673800,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767673800,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZk0zeVpRT28zdHFzYWt6S0JiZE1TTEtjRGNNWlQzLDE1NzE1OTE2Ng0200Rk0VqxHh?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZk0zeVpRT28zdHFzYWt6S0JiZE1TTEtjRGNNWlQzLDE1NzE1OTE2Ng0200Rk0VqxHh/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1Si1KxCgg8LVNGbfsPxwpGaP",
+                "object": "line_item",
+                "amount": 0,
+                "currency": "brl",
+                "description": "Free trial for 1 ├ù Avan├ºado",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si1KxCgg8LVNGbfz8MIUvqE",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c",
+                    "subscription_item": "si_TfM3vpTz1onssz"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1767933000,
+                  "start": 1767673800
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "0"
+                },
+                "quantity": 1,
+                "subtotal": 0,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si1KxCgg8LVNGbfz8MIUvqE/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0017",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si1KzCgg8LVNGbfvIEuZl6c"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767673800,
+          "period_start": 1767673800,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767673800,
+            "marked_uncollectible_at": null,
+            "paid_at": 1766618363,
+            "voided_at": null
+          },
+          "subtotal": 0,
+          "subtotal_excluding_tax": 0,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 0,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 0,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "4e335988-67a2-414a-850d-445c94341218"
+      },
+      "type": "invoice.created"
+    },
+    {
+      "id": "evt_1Si1L0Cgg8LVNGbf4zFDuP2g",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618364,
+      "data": {
+        "object": {
+          "id": "seti_1Si1KxCgg8LVNGbf50p6PRh3",
+          "object": "setup_intent",
+          "application": null,
+          "automatic_payment_methods": null,
+          "cancellation_reason": null,
+          "client_secret": "seti_1Si1KxCgg8LVNGbf50p6PRh3_secret_TfM3QTQRW2A8x0w4dj6RWo1D7j3IPP6",
+          "created": 1766618363,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "description": null,
+          "excluded_payment_method_types": null,
+          "flow_directions": null,
+          "last_setup_error": null,
+          "latest_attempt": "setatt_1Si1KyCgg8LVNGbf4cbrzslJ",
+          "livemode": false,
+          "mandate": null,
+          "metadata": {},
+          "next_action": null,
+          "on_behalf_of": null,
+          "payment_method": "pm_1Si1KxCgg8LVNGbfbT5v40rO",
+          "payment_method_configuration_details": null,
+          "payment_method_options": {
+            "card": {
+              "mandate_options": null,
+              "network": null,
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "single_use_mandate": null,
+          "status": "succeeded",
+          "usage": "off_session"
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "4e335988-67a2-414a-850d-445c94341218"
+      },
+      "type": "setup_intent.succeeded"
+    },
+    {
+      "id": "evt_1Si1KzCgg8LVNGbfqkMkHODj",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618364,
+      "data": {
+        "object": {
+          "id": "pm_1Si1KxCgg8LVNGbfbT5v40rO",
+          "object": "payment_method",
+          "allow_redisplay": "limited",
+          "billing_details": {
+            "address": {
+              "city": null,
+              "country": "BR",
+              "line1": null,
+              "line2": null,
+              "postal_code": null,
+              "state": null
+            },
+            "email": "teste@teste.com",
+            "name": "Greg teste",
+            "phone": null,
+            "tax_id": null
+          },
+          "card": {
+            "brand": "visa",
+            "checks": {
+              "address_line1_check": null,
+              "address_postal_code_check": null,
+              "cvc_check": "pass"
+            },
+            "country": "US",
+            "display_brand": "visa",
+            "exp_month": 6,
+            "exp_year": 2030,
+            "fingerprint": "K2o38MjRJeZYeUmf",
+            "funding": "credit",
+            "generated_from": null,
+            "last4": "4242",
+            "networks": {
+              "available": [
+                "visa"
+              ],
+              "preferred": null
+            },
+            "regulated_status": "unregulated",
+            "three_d_secure_usage": {
+              "supported": true
+            },
+            "wallet": null
+          },
+          "created": 1766618363,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "livemode": false,
+          "metadata": {},
+          "type": "card"
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "4e335988-67a2-414a-850d-445c94341218"
+      },
+      "type": "payment_method.attached"
+    },
+    {
+      "id": "evt_1Si1L0Cgg8LVNGbfAA8KHsvj",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766618363,
+      "data": {
+        "object": {
+          "id": "seti_1Si1KxCgg8LVNGbf50p6PRh3",
+          "object": "setup_intent",
+          "application": null,
+          "automatic_payment_methods": null,
+          "cancellation_reason": null,
+          "client_secret": "seti_1Si1KxCgg8LVNGbf50p6PRh3_secret_TfM3QTQRW2A8x0w4dj6RWo1D7j3IPP6",
+          "created": 1766618363,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "description": null,
+          "excluded_payment_method_types": null,
+          "flow_directions": null,
+          "last_setup_error": null,
+          "latest_attempt": "setatt_1Si1KyCgg8LVNGbf4cbrzslJ",
+          "livemode": false,
+          "mandate": null,
+          "metadata": {},
+          "next_action": null,
+          "on_behalf_of": null,
+          "payment_method": "pm_1Si1KxCgg8LVNGbfbT5v40rO",
+          "payment_method_configuration_details": null,
+          "payment_method_options": {
+            "card": {
+              "mandate_options": null,
+              "network": null,
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "single_use_mandate": null,
+          "status": "succeeded",
+          "usage": "off_session"
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "4e335988-67a2-414a-850d-445c94341218"
+      },
+      "type": "setup_intent.created"
+    },
+    {
+      "id": "evt_1Si0lnCgg8LVNGbfC3wRHj3V",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766616183,
+      "data": {
+        "object": {
+          "id": "cs_test_a12KNn6dCWEgW3cZqxrl6Tm0N0UNCYDhcKRyTSYaMwpsgFmnsUssdBxsrk",
+          "object": "checkout.session",
+          "adaptive_pricing": {
+            "enabled": false
+          },
+          "after_expiration": null,
+          "allow_promotion_codes": null,
+          "amount_subtotal": 0,
+          "amount_total": 0,
+          "automatic_tax": {
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "billing_address_collection": null,
+          "branding_settings": {
+            "background_color": "#ffffff",
+            "border_style": "rounded",
+            "button_color": "#0074d4",
+            "display_name": "Cola a├¡",
+            "font_family": "default",
+            "icon": null,
+            "logo": null
+          },
+          "cancel_url": "http://localhost:3000/assinatura?canceled=true",
+          "client_reference_id": null,
+          "client_secret": null,
+          "collected_information": {
+            "business_name": null,
+            "individual_name": null,
+            "shipping_details": null
+          },
+          "consent": null,
+          "consent_collection": null,
+          "created": 1766616149,
+          "currency": "brl",
+          "currency_conversion": null,
+          "custom_fields": [],
+          "custom_text": {
+            "after_submit": null,
+            "shipping_address": null,
+            "submit": null,
+            "terms_of_service_acceptance": null
+          },
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_creation": null,
+          "customer_details": {
+            "address": {
+              "city": null,
+              "country": "BR",
+              "line1": null,
+              "line2": null,
+              "postal_code": null,
+              "state": null
+            },
+            "business_name": null,
+            "email": "teste@teste.com",
+            "individual_name": null,
+            "name": "Greg teste",
+            "phone": null,
+            "tax_exempt": "none",
+            "tax_ids": []
+          },
+          "customer_email": null,
+          "discounts": [],
+          "expires_at": 1766702549,
+          "invoice": "in_1Si0llCgg8LVNGbf0booYXRx",
+          "invoice_creation": null,
+          "livemode": false,
+          "locale": null,
+          "metadata": {
+            "planType": "Avan├ºado",
+            "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+          },
+          "mode": "subscription",
+          "origin_context": null,
+          "payment_intent": null,
+          "payment_link": null,
+          "payment_method_collection": "always",
+          "payment_method_configuration_details": {
+            "id": "pmc_1SfqU1Cgg8LVNGbfhlmX25nF",
+            "parent": null
+          },
+          "payment_method_options": {
+            "card": {
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "payment_status": "paid",
+          "permissions": null,
+          "phone_number_collection": {
+            "enabled": false
+          },
+          "recovered_from": null,
+          "saved_payment_method_options": {
+            "allow_redisplay_filters": [
+              "always"
+            ],
+            "payment_method_remove": "disabled",
+            "payment_method_save": null
+          },
+          "setup_intent": null,
+          "shipping_address_collection": null,
+          "shipping_cost": null,
+          "shipping_options": [],
+          "status": "complete",
+          "submit_type": null,
+          "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9",
+          "success_url": "http://localhost:3000/assinatura?success=true",
+          "total_details": {
+            "amount_discount": 0,
+            "amount_shipping": 0,
+            "amount_tax": 0
+          },
+          "ui_mode": "hosted",
+          "url": null,
+          "wallet_options": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "checkout.session.completed"
+    },
+    {
+      "id": "evt_1Si0lnCgg8LVNGbfprejAnB6",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766616182,
+      "data": {
+        "object": {
+          "id": "sub_1Si0lmCgg8LVNGbfIkimwiU9",
+          "object": "subscription",
+          "application": null,
+          "application_fee_percent": null,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null
+          },
+          "billing_cycle_anchor": 1767933000,
+          "billing_cycle_anchor_config": null,
+          "billing_mode": {
+            "flexible": {
+              "proration_discounts": "included"
+            },
+            "type": "flexible",
+            "updated_at": 1766616149
+          },
+          "billing_thresholds": null,
+          "cancel_at": null,
+          "cancel_at_period_end": false,
+          "canceled_at": null,
+          "cancellation_details": {
+            "comment": null,
+            "feedback": null,
+            "reason": null
+          },
+          "collection_method": "charge_automatically",
+          "created": 1767673800,
+          "currency": "brl",
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "days_until_due": null,
+          "default_payment_method": "pm_1Si0lkCgg8LVNGbfgTU9Y1QJ",
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "ended_at": null,
+          "invoice_settings": {
+            "account_tax_ids": null,
+            "issuer": {
+              "type": "self"
+            }
+          },
+          "items": {
+            "object": "list",
+            "data": [
+              {
+                "id": "si_TfLSej1jwP97ev",
+                "object": "subscription_item",
+                "billing_thresholds": null,
+                "created": 1767673800,
+                "current_period_end": 1767933000,
+                "current_period_start": 1767673800,
+                "discounts": [],
+                "metadata": {},
+                "plan": {
+                  "id": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                  "object": "plan",
+                  "active": true,
+                  "amount": 7990,
+                  "amount_decimal": "7990",
+                  "billing_scheme": "per_unit",
+                  "created": 1766111186,
+                  "currency": "brl",
+                  "interval": "month",
+                  "interval_count": 1,
+                  "livemode": false,
+                  "metadata": {},
+                  "meter": null,
+                  "nickname": null,
+                  "product": "prod_Td9id3KSGQBGtr",
+                  "tiers_mode": null,
+                  "transform_usage": null,
+                  "trial_period_days": null,
+                  "usage_type": "licensed"
+                },
+                "price": {
+                  "id": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                  "object": "price",
+                  "active": true,
+                  "billing_scheme": "per_unit",
+                  "created": 1766111186,
+                  "currency": "brl",
+                  "custom_unit_amount": null,
+                  "livemode": false,
+                  "lookup_key": null,
+                  "metadata": {},
+                  "nickname": null,
+                  "product": "prod_Td9id3KSGQBGtr",
+                  "recurring": {
+                    "interval": "month",
+                    "interval_count": 1,
+                    "meter": null,
+                    "trial_period_days": null,
+                    "usage_type": "licensed"
+                  },
+                  "tax_behavior": "unspecified",
+                  "tiers_mode": null,
+                  "transform_quantity": null,
+                  "type": "recurring",
+                  "unit_amount": 7990,
+                  "unit_amount_decimal": "7990"
+                },
+                "quantity": 1,
+                "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9",
+                "tax_rates": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/subscription_items?subscription=sub_1Si0lmCgg8LVNGbfIkimwiU9"
+          },
+          "latest_invoice": "in_1Si0llCgg8LVNGbf0booYXRx",
+          "livemode": false,
+          "metadata": {
+            "planType": "Avan├ºado",
+            "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+          },
+          "next_pending_invoice_item_invoice": null,
+          "on_behalf_of": null,
+          "pause_collection": null,
+          "payment_settings": {
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "network": null,
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null,
+            "save_default_payment_method": "off"
+          },
+          "pending_invoice_item_interval": null,
+          "pending_setup_intent": null,
+          "pending_update": null,
+          "plan": {
+            "id": "price_1SftOgCgg8LVNGbfmm4UREXj",
+            "object": "plan",
+            "active": true,
+            "amount": 7990,
+            "amount_decimal": "7990",
+            "billing_scheme": "per_unit",
+            "created": 1766111186,
+            "currency": "brl",
+            "interval": "month",
+            "interval_count": 1,
+            "livemode": false,
+            "metadata": {},
+            "meter": null,
+            "nickname": null,
+            "product": "prod_Td9id3KSGQBGtr",
+            "tiers_mode": null,
+            "transform_usage": null,
+            "trial_period_days": null,
+            "usage_type": "licensed"
+          },
+          "quantity": 1,
+          "schedule": null,
+          "start_date": 1767673800,
+          "status": "trialing",
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "transfer_data": null,
+          "trial_end": 1767933000,
+          "trial_settings": {
+            "end_behavior": {
+              "missing_payment_method": "create_invoice"
+            }
+          },
+          "trial_start": 1767673800
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "34e6785b-81c0-4d41-a139-10a939cc15d6"
+      },
+      "type": "customer.subscription.created"
+    },
+    {
+      "id": "evt_1Si0lnCgg8LVNGbf56MXmgSV",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766616182,
+      "data": {
+        "object": {
+          "id": "in_1Si0llCgg8LVNGbf0booYXRx",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 0,
+          "amount_overpaid": 0,
+          "amount_paid": 0,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 0,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_create",
+          "collection_method": "charge_automatically",
+          "created": 1767673800,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767673800,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxTSVRyaUlPMmR3Slg2dExZUjB0UVNaaEdIRENFLDE1NzE1Njk4Mw0200xyt4ggDO?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxTSVRyaUlPMmR3Slg2dExZUjB0UVNaaEdIRENFLDE1NzE1Njk4Mw0200xyt4ggDO/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1Si0llCgg8LVNGbfpXrzuF97",
+                "object": "line_item",
+                "amount": 0,
+                "currency": "brl",
+                "description": "Free trial for 1 ├ù Avan├ºado",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si0llCgg8LVNGbf0booYXRx",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9",
+                    "subscription_item": "si_TfLSej1jwP97ev"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1767933000,
+                  "start": 1767673800
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "0"
+                },
+                "quantity": 1,
+                "subtotal": 0,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si0llCgg8LVNGbf0booYXRx/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0016",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767673800,
+          "period_start": 1767673800,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767673800,
+            "marked_uncollectible_at": null,
+            "paid_at": 1766616181,
+            "voided_at": null
+          },
+          "subtotal": 0,
+          "subtotal_excluding_tax": 0,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 0,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 0,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "34e6785b-81c0-4d41-a139-10a939cc15d6"
+      },
+      "type": "invoice.payment_succeeded"
+    },
+    {
+      "id": "evt_1Si0lnCgg8LVNGbftmGXtPwH",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766616182,
+      "data": {
+        "object": {
+          "id": "in_1Si0llCgg8LVNGbf0booYXRx",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 0,
+          "amount_overpaid": 0,
+          "amount_paid": 0,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 0,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_create",
+          "collection_method": "charge_automatically",
+          "created": 1767673800,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767673800,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxTSVRyaUlPMmR3Slg2dExZUjB0UVNaaEdIRENFLDE1NzE1Njk4Mw0200xyt4ggDO?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxTSVRyaUlPMmR3Slg2dExZUjB0UVNaaEdIRENFLDE1NzE1Njk4Mw0200xyt4ggDO/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1Si0llCgg8LVNGbfpXrzuF97",
+                "object": "line_item",
+                "amount": 0,
+                "currency": "brl",
+                "description": "Free trial for 1 ├ù Avan├ºado",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si0llCgg8LVNGbf0booYXRx",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9",
+                    "subscription_item": "si_TfLSej1jwP97ev"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1767933000,
+                  "start": 1767673800
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "0"
+                },
+                "quantity": 1,
+                "subtotal": 0,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si0llCgg8LVNGbf0booYXRx/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0016",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767673800,
+          "period_start": 1767673800,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767673800,
+            "marked_uncollectible_at": null,
+            "paid_at": 1766616181,
+            "voided_at": null
+          },
+          "subtotal": 0,
+          "subtotal_excluding_tax": 0,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 0,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 0,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "34e6785b-81c0-4d41-a139-10a939cc15d6"
+      },
+      "type": "invoice.paid"
+    },
+    {
+      "id": "evt_1Si0lnCgg8LVNGbf40FPmgw8",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766616182,
+      "data": {
+        "object": {
+          "id": "in_1Si0llCgg8LVNGbf0booYXRx",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 0,
+          "amount_overpaid": 0,
+          "amount_paid": 0,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 0,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_create",
+          "collection_method": "charge_automatically",
+          "created": 1767673800,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767673800,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxTSVRyaUlPMmR3Slg2dExZUjB0UVNaaEdIRENFLDE1NzE1Njk4Mw0200xyt4ggDO?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxTSVRyaUlPMmR3Slg2dExZUjB0UVNaaEdIRENFLDE1NzE1Njk4Mw0200xyt4ggDO/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1Si0llCgg8LVNGbfpXrzuF97",
+                "object": "line_item",
+                "amount": 0,
+                "currency": "brl",
+                "description": "Free trial for 1 ├ù Avan├ºado",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si0llCgg8LVNGbf0booYXRx",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9",
+                    "subscription_item": "si_TfLSej1jwP97ev"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1767933000,
+                  "start": 1767673800
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "0"
+                },
+                "quantity": 1,
+                "subtotal": 0,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si0llCgg8LVNGbf0booYXRx/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0016",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767673800,
+          "period_start": 1767673800,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767673800,
+            "marked_uncollectible_at": null,
+            "paid_at": 1766616181,
+            "voided_at": null
+          },
+          "subtotal": 0,
+          "subtotal_excluding_tax": 0,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 0,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 0,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "34e6785b-81c0-4d41-a139-10a939cc15d6"
+      },
+      "type": "invoice.finalized"
+    },
+    {
+      "id": "evt_1Si0lnCgg8LVNGbfnmuSXkd3",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766616182,
+      "data": {
+        "object": {
+          "id": "in_1Si0llCgg8LVNGbf0booYXRx",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 0,
+          "amount_overpaid": 0,
+          "amount_paid": 0,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 0,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_create",
+          "collection_method": "charge_automatically",
+          "created": 1767673800,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767673800,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxTSVRyaUlPMmR3Slg2dExZUjB0UVNaaEdIRENFLDE1NzE1Njk4Mw0200xyt4ggDO?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxTSVRyaUlPMmR3Slg2dExZUjB0UVNaaEdIRENFLDE1NzE1Njk4Mw0200xyt4ggDO/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1Si0llCgg8LVNGbfpXrzuF97",
+                "object": "line_item",
+                "amount": 0,
+                "currency": "brl",
+                "description": "Free trial for 1 ├ù Avan├ºado",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si0llCgg8LVNGbf0booYXRx",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9",
+                    "subscription_item": "si_TfLSej1jwP97ev"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1767933000,
+                  "start": 1767673800
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "0"
+                },
+                "quantity": 1,
+                "subtotal": 0,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si0llCgg8LVNGbf0booYXRx/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0016",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si0lmCgg8LVNGbfIkimwiU9"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767673800,
+          "period_start": 1767673800,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767673800,
+            "marked_uncollectible_at": null,
+            "paid_at": 1766616181,
+            "voided_at": null
+          },
+          "subtotal": 0,
+          "subtotal_excluding_tax": 0,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 0,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 0,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": null
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "34e6785b-81c0-4d41-a139-10a939cc15d6"
+      },
+      "type": "invoice.created"
+    },
+    {
+      "id": "evt_1Si0lnCgg8LVNGbfFX7f5doE",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766616182,
+      "data": {
+        "object": {
+          "id": "seti_1Si0llCgg8LVNGbfda3W6teh",
+          "object": "setup_intent",
+          "application": null,
+          "automatic_payment_methods": null,
+          "cancellation_reason": null,
+          "client_secret": "seti_1Si0llCgg8LVNGbfda3W6teh_secret_TfLSHxHFzIlsMOP7tEhkqeaPj9ivUnv",
+          "created": 1766616181,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "description": null,
+          "excluded_payment_method_types": null,
+          "flow_directions": null,
+          "last_setup_error": null,
+          "latest_attempt": "setatt_1Si0llCgg8LVNGbfoIhkbG0H",
+          "livemode": false,
+          "mandate": null,
+          "metadata": {},
+          "next_action": null,
+          "on_behalf_of": null,
+          "payment_method": "pm_1Si0lkCgg8LVNGbfgTU9Y1QJ",
+          "payment_method_configuration_details": null,
+          "payment_method_options": {
+            "card": {
+              "mandate_options": null,
+              "network": null,
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "single_use_mandate": null,
+          "status": "succeeded",
+          "usage": "off_session"
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "34e6785b-81c0-4d41-a139-10a939cc15d6"
+      },
+      "type": "setup_intent.succeeded"
+    },
+    {
+      "id": "evt_1Si0lnCgg8LVNGbfzSpOIFTD",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766616182,
+      "data": {
+        "object": {
+          "id": "pm_1Si0lkCgg8LVNGbfgTU9Y1QJ",
+          "object": "payment_method",
+          "allow_redisplay": "limited",
+          "billing_details": {
+            "address": {
+              "city": null,
+              "country": "BR",
+              "line1": null,
+              "line2": null,
+              "postal_code": null,
+              "state": null
+            },
+            "email": "teste@teste.com",
+            "name": "Greg teste",
+            "phone": null,
+            "tax_id": null
+          },
+          "card": {
+            "brand": "visa",
+            "checks": {
+              "address_line1_check": null,
+              "address_postal_code_check": null,
+              "cvc_check": "pass"
+            },
+            "country": "US",
+            "display_brand": "visa",
+            "exp_month": 6,
+            "exp_year": 2030,
+            "fingerprint": "K2o38MjRJeZYeUmf",
+            "funding": "credit",
+            "generated_from": null,
+            "last4": "4242",
+            "networks": {
+              "available": [
+                "visa"
+              ],
+              "preferred": null
+            },
+            "regulated_status": "unregulated",
+            "three_d_secure_usage": {
+              "supported": true
+            },
+            "wallet": null
+          },
+          "created": 1766616180,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "livemode": false,
+          "metadata": {},
+          "type": "card"
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "34e6785b-81c0-4d41-a139-10a939cc15d6"
+      },
+      "type": "payment_method.attached"
+    },
+    {
+      "id": "evt_1Si0lnCgg8LVNGbfIV392Bvc",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766616181,
+      "data": {
+        "object": {
+          "id": "seti_1Si0llCgg8LVNGbfda3W6teh",
+          "object": "setup_intent",
+          "application": null,
+          "automatic_payment_methods": null,
+          "cancellation_reason": null,
+          "client_secret": "seti_1Si0llCgg8LVNGbfda3W6teh_secret_TfLSHxHFzIlsMOP7tEhkqeaPj9ivUnv",
+          "created": 1766616181,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "description": null,
+          "excluded_payment_method_types": null,
+          "flow_directions": null,
+          "last_setup_error": null,
+          "latest_attempt": "setatt_1Si0llCgg8LVNGbfoIhkbG0H",
+          "livemode": false,
+          "mandate": null,
+          "metadata": {},
+          "next_action": null,
+          "on_behalf_of": null,
+          "payment_method": "pm_1Si0lkCgg8LVNGbfgTU9Y1QJ",
+          "payment_method_configuration_details": null,
+          "payment_method_options": {
+            "card": {
+              "mandate_options": null,
+              "network": null,
+              "request_three_d_secure": "automatic"
+            }
+          },
+          "payment_method_types": [
+            "card"
+          ],
+          "single_use_mandate": null,
+          "status": "succeeded",
+          "usage": "off_session"
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": "34e6785b-81c0-4d41-a139-10a939cc15d6"
+      },
+      "type": "setup_intent.created"
+    },
+    {
+      "id": "evt_1Si0d4Cgg8LVNGbfhs2PBrwj",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766615642,
+      "data": {
+        "object": {
+          "id": "inpay_1Si0cOCgg8LVNGbf1uWHmB82",
+          "object": "invoice_payment",
+          "amount_paid": 7990,
+          "amount_requested": 7990,
+          "created": 1767418200,
+          "currency": "brl",
+          "invoice": "in_1Si0cFCgg8LVNGbfaSE4LNwW",
+          "is_default": true,
+          "livemode": false,
+          "payment": {
+            "payment_intent": "pi_3Si0cNCgg8LVNGbf0OujXMUw",
+            "type": "payment_intent"
+          },
+          "status": "paid",
+          "status_transitions": {
+            "canceled_at": null,
+            "paid_at": 1767418200
+          }
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "invoice_payment.paid"
+    },
+    {
+      "id": "evt_1Si0cTCgg8LVNGbfirDLPBaV",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766615605,
+      "data": {
+        "object": {
+          "id": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "object": "test_helpers.test_clock",
+          "created": 1766291490,
+          "deletes_after": 1768883490,
+          "frozen_time": 1767673800,
+          "livemode": false,
+          "name": "Test clock for cus_TdhX0sMNPRrhLR",
+          "status": "ready",
+          "status_details": {}
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "test_helpers.test_clock.ready"
+    },
+    {
+      "id": "evt_1Si0cSCgg8LVNGbfcv7dOz6l",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766615603,
+      "data": {
+        "object": {
+          "id": "in_1Si0cFCgg8LVNGbfaSE4LNwW",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 7990,
+          "amount_overpaid": 0,
+          "amount_paid": 7990,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 1,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_cycle",
+          "collection_method": "charge_automatically",
+          "created": 1767414600,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767418200,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxJeFVNQ2Y4UldCcGFObDdYZEQ3SDY3REhyUzlpLDE1NzE1NjQwNA0200xh10a0nk?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxJeFVNQ2Y4UldCcGFObDdYZEQ3SDY3REhyUzlpLDE1NzE1NjQwNA0200xh10a0nk/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1SlMTUCgg8LVNGbfrTrXIEQX",
+                "object": "line_item",
+                "amount": 7990,
+                "currency": "brl",
+                "description": "1 ├ù Avan├ºado (at R$ 79.90 / month)",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si0cFCgg8LVNGbfaSE4LNwW",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si0avCgg8LVNGbfxIPMjIfl",
+                    "subscription_item": "si_TfLHKNMxzOi94t"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1770093000,
+                  "start": 1767414600
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "7990"
+                },
+                "quantity": 1,
+                "subtotal": 7990,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si0cFCgg8LVNGbfaSE4LNwW/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0015",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si0avCgg8LVNGbfxIPMjIfl"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767414600,
+          "period_start": 1767155400,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767418200,
+            "marked_uncollectible_at": null,
+            "paid_at": 1767418200,
+            "voided_at": null
+          },
+          "subtotal": 7990,
+          "subtotal_excluding_tax": 7990,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 7990,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 7990,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": 1767414600
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "invoice.payment_succeeded"
+    },
+    {
+      "id": "evt_1Si0cSCgg8LVNGbfhjOc16Mr",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766615603,
+      "data": {
+        "object": {
+          "id": "in_1Si0cFCgg8LVNGbfaSE4LNwW",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 7990,
+          "amount_overpaid": 0,
+          "amount_paid": 7990,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 1,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_cycle",
+          "collection_method": "charge_automatically",
+          "created": 1767414600,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767418200,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxJeFVNQ2Y4UldCcGFObDdYZEQ3SDY3REhyUzlpLDE1NzE1NjQwNA0200xh10a0nk?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxJeFVNQ2Y4UldCcGFObDdYZEQ3SDY3REhyUzlpLDE1NzE1NjQwNA0200xh10a0nk/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1SlMTUCgg8LVNGbfrTrXIEQX",
+                "object": "line_item",
+                "amount": 7990,
+                "currency": "brl",
+                "description": "1 ├ù Avan├ºado (at R$ 79.90 / month)",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si0cFCgg8LVNGbfaSE4LNwW",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si0avCgg8LVNGbfxIPMjIfl",
+                    "subscription_item": "si_TfLHKNMxzOi94t"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1770093000,
+                  "start": 1767414600
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "7990"
+                },
+                "quantity": 1,
+                "subtotal": 7990,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si0cFCgg8LVNGbfaSE4LNwW/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0015",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si0avCgg8LVNGbfxIPMjIfl"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767414600,
+          "period_start": 1767155400,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767418200,
+            "marked_uncollectible_at": null,
+            "paid_at": 1767418200,
+            "voided_at": null
+          },
+          "subtotal": 7990,
+          "subtotal_excluding_tax": 7990,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 7990,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 7990,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": 1767414600
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "invoice.paid"
+    },
+    {
+      "id": "evt_1Si0cSCgg8LVNGbfDkA77l9s",
+      "object": "event",
+      "api_version": "2025-12-15.clover",
+      "created": 1766615603,
+      "data": {
+        "object": {
+          "id": "in_1Si0cFCgg8LVNGbfaSE4LNwW",
+          "object": "invoice",
+          "account_country": "BR",
+          "account_name": "Cola a├¡",
+          "account_tax_ids": null,
+          "amount_due": 7990,
+          "amount_overpaid": 0,
+          "amount_paid": 7990,
+          "amount_remaining": 0,
+          "amount_shipping": 0,
+          "application": null,
+          "attempt_count": 1,
+          "attempted": true,
+          "auto_advance": false,
+          "automatic_tax": {
+            "disabled_reason": null,
+            "enabled": false,
+            "liability": null,
+            "provider": null,
+            "status": null
+          },
+          "automatically_finalizes_at": null,
+          "billing_reason": "subscription_cycle",
+          "collection_method": "charge_automatically",
+          "created": 1767414600,
+          "currency": "brl",
+          "custom_fields": null,
+          "customer": "cus_TdhX0sMNPRrhLR",
+          "customer_account": null,
+          "customer_address": null,
+          "customer_email": "teste@teste.com",
+          "customer_name": null,
+          "customer_phone": null,
+          "customer_shipping": null,
+          "customer_tax_exempt": "none",
+          "customer_tax_ids": [],
+          "default_payment_method": null,
+          "default_source": null,
+          "default_tax_rates": [],
+          "description": null,
+          "discounts": [],
+          "due_date": null,
+          "effective_at": 1767418200,
+          "ending_balance": 0,
+          "footer": null,
+          "from_invoice": null,
+          "hosted_invoice_url": "https://invoice.stripe.com/i/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxJeFVNQ2Y4UldCcGFObDdYZEQ3SDY3REhyUzlpLDE1NzE1NjQwNA0200xh10a0nk?s=ap",
+          "invoice_pdf": "https://pay.stripe.com/invoice/acct_1SfqTVCgg8LVNGbf/test_YWNjdF8xU2ZxVFZDZ2c4TFZOR2JmLF9UZkxJeFVNQ2Y4UldCcGFObDdYZEQ3SDY3REhyUzlpLDE1NzE1NjQwNA0200xh10a0nk/pdf?s=ap",
+          "issuer": {
+            "type": "self"
+          },
+          "last_finalization_error": null,
+          "latest_revision": null,
+          "lines": {
+            "object": "list",
+            "data": [
+              {
+                "id": "il_1SlMTUCgg8LVNGbfrTrXIEQX",
+                "object": "line_item",
+                "amount": 7990,
+                "currency": "brl",
+                "description": "1 ├ù Avan├ºado (at R$ 79.90 / month)",
+                "discount_amounts": [],
+                "discountable": true,
+                "discounts": [],
+                "invoice": "in_1Si0cFCgg8LVNGbfaSE4LNwW",
+                "livemode": false,
+                "metadata": {
+                  "planType": "Avan├ºado",
+                  "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+                },
+                "parent": {
+                  "invoice_item_details": null,
+                  "subscription_item_details": {
+                    "invoice_item": null,
+                    "proration": false,
+                    "proration_details": {
+                      "credited_items": null
+                    },
+                    "subscription": "sub_1Si0avCgg8LVNGbfxIPMjIfl",
+                    "subscription_item": "si_TfLHKNMxzOi94t"
+                  },
+                  "type": "subscription_item_details"
+                },
+                "period": {
+                  "end": 1770093000,
+                  "start": 1767414600
+                },
+                "pretax_credit_amounts": [],
+                "pricing": {
+                  "price_details": {
+                    "price": "price_1SftOgCgg8LVNGbfmm4UREXj",
+                    "product": "prod_Td9id3KSGQBGtr"
+                  },
+                  "type": "price_details",
+                  "unit_amount_decimal": "7990"
+                },
+                "quantity": 1,
+                "subtotal": 7990,
+                "taxes": []
+              }
+            ],
+            "has_more": false,
+            "total_count": 1,
+            "url": "/v1/invoices/in_1Si0cFCgg8LVNGbfaSE4LNwW/lines"
+          },
+          "livemode": false,
+          "metadata": {},
+          "next_payment_attempt": null,
+          "number": "50OTMJMC-0015",
+          "on_behalf_of": null,
+          "parent": {
+            "quote_details": null,
+            "subscription_details": {
+              "metadata": {
+                "planType": "Avan├ºado",
+                "userId": "2c799746-cf08-450e-8087-bb54092b7dd1"
+              },
+              "subscription": "sub_1Si0avCgg8LVNGbfxIPMjIfl"
+            },
+            "type": "subscription_details"
+          },
+          "payment_settings": {
+            "default_mandate": null,
+            "payment_method_options": {
+              "acss_debit": null,
+              "bancontact": null,
+              "card": {
+                "request_three_d_secure": "automatic"
+              },
+              "customer_balance": null,
+              "konbini": null,
+              "payto": null,
+              "sepa_debit": null,
+              "us_bank_account": null
+            },
+            "payment_method_types": null
+          },
+          "period_end": 1767414600,
+          "period_start": 1767155400,
+          "post_payment_credit_notes_amount": 0,
+          "pre_payment_credit_notes_amount": 0,
+          "receipt_number": null,
+          "rendering": null,
+          "shipping_cost": null,
+          "shipping_details": null,
+          "starting_balance": 0,
+          "statement_descriptor": null,
+          "status": "paid",
+          "status_transitions": {
+            "finalized_at": 1767418200,
+            "marked_uncollectible_at": null,
+            "paid_at": 1767418200,
+            "voided_at": null
+          },
+          "subtotal": 7990,
+          "subtotal_excluding_tax": 7990,
+          "test_clock": "clock_1SgeIoCgg8LVNGbf9xbk3qsj",
+          "total": 7990,
+          "total_discount_amounts": [],
+          "total_excluding_tax": 7990,
+          "total_pretax_credit_amounts": [],
+          "total_taxes": [],
+          "webhooks_delivered_at": 1767414600
+        }
+      },
+      "livemode": false,
+      "pending_webhooks": 0,
+      "request": {
+        "id": null,
+        "idempotency_key": null
+      },
+      "type": "invoice.finalized"
+    }
+  ],
+  "has_more": true,
+  "url": "/v1/events"
+}

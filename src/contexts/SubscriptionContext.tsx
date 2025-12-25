@@ -129,37 +129,37 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                 .from('subscriptions')
                 .select('*')
                 .eq('user_id', user.id)
-                .single();
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
             if (error) {
-                if (error.code === 'PGRST116') {
-                    // No subscription found, create default trial
-                    const now = new Date();
-                    const trialEnd = new Date(now);
-                    trialEnd.setDate(now.getDate() + 3); // 3 days trial
-
-                    const { data: newSub, error: insertError } = await supabase
-                        .from('subscriptions')
-                        .insert({
-                            user_id: user.id,
-                            plan_type: 'Avançado',
-                            status: 'trial',
-                            billing_period: 'monthly',
-                            trial_ends_at: trialEnd.toISOString(),
-                            current_period_start: now.toISOString(),
-                            current_period_end: trialEnd.toISOString(),
-                        })
-                        .select()
-                        .single();
-
-                    if (!insertError && newSub) {
-                        setSubscription(newSub);
-                    }
-                } else {
-                    console.error('Error fetching subscription:', error);
-                }
+                console.error('Error fetching subscription:', error);
             } else if (data) {
                 setSubscription(data);
+            } else {
+                // No subscription found (data is null), create default trial
+                const now = new Date();
+                const trialEnd = new Date(now);
+                trialEnd.setDate(now.getDate() + 3); // 3 days trial
+
+                const { data: newSub, error: insertError } = await supabase
+                    .from('subscriptions')
+                    .insert({
+                        user_id: user.id,
+                        plan_type: 'Avançado',
+                        status: 'trial',
+                        billing_period: 'monthly',
+                        trial_ends_at: trialEnd.toISOString(),
+                        current_period_start: now.toISOString(),
+                        current_period_end: trialEnd.toISOString(),
+                    })
+                    .select()
+                    .single();
+
+                if (!insertError && newSub) {
+                    setSubscription(newSub);
+                }
             }
         } catch (error) {
             console.error('Error:', error);

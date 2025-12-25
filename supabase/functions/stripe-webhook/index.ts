@@ -1,11 +1,11 @@
-
+// @ts-nocheck - This is a Deno Edge Function, IDE errors are expected
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.14.0?target=deno";
 
 console.log("Stripe Webhook Function Started");
 
-serve(async (req) => {
+serve(async (req: Request) => {
     try {
         const signature = req.headers.get("Stripe-Signature");
 
@@ -38,9 +38,10 @@ serve(async (req) => {
                 signature,
                 stripeWebhookSecret
             );
-        } catch (err) {
-            console.error(`Webhook signature verification failed: ${err.message}`);
-            return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+        } catch (err: unknown) {
+            const errMessage = err instanceof Error ? err.message : 'Unknown error';
+            console.error(`Webhook signature verification failed: ${errMessage}`);
+            return new Response(`Webhook Error: ${errMessage}`, { status: 400 });
         }
 
         const session = event.data.object as any; // Using any to avoid strict type issues in Deno for now
@@ -120,9 +121,19 @@ serve(async (req) => {
                     .single();
 
                 if (userData) {
-                    // Ideally verify plan type from priceId again here if needed
+                    // Derive plan type from price ID
+                    const stripePriceBasic = Deno.env.get("STRIPE_PRICE_BASIC") || Deno.env.get("NEXT_PUBLIC_STRIPE_PRICE_BASIC");
+                    const stripePriceProfessional = Deno.env.get("STRIPE_PRICE_PROFESSIONAL") || Deno.env.get("NEXT_PUBLIC_STRIPE_PRICE_PROFESSIONAL");
+                    const stripePriceEnterprise = Deno.env.get("STRIPE_PRICE_ENTERPRISE") || Deno.env.get("NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE");
+
+                    let planType = "Basico"; // Default
+                    if (priceId === stripePriceBasic) planType = "Basico";
+                    else if (priceId === stripePriceProfessional) planType = "Avançado";
+                    else if (priceId === stripePriceEnterprise) planType = "Profissional";
+
                     const updateData = {
                         status: sub.status,
+                        plan_type: planType,
                         current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
                         current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
                         stripe_current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
@@ -133,6 +144,8 @@ serve(async (req) => {
                         .from("subscriptions")
                         .update(updateData)
                         .eq("user_id", userData.user_id);
+
+                    console.log(`Updated subscription for user ${userData.user_id} to plan ${planType}`);
                 }
                 break;
             }
@@ -161,9 +174,10 @@ serve(async (req) => {
             headers: { "Content-Type": "application/json" },
             status: 200,
         });
-    } catch (err) {
+    } catch (err: unknown) {
+        const errMessage = err instanceof Error ? err.message : 'Unknown error';
         console.error(err);
-        return new Response(JSON.stringify({ error: err.message }), {
+        return new Response(JSON.stringify({ error: errMessage }), {
             headers: { "Content-Type": "application/json" },
             status: 400,
         });
