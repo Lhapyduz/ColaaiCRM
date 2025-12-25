@@ -97,6 +97,9 @@ interface SubscriptionContextType {
     loading: boolean;
     isTrialExpired: boolean;
     daysLeftInTrial: number;
+    isSubscriptionExpired: boolean;
+    isBlocked: boolean;
+    daysUntilExpiration: number;
     canAccess: (feature: FeatureKey) => boolean;
     getFeatureValue: (feature: FeatureKey) => boolean | string;
     getLimit: (resource: LimitKey) => number;
@@ -214,6 +217,25 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         ? Math.max(0, Math.ceil((new Date(subscription.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
         : 0;
 
+    // Check if subscription period has expired (current_period_end has passed)
+    const isSubscriptionExpired: boolean = !!subscription?.current_period_end &&
+        new Date(subscription.current_period_end) < new Date() &&
+        subscription.status !== 'active' &&
+        subscription.status !== 'trial';
+
+    // Calculate days until expiration
+    const daysUntilExpiration = subscription?.current_period_end
+        ? Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+        : 0;
+
+    // Check if access should be blocked (trial expired OR subscription expired OR status is expired/cancelled)
+    const isBlocked: boolean =
+        isTrialExpired ||
+        isSubscriptionExpired ||
+        subscription?.status === 'expired' ||
+        subscription?.status === 'cancelled' ||
+        (!subscription && !loading); // No subscription at all (after loading)
+
     // Check if user can access a feature
     const canAccess = (feature: FeatureKey): boolean => {
         if (isTrialExpired) return false;
@@ -253,6 +275,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
             loading,
             isTrialExpired,
             daysLeftInTrial,
+            isSubscriptionExpired,
+            isBlocked,
+            daysUntilExpiration,
             canAccess,
             getFeatureValue,
             getLimit,

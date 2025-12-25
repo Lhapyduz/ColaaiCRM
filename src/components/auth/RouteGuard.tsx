@@ -4,6 +4,8 @@ import React, { ReactNode, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEmployee } from '@/contexts/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
+import SubscriptionExpiredScreen from '@/components/subscription/SubscriptionExpiredScreen';
 import styles from './RouteGuard.module.css';
 
 // Define which permission is required for each route
@@ -34,6 +36,9 @@ export const ROLE_SPECIFIC_ROUTES: Record<string, string[]> = {
     '/entregas': ['admin', 'manager', 'delivery'],
 };
 
+// Routes that are allowed even when subscription is expired
+const ALLOWED_WHEN_EXPIRED = ['/assinatura', '/login', '/registro'];
+
 interface RouteGuardProps {
     children: ReactNode;
     requiredPermission?: string;
@@ -44,8 +49,12 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
     const { activeEmployee, hasPermission, isLocked, loading: employeeLoading } = useEmployee();
+    const { isBlocked, loading: subscriptionLoading } = useSubscription();
     const [authorized, setAuthorized] = useState(false);
     const [checking, setChecking] = useState(true);
+
+    // Check if current path is allowed when subscription is expired
+    const isPathAllowedWhenExpired = ALLOWED_WHEN_EXPIRED.some(route => pathname.startsWith(route));
 
     useEffect(() => {
         if (authLoading || employeeLoading) return;
@@ -98,13 +107,18 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     }, [user, authLoading, employeeLoading, activeEmployee, isLocked, pathname, requiredPermission, hasPermission, router]);
 
     // Still loading
-    if (authLoading || employeeLoading || checking) {
+    if (authLoading || employeeLoading || subscriptionLoading || checking) {
         return (
             <div className={styles.loadingContainer}>
                 <div className={styles.spinner}></div>
                 <p>Verificando permissões...</p>
             </div>
         );
+    }
+
+    // Check subscription expiration (only for logged-in users, on restricted paths)
+    if (user && isBlocked && !isPathAllowedWhenExpired) {
+        return <SubscriptionExpiredScreen />;
     }
 
     // Locked screen
