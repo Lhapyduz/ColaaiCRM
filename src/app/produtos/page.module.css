@@ -331,6 +331,54 @@
     gap: 12px;
 }
 
+/* Addon Groups Section */
+.addonGroupsSection {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.addonGroupsSection>label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.addonGroupsList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.addonGroupOption {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 0.875rem;
+}
+
+.addonGroupOption:hover {
+    border-color: var(--primary);
+}
+
+.addonGroupOption.selected {
+    background: rgba(255, 107, 53, 0.1);
+    border-color: var(--primary);
+}
+
+.addonGroupOption input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .productsGrid {

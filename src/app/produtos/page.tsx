@@ -31,6 +31,13 @@ interface Product {
     available: boolean;
 }
 
+interface AddonGroup {
+    id: string;
+    name: string;
+    description: string | null;
+    required: boolean;
+}
+
 export default function ProdutosPage() {
     const { user } = useAuth();
     const [categories, setCategories] = useState<Category[]>([]);
@@ -51,6 +58,10 @@ export default function ProdutosPage() {
     });
     const [saving, setSaving] = useState(false);
 
+    // Addon groups
+    const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([]);
+    const [selectedAddonGroups, setSelectedAddonGroups] = useState<string[]>([]);
+
     useEffect(() => {
         if (user) {
             fetchData();
@@ -61,13 +72,15 @@ export default function ProdutosPage() {
         if (!user) return;
 
         try {
-            const [categoriesRes, productsRes] = await Promise.all([
+            const [categoriesRes, productsRes, groupsRes] = await Promise.all([
                 supabase.from('categories').select('*').eq('user_id', user.id),
-                supabase.from('products').select('*').eq('user_id', user.id).order('name')
+                supabase.from('products').select('*').eq('user_id', user.id).order('name'),
+                supabase.from('addon_groups').select('id, name, description, required').eq('user_id', user.id).order('name')
             ]);
 
             if (categoriesRes.data) setCategories(categoriesRes.data);
             if (productsRes.data) setProducts(productsRes.data);
+            if (groupsRes.data) setAddonGroups(groupsRes.data);
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -90,7 +103,7 @@ export default function ProdutosPage() {
         }).format(value);
     };
 
-    const openProductModal = (product?: Product) => {
+    const openProductModal = async (product?: Product) => {
         if (product) {
             setEditingProduct(product);
             setProductForm({
@@ -100,6 +113,12 @@ export default function ProdutosPage() {
                 category_id: product.category_id,
                 available: product.available
             });
+            // Load existing addon groups for this product
+            const { data } = await supabase
+                .from('product_addon_groups')
+                .select('group_id')
+                .eq('product_id', product.id);
+            setSelectedAddonGroups(data?.map(g => g.group_id) || []);
         } else {
             setEditingProduct(null);
             setProductForm({
@@ -109,6 +128,7 @@ export default function ProdutosPage() {
                 category_id: categories[0]?.id || '',
                 available: true
             });
+            setSelectedAddonGroups([]);
         }
         setShowProductModal(true);
     };
@@ -116,6 +136,7 @@ export default function ProdutosPage() {
     const closeProductModal = () => {
         setShowProductModal(false);
         setEditingProduct(null);
+        setSelectedAddonGroups([]);
     };
 
     const handleSaveProduct = async () => {
@@ -133,13 +154,29 @@ export default function ProdutosPage() {
                 available: productForm.available
             };
 
+            let productId: string;
+
             if (editingProduct) {
                 await supabase
                     .from('products')
                     .update(productData)
                     .eq('id', editingProduct.id);
+                productId = editingProduct.id;
             } else {
-                await supabase.from('products').insert(productData);
+                const { data } = await supabase.from('products').insert(productData).select().single();
+                productId = data.id;
+            }
+
+            // Update addon groups
+            await supabase.from('product_addon_groups').delete().eq('product_id', productId);
+
+            if (selectedAddonGroups.length > 0) {
+                await supabase.from('product_addon_groups').insert(
+                    selectedAddonGroups.map(groupId => ({
+                        product_id: productId,
+                        group_id: groupId
+                    }))
+                );
             }
 
             fetchData();
@@ -330,6 +367,41 @@ export default function ProdutosPage() {
                                         rows={3}
                                     />
                                 </div>
+
+                                {addonGroups.length > 0 && (
+                                    <div className={styles.addonGroupsSection}>
+                                        <label>Grupos de Adicionais</label>
+                                        <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '0.5rem' }}>
+                                            Selecione quais adicionais este produto pode ter
+                                        </p>
+                                        <div className={styles.addonGroupsList}>
+                                            {addonGroups.map((group) => (
+                                                <label
+                                                    key={group.id}
+                                                    className={`${styles.addonGroupOption} ${selectedAddonGroups.includes(group.id) ? styles.selected : ''}`}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedAddonGroups.includes(group.id)}
+                                                        onChange={(e) => {
+                                                            if (e.target.checked) {
+                                                                setSelectedAddonGroups([...selectedAddonGroups, group.id]);
+                                                            } else {
+                                                                setSelectedAddonGroups(selectedAddonGroups.filter(id => id !== group.id));
+                                                            }
+                                                        }}
+                                                    />
+                                                    <span>{group.name}</span>
+                                                    {group.required && (
+                                                        <span style={{ fontSize: '0.7rem', color: '#f39c12', marginLeft: '0.5rem' }}>
+                                                            (Obrigatório)
+                                                        </span>
+                                                    )}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <label className={styles.checkboxLabel}>
                                     <input

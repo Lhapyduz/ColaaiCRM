@@ -20,6 +20,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { logOrderCreated } from '@/lib/actionLogger';
 import styles from './page.module.css';
 
 interface Category {
@@ -35,10 +36,31 @@ interface Product {
     category_id: string;
 }
 
+interface Addon {
+    id: string;
+    name: string;
+    price: number;
+}
+
+interface AddonGroup {
+    id: string;
+    name: string;
+    required: boolean;
+    max_selection: number;
+    addons: Addon[];
+}
+
+interface SelectedAddon {
+    id: string;
+    name: string;
+    price: number;
+}
+
 interface CartItem {
     product: Product;
     quantity: number;
     notes: string;
+    addons: SelectedAddon[];
 }
 
 const paymentMethods = [
@@ -86,6 +108,13 @@ export default function NovoPedidoPage() {
     // App settings (for feature toggles)
     const [appSettings, setAppSettings] = useState<{ coupons_enabled: boolean; loyalty_enabled: boolean } | null>(null);
 
+    // Addons modal state
+    const [showAddonModal, setShowAddonModal] = useState(false);
+    const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+    const [productAddonGroups, setProductAddonGroups] = useState<AddonGroup[]>([]);
+    const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
+    const [loadingAddons, setLoadingAddons] = useState(false);
+
     useEffect(() => {
         if (user) {
             fetchData();
@@ -130,17 +159,103 @@ export default function NovoPedidoPage() {
         ? products.filter(p => p.category_id === selectedCategory)
         : products;
 
-    const addToCart = (product: Product) => {
+    // Load addons for a product
+    const loadProductAddons = async (productId: string): Promise<AddonGroup[]> => {
+        const { data: groupLinks } = await supabase
+            .from('product_addon_groups')
+            .select(`
+                group_id,
+                addon_groups (
+                    id,
+                    name,
+                    required,
+                    max_selection,
+                    addon_group_items (
+                        product_addons (
+                            id,
+                            name,
+                            price,
+                            available
+                        )
+                    )
+                )
+            `)
+            .eq('product_id', productId);
+
+        if (!groupLinks) return [];
+
+        return groupLinks
+            .filter((link: any) => link.addon_groups)
+            .map((link: any) => ({
+                id: link.addon_groups.id,
+                name: link.addon_groups.name,
+                required: link.addon_groups.required,
+                max_selection: link.addon_groups.max_selection,
+                addons: (link.addon_groups.addon_group_items || [])
+                    .filter((item: any) => item.product_addons?.available)
+                    .map((item: any) => ({
+                        id: item.product_addons.id,
+                        name: item.product_addons.name,
+                        price: item.product_addons.price
+                    }))
+            }))
+            .filter((g: AddonGroup) => g.addons.length > 0);
+    };
+
+    const handleAddToCart = async (product: Product) => {
+        setLoadingAddons(true);
+        const addonGroups = await loadProductAddons(product.id);
+        setLoadingAddons(false);
+
+        if (addonGroups.length > 0) {
+            // Product has addons, show modal
+            setPendingProduct(product);
+            setProductAddonGroups(addonGroups);
+            setSelectedAddons([]);
+            setShowAddonModal(true);
+        } else {
+            // No addons, add directly to cart
+            addToCart(product, []);
+        }
+    };
+
+    const confirmAddToCart = () => {
+        if (pendingProduct) {
+            addToCart(pendingProduct, selectedAddons);
+            setShowAddonModal(false);
+            setPendingProduct(null);
+            setProductAddonGroups([]);
+            setSelectedAddons([]);
+        }
+    };
+
+    const toggleAddon = (addon: Addon) => {
+        setSelectedAddons(prev => {
+            const exists = prev.find(a => a.id === addon.id);
+            if (exists) {
+                return prev.filter(a => a.id !== addon.id);
+            } else {
+                return [...prev, { id: addon.id, name: addon.name, price: addon.price }];
+            }
+        });
+    };
+
+    const addToCart = (product: Product, addons: SelectedAddon[]) => {
         setCart(prev => {
-            const existing = prev.find(item => item.product.id === product.id);
+            // For items with addons, always add as new item
+            if (addons.length > 0) {
+                return [...prev, { product, quantity: 1, notes: '', addons }];
+            }
+            // For items without addons, increment if exists
+            const existing = prev.find(item => item.product.id === product.id && item.addons.length === 0);
             if (existing) {
                 return prev.map(item =>
-                    item.product.id === product.id
+                    item.product.id === product.id && item.addons.length === 0
                         ? { ...item, quantity: item.quantity + 1 }
                         : item
                 );
             }
-            return [...prev, { product, quantity: 1, notes: '' }];
+            return [...prev, { product, quantity: 1, notes: '', addons: [] }];
         });
     };
 
@@ -167,7 +282,10 @@ export default function NovoPedidoPage() {
         ));
     };
 
-    const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    const subtotal = cart.reduce((sum, item) => {
+        const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
+        return sum + ((item.product.price + addonTotal) * item.quantity);
+    }, 0);
 
     // Calculate discount
     const discount = appliedCoupon
@@ -326,25 +444,55 @@ export default function NovoPedidoPage() {
                 throw new Error(orderError.message || 'Failed to create order');
             }
 
-            // Create order items
-            const orderItems = cart.map(item => ({
-                order_id: order.id,
-                product_id: item.product.id,
-                product_name: item.product.name,
-                quantity: item.quantity,
-                unit_price: item.product.price,
-                total: item.product.price * item.quantity,
-                notes: item.notes || null
-            }));
+            // Create order items with addons
+            const orderItems = cart.map(item => {
+                const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
+                return {
+                    order_id: order.id,
+                    product_id: item.product.id,
+                    product_name: item.product.name,
+                    quantity: item.quantity,
+                    unit_price: item.product.price,
+                    total: (item.product.price + addonTotal) * item.quantity,
+                    notes: item.notes || null
+                };
+            });
 
-            const { error: itemsError } = await supabase
+            const { data: insertedItems, error: itemsError } = await supabase
                 .from('order_items')
-                .insert(orderItems);
+                .insert(orderItems)
+                .select('id');
 
             if (itemsError) {
                 console.error('Order items error:', itemsError);
                 throw new Error(itemsError.message || 'Failed to create order items');
             }
+
+            // Save addons for each order item
+            if (insertedItems) {
+                const addonInserts: { order_item_id: string; addon_id: string; addon_name: string; addon_price: number; quantity: number }[] = [];
+
+                cart.forEach((item, index) => {
+                    if (item.addons.length > 0 && insertedItems[index]) {
+                        item.addons.forEach(addon => {
+                            addonInserts.push({
+                                order_item_id: insertedItems[index].id,
+                                addon_id: addon.id,
+                                addon_name: addon.name,
+                                addon_price: addon.price,
+                                quantity: 1
+                            });
+                        });
+                    }
+                });
+
+                if (addonInserts.length > 0) {
+                    await supabase.from('order_item_addons').insert(addonInserts);
+                }
+            }
+
+            // Log order creation
+            logOrderCreated(order.id, orderNumber, total);
 
             // Update coupon usage if applied (non-blocking errors)
             if (appliedCoupon) {
@@ -535,7 +683,7 @@ export default function NovoPedidoPage() {
                                         <Card
                                             key={product.id}
                                             className={`${styles.productCard} ${inCart ? styles.inCart : ''}`}
-                                            onClick={() => addToCart(product)}
+                                            onClick={() => handleAddToCart(product)}
                                             hoverable
                                         >
                                             <div className={styles.productInfo}>
@@ -568,40 +716,51 @@ export default function NovoPedidoPage() {
                             ) : (
                                 <>
                                     <div className={styles.cartItems}>
-                                        {cart.map((item) => (
-                                            <div key={item.product.id} className={styles.cartItem}>
-                                                <div className={styles.cartItemInfo}>
-                                                    <span className={styles.cartItemName}>{item.product.name}</span>
-                                                    <span className={styles.cartItemPrice}>
-                                                        {formatCurrency(item.product.price * item.quantity)}
-                                                    </span>
-                                                </div>
-                                                <div className={styles.cartItemActions}>
-                                                    <div className={styles.quantityControl}>
-                                                        <button onClick={() => updateQuantity(item.product.id, -1)}>
-                                                            <FiMinus />
-                                                        </button>
-                                                        <span>{item.quantity}</span>
-                                                        <button onClick={() => updateQuantity(item.product.id, 1)}>
-                                                            <FiPlus />
+                                        {cart.map((item, index) => {
+                                            const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
+                                            const itemTotal = (item.product.price + addonTotal) * item.quantity;
+                                            return (
+                                                <div key={`${item.product.id}-${index}`} className={styles.cartItem}>
+                                                    <div className={styles.cartItemInfo}>
+                                                        <span className={styles.cartItemName}>
+                                                            {item.product.name}
+                                                            {item.addons.length > 0 && (
+                                                                <span style={{ fontSize: '0.75rem', color: '#888', display: 'block' }}>
+                                                                    + {item.addons.map(a => a.name).join(', ')}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <span className={styles.cartItemPrice}>
+                                                            {formatCurrency(itemTotal)}
+                                                        </span>
+                                                    </div>
+                                                    <div className={styles.cartItemActions}>
+                                                        <div className={styles.quantityControl}>
+                                                            <button onClick={() => updateQuantity(item.product.id, -1)}>
+                                                                <FiMinus />
+                                                            </button>
+                                                            <span>{item.quantity}</span>
+                                                            <button onClick={() => updateQuantity(item.product.id, 1)}>
+                                                                <FiPlus />
+                                                            </button>
+                                                        </div>
+                                                        <button
+                                                            className={styles.removeBtn}
+                                                            onClick={() => removeFromCart(item.product.id)}
+                                                        >
+                                                            <FiTrash2 />
                                                         </button>
                                                     </div>
-                                                    <button
-                                                        className={styles.removeBtn}
-                                                        onClick={() => removeFromCart(item.product.id)}
-                                                    >
-                                                        <FiTrash2 />
-                                                    </button>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Observação..."
+                                                        value={item.notes}
+                                                        onChange={(e) => updateItemNotes(item.product.id, e.target.value)}
+                                                        className={styles.itemNotes}
+                                                    />
                                                 </div>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Observação..."
-                                                    value={item.notes}
-                                                    onChange={(e) => updateItemNotes(item.product.id, e.target.value)}
-                                                    className={styles.itemNotes}
-                                                />
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
 
                                     <div className={styles.cartDivider} />
@@ -776,6 +935,59 @@ export default function NovoPedidoPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Addon Selection Modal */}
+            {showAddonModal && pendingProduct && (
+                <div className={styles.modalOverlay} onClick={() => setShowAddonModal(false)}>
+                    <div className={styles.addonModal} onClick={(e) => e.stopPropagation()}>
+                        <h2>Adicionais para {pendingProduct.name}</h2>
+
+                        {productAddonGroups.map((group) => (
+                            <div key={group.id} className={styles.addonGroup}>
+                                <h3>
+                                    {group.name}
+                                    {group.required && <span style={{ color: '#f39c12', fontSize: '0.8rem' }}> (Obrigatório)</span>}
+                                </h3>
+                                <div className={styles.addonList}>
+                                    {group.addons.map((addon) => (
+                                        <label
+                                            key={addon.id}
+                                            className={`${styles.addonOption} ${selectedAddons.find(a => a.id === addon.id) ? styles.selected : ''}`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={!!selectedAddons.find(a => a.id === addon.id)}
+                                                onChange={() => toggleAddon(addon)}
+                                            />
+                                            <span>{addon.name}</span>
+                                            {addon.price > 0 && (
+                                                <span className={styles.addonPrice}>
+                                                    +{formatCurrency(addon.price)}
+                                                </span>
+                                            )}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+
+                        <div className={styles.addonModalActions}>
+                            <Button variant="ghost" onClick={() => setShowAddonModal(false)}>
+                                Cancelar
+                            </Button>
+                            <Button onClick={confirmAddToCart}>
+                                Adicionar ao Pedido
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {loadingAddons && (
+                <div className={styles.loadingOverlay}>
+                    <div className={styles.spinner} />
+                </div>
+            )}
         </MainLayout>
     );
 }

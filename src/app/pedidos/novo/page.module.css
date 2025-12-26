@@ -460,6 +460,144 @@
     margin-top: 8px;
 }
 
+/* Addon Modal */
+.modalOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal);
+    padding: 24px;
+    animation: fadeIn var(--transition-fast);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.addonModal {
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-color);
+    padding: 24px;
+    animation: scaleIn var(--transition-fast);
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.addonModal h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.addonGroup {
+    margin-bottom: 20px;
+}
+
+.addonGroup h3 {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+    color: var(--text-secondary);
+}
+
+.addonList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.addonOption {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.addonOption:hover {
+    border-color: var(--primary);
+}
+
+.addonOption.selected {
+    background: rgba(255, 107, 53, 0.1);
+    border-color: var(--primary);
+}
+
+.addonOption input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+.addonPrice {
+    margin-left: auto;
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 0.875rem;
+}
+
+.addonModalActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.loadingOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     .content {

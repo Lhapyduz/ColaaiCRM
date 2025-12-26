@@ -7,7 +7,8 @@ import {
     FiCalendar,
     FiRefreshCw,
     FiChevronLeft,
-    FiChevronRight
+    FiChevronRight,
+    FiTrash2
 } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
@@ -90,6 +91,55 @@ export default function HistoricoPage() {
         setPage(1);
     };
 
+    const [cleaning, setCleaning] = useState(false);
+
+    // Delete logs older than 7 days
+    const cleanupOldLogs = async () => {
+        if (!user) return;
+        if (!confirm('Deseja apagar logs com mais de 7 dias?')) return;
+
+        setCleaning(true);
+        try {
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            const { error } = await supabase
+                .from('action_logs')
+                .delete()
+                .eq('user_id', user.id)
+                .lt('created_at', sevenDaysAgo.toISOString());
+
+            if (error) throw error;
+            await fetchLogs();
+        } catch (error) {
+            console.error('Error cleaning logs:', error);
+        } finally {
+            setCleaning(false);
+        }
+    };
+
+    // Delete all logs
+    const clearAllLogs = async () => {
+        if (!user) return;
+        if (!confirm('Tem certeza que deseja apagar TODO o histórico de ações? Esta ação não pode ser desfeita.')) return;
+
+        setCleaning(true);
+        try {
+            const { error } = await supabase
+                .from('action_logs')
+                .delete()
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+            setLogs([]);
+            setTotalCount(0);
+        } catch (error) {
+            console.error('Error clearing logs:', error);
+        } finally {
+            setCleaning(false);
+        }
+    };
+
     const formatDateTime = (dateString: string) => {
         const date = new Date(dateString);
         return new Intl.DateTimeFormat('pt-BR', {
@@ -139,13 +189,36 @@ export default function HistoricoPage() {
                             {totalCount} {totalCount === 1 ? 'registro encontrado' : 'registros encontrados'}
                         </p>
                     </div>
-                    <Button
-                        variant="outline"
-                        leftIcon={<FiRefreshCw />}
-                        onClick={fetchLogs}
-                    >
-                        Atualizar
-                    </Button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Button
+                            variant="outline"
+                            leftIcon={<FiRefreshCw />}
+                            onClick={fetchLogs}
+                        >
+                            Atualizar
+                        </Button>
+                        {totalCount > 0 && (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    leftIcon={<FiTrash2 />}
+                                    onClick={cleanupOldLogs}
+                                    isLoading={cleaning}
+                                >
+                                    Limpar +7 dias
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    leftIcon={<FiTrash2 />}
+                                    onClick={clearAllLogs}
+                                    isLoading={cleaning}
+                                    style={{ color: '#e74c3c' }}
+                                >
+                                    Limpar Tudo
+                                </Button>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* Filters */}

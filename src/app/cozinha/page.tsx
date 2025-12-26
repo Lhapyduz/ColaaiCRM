@@ -12,6 +12,13 @@ import { supabase } from '@/lib/supabase';
 import { printKitchenTicket } from '@/lib/print';
 import styles from './page.module.css';
 
+interface OrderItemAddon {
+    id: string;
+    addon_name: string;
+    addon_price: number;
+    quantity: number;
+}
+
 interface OrderItem {
     id: string;
     product_name: string;
@@ -19,6 +26,7 @@ interface OrderItem {
     unit_price: number;
     total: number;
     notes: string | null;
+    addons: OrderItemAddon[];
 }
 
 interface Order {
@@ -101,14 +109,26 @@ export default function CozinhaPage() {
 
             if (error) throw error;
 
-            // Fetch items for each order
+            // Fetch items and addons for each order
             const ordersWithItems = await Promise.all(
                 (ordersData || []).map(async (order) => {
                     const { data: items } = await supabase
                         .from('order_items')
                         .select('*')
                         .eq('order_id', order.id);
-                    return { ...order, items: items || [] };
+
+                    // Load addons for each item
+                    const itemsWithAddons = await Promise.all(
+                        (items || []).map(async (item) => {
+                            const { data: addons } = await supabase
+                                .from('order_item_addons')
+                                .select('id, addon_name, addon_price, quantity')
+                                .eq('order_item_id', item.id);
+                            return { ...item, addons: addons || [] };
+                        })
+                    );
+
+                    return { ...order, items: itemsWithAddons };
                 })
             );
 
@@ -242,6 +262,15 @@ export default function CozinhaPage() {
                                                     {item.notes && (
                                                         <span className={styles.itemNotes}>({item.notes})</span>
                                                     )}
+                                                    {item.addons && item.addons.length > 0 && (
+                                                        <div className={styles.itemAddons}>
+                                                            {item.addons.map((addon) => (
+                                                                <span key={addon.id} className={styles.addonTag}>
+                                                                    + {addon.addon_name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
@@ -305,6 +334,15 @@ export default function CozinhaPage() {
                                                     <span className={styles.itemName}>{item.product_name}</span>
                                                     {item.notes && (
                                                         <span className={styles.itemNotes}>({item.notes})</span>
+                                                    )}
+                                                    {item.addons && item.addons.length > 0 && (
+                                                        <div className={styles.itemAddons}>
+                                                            {item.addons.map((addon) => (
+                                                                <span key={addon.id} className={styles.addonTag}>
+                                                                    + {addon.addon_name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
                                                     )}
                                                 </div>
                                             ))}

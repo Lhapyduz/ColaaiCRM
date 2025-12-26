@@ -21,6 +21,7 @@ import Input from '@/components/ui/Input';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { openWhatsAppNotification, shouldNotifyOnStatusChange, OrderDetails } from '@/lib/whatsapp';
+import { logOrderStatusChange, logPaymentReceived } from '@/lib/actionLogger';
 import styles from './page.module.css';
 
 interface Order {
@@ -130,6 +131,11 @@ export default function PedidosPage() {
 
             if (error) throw error;
 
+            // Log the status change
+            if (order) {
+                logOrderStatusChange(orderId, order.order_number, order.status, newStatus);
+            }
+
             // Send WhatsApp notification if enabled and order has phone
             if (sendNotification && order?.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
                 sendWhatsAppNotification(order, newStatus);
@@ -165,6 +171,9 @@ export default function PedidosPage() {
                 .eq('id', orderId);
 
             if (error) throw error;
+
+            // Log the payment
+            logPaymentReceived(orderId, order.order_number, order.total, order.payment_method);
 
             // Update customer's total_spent if the order has a phone number
             if (order.customer_phone && user) {

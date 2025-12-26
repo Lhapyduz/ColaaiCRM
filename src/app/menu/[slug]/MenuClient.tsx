@@ -31,10 +31,31 @@ interface UserSettings {
     user_id: string;
 }
 
+interface Addon {
+    id: string;
+    name: string;
+    price: number;
+}
+
+interface AddonGroup {
+    id: string;
+    name: string;
+    required: boolean;
+    max_selection: number;
+    addons: Addon[];
+}
+
+interface SelectedAddon {
+    id: string;
+    name: string;
+    price: number;
+}
+
 interface CartItem {
     product: Product;
     quantity: number;
     notes: string;
+    addons: SelectedAddon[];
 }
 
 export default function MenuClient({ slug }: { slug: string }) {
@@ -62,6 +83,13 @@ export default function MenuClient({ slug }: { slug: string }) {
     const [couponError, setCouponError] = useState('');
     const [validatingCoupon, setValidatingCoupon] = useState(false);
     const [couponsEnabled, setCouponsEnabled] = useState(true);
+
+    // Addon modal state
+    const [showAddonModal, setShowAddonModal] = useState(false);
+    const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
+    const [productAddonGroups, setProductAddonGroups] = useState<AddonGroup[]>([]);
+    const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
+    const [loadingAddons, setLoadingAddons] = useState(false);
 
     useEffect(() => {
         fetchMenuData();
@@ -131,17 +159,103 @@ export default function MenuClient({ slug }: { slug: string }) {
         }).format(value);
     };
 
-    const addToCart = (product: Product) => {
+    // Load addons for a product
+    const loadProductAddons = async (productId: string): Promise<AddonGroup[]> => {
+        if (!settings) return [];
+
+        const { data: groupLinks } = await supabase
+            .from('product_addon_groups')
+            .select(`
+                group_id,
+                addon_groups (
+                    id,
+                    name,
+                    required,
+                    max_selection,
+                    addon_group_items (
+                        product_addons (
+                            id,
+                            name,
+                            price,
+                            available
+                        )
+                    )
+                )
+            `)
+            .eq('product_id', productId);
+
+        if (!groupLinks) return [];
+
+        return groupLinks
+            .filter((link: any) => link.addon_groups)
+            .map((link: any) => ({
+                id: link.addon_groups.id,
+                name: link.addon_groups.name,
+                required: link.addon_groups.required,
+                max_selection: link.addon_groups.max_selection,
+                addons: (link.addon_groups.addon_group_items || [])
+                    .filter((item: any) => item.product_addons?.available)
+                    .map((item: any) => ({
+                        id: item.product_addons.id,
+                        name: item.product_addons.name,
+                        price: item.product_addons.price
+                    }))
+            }))
+            .filter((g: AddonGroup) => g.addons.length > 0);
+    };
+
+    const handleAddToCart = async (product: Product) => {
+        setLoadingAddons(true);
+        const addonGroups = await loadProductAddons(product.id);
+        setLoadingAddons(false);
+
+        if (addonGroups.length > 0) {
+            setPendingProduct(product);
+            setProductAddonGroups(addonGroups);
+            setSelectedAddons([]);
+            setShowAddonModal(true);
+        } else {
+            addToCart(product, []);
+        }
+    };
+
+    const toggleAddon = (addon: Addon) => {
+        setSelectedAddons(prev => {
+            const exists = prev.find(a => a.id === addon.id);
+            if (exists) {
+                return prev.filter(a => a.id !== addon.id);
+            } else {
+                return [...prev, { id: addon.id, name: addon.name, price: addon.price }];
+            }
+        });
+    };
+
+    const confirmAddToCart = () => {
+        if (pendingProduct) {
+            addToCart(pendingProduct, selectedAddons);
+            setShowAddonModal(false);
+            setPendingProduct(null);
+            setProductAddonGroups([]);
+            setSelectedAddons([]);
+        }
+    };
+
+    const addToCart = (product: Product, addons: SelectedAddon[]) => {
         setCart(prev => {
-            const existing = prev.find(item => item.product.id === product.id);
+            // For items with addons, always add as new item
+            if (addons.length > 0) {
+                return [...prev, { product, quantity: 1, notes: '', addons }];
+            }
+            // For items without addons, increment if exists
+            const existing = prev.find(item => item.product.id === product.id && item.addons.length === 0);
             if (existing) {
                 return prev.map(item =>
-                    item.product.id === product.id
+                    item.product.id === product.id && item.addons.length === 0
                         ? { ...item, quantity: item.quantity + 1 }
                         : item
                 );
             }
-            return [...prev, { product, quantity: 1, notes: '' }];
+            return [...prev, { product, quantity: 1, notes: '', addons: [] }];
         });
     };
 
@@ -158,12 +272,25 @@ export default function MenuClient({ slug }: { slug: string }) {
         });
     };
 
-    const removeFromCart = (productId: string) => {
-        setCart(prev => prev.filter(item => item.product.id !== productId));
+    const removeFromCart = (index: number) => {
+        setCart(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const removeAddonFromItem = (itemIndex: number, addonId: string) => {
+        setCart(prev => prev.map((item, i) => {
+            if (i === itemIndex) {
+                const newAddons = item.addons.filter(a => a.id !== addonId);
+                return { ...item, addons: newAddons };
+            }
+            return item;
+        }));
     };
 
     const getCartTotal = () => {
-        return cart.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+        return cart.reduce((total, item) => {
+            const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
+            return total + ((item.product.price + addonTotal) * item.quantity);
+        }, 0);
     };
 
     const getCartCount = () => {
@@ -262,8 +389,13 @@ export default function MenuClient({ slug }: { slug: string }) {
         message += `${'─'.repeat(20)}\n`;
 
         cart.forEach(item => {
+            const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
+            const itemTotal = item.product.price + addonTotal;
             message += `• ${item.quantity}x ${item.product.name}\n`;
-            message += `  ${formatCurrency(item.product.price)} cada\n`;
+            if (item.addons.length > 0) {
+                message += `  📦 Adicionais: ${item.addons.map(a => a.name).join(', ')}\n`;
+            }
+            message += `  ${formatCurrency(itemTotal)} cada\n`;
             if (item.notes) {
                 message += `  📝 ${item.notes}\n`;
             }
@@ -380,7 +512,7 @@ export default function MenuClient({ slug }: { slug: string }) {
                                         ) : (
                                             <button
                                                 className={styles.addBtn}
-                                                onClick={() => addToCart(product)}
+                                                onClick={() => handleAddToCart(product)}
                                             >
                                                 Adicionar
                                             </button>
@@ -413,31 +545,58 @@ export default function MenuClient({ slug }: { slug: string }) {
                         </div>
 
                         <div className={styles.cartItems}>
-                            {cart.map(item => (
-                                <div key={item.product.id} className={styles.cartItem}>
-                                    <div className={styles.cartItemInfo}>
-                                        <h4>{item.product.name}</h4>
-                                        <span>{formatCurrency(item.product.price * item.quantity)}</span>
-                                    </div>
-                                    <div className={styles.cartItemActions}>
-                                        <div className={styles.quantityControl}>
-                                            <button onClick={() => updateQuantity(item.product.id, -1)}>
-                                                <FiMinus />
-                                            </button>
-                                            <span>{item.quantity}</span>
-                                            <button onClick={() => updateQuantity(item.product.id, 1)}>
-                                                <FiPlus />
+                            {cart.map((item, index) => {
+                                const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
+                                const itemTotal = (item.product.price + addonTotal) * item.quantity;
+                                return (
+                                    <div key={`${item.product.id}-${index}`} className={styles.cartItem}>
+                                        <div className={styles.cartItemHeader}>
+                                            <div className={styles.cartItemInfo}>
+                                                <h4>{item.product.name}</h4>
+                                                <span className={styles.cartItemPrice}>{formatCurrency(itemTotal)}</span>
+                                            </div>
+                                            <button
+                                                className={styles.removeBtn}
+                                                onClick={() => removeFromCart(index)}
+                                            >
+                                                <FiX />
                                             </button>
                                         </div>
-                                        <button
-                                            className={styles.removeBtn}
-                                            onClick={() => removeFromCart(item.product.id)}
-                                        >
-                                            <FiX />
-                                        </button>
+
+                                        {item.addons.length > 0 && (
+                                            <div className={styles.cartItemAddons}>
+                                                {item.addons.map((addon) => (
+                                                    <div key={addon.id} className={styles.cartAddonTag}>
+                                                        <span>+ {addon.name}</span>
+                                                        <span className={styles.cartAddonPrice}>
+                                                            {addon.price > 0 && `+${formatCurrency(addon.price)}`}
+                                                        </span>
+                                                        <button
+                                                            className={styles.removeAddonBtn}
+                                                            onClick={() => removeAddonFromItem(index, addon.id)}
+                                                            title="Remover adicional"
+                                                        >
+                                                            <FiX size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <div className={styles.cartItemActions}>
+                                            <div className={styles.quantityControl}>
+                                                <button onClick={() => updateQuantity(item.product.id, -1)}>
+                                                    <FiMinus />
+                                                </button>
+                                                <span>{item.quantity}</span>
+                                                <button onClick={() => updateQuantity(item.product.id, 1)}>
+                                                    <FiPlus />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         <div className={styles.cartForm}>
@@ -549,6 +708,59 @@ export default function MenuClient({ slug }: { slug: string }) {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Addon Selection Modal */}
+            {showAddonModal && pendingProduct && (
+                <div className={styles.addonModalOverlay} onClick={() => setShowAddonModal(false)}>
+                    <div className={styles.addonModal} onClick={(e) => e.stopPropagation()}>
+                        <h2 className={styles.addonModalTitle}>Adicionais para {pendingProduct.name}</h2>
+
+                        {productAddonGroups.map((group) => (
+                            <div key={group.id} className={styles.addonGroup}>
+                                <h3 className={styles.addonGroupName}>
+                                    {group.name}
+                                    {group.required && <span className={styles.requiredBadge}> (Obrigatório)</span>}
+                                </h3>
+                                <div className={styles.addonList}>
+                                    {group.addons.map((addon) => (
+                                        <label
+                                            key={addon.id}
+                                            className={`${styles.addonOption} ${selectedAddons.find(a => a.id === addon.id) ? styles.addonSelected : ''}`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={!!selectedAddons.find(a => a.id === addon.id)}
+                                                onChange={() => toggleAddon(addon)}
+                                            />
+                                            <span className={styles.addonName}>{addon.name}</span>
+                                            {addon.price > 0 && (
+                                                <span className={styles.addonPrice}>
+                                                    +{formatCurrency(addon.price)}
+                                                </span>
+                                            )}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+
+                        <div className={styles.addonModalActions}>
+                            <button className={styles.cancelBtn} onClick={() => setShowAddonModal(false)}>
+                                Cancelar
+                            </button>
+                            <button className={styles.confirmBtn} onClick={confirmAddToCart}>
+                                Adicionar ao Carrinho
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {loadingAddons && (
+                <div className={styles.loadingOverlay}>
+                    <div className={styles.spinner} />
                 </div>
             )}
         </div>
