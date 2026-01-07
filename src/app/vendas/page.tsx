@@ -221,300 +221,372 @@ export default function VendasPage() {
         return <span className={styles.featureText}>{value}</span>;
     };
 
+    // JSON-LD structured data for SEO
+    const jsonLd = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "Organization",
+                "@id": "https://colaai.com.br/#organization",
+                "name": "Cola Aí",
+                "url": "https://colaai.com.br",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://colaai.com.br/logo.png"
+                },
+                "sameAs": []
+            },
+            {
+                "@type": "WebSite",
+                "@id": "https://colaai.com.br/#website",
+                "url": "https://colaai.com.br",
+                "name": "Cola Aí",
+                "publisher": {
+                    "@id": "https://colaai.com.br/#organization"
+                }
+            },
+            {
+                "@type": "SoftwareApplication",
+                "name": "Cola Aí",
+                "applicationCategory": "BusinessApplication",
+                "operatingSystem": "Web",
+                "offers": {
+                    "@type": "AggregateOffer",
+                    "priceCurrency": "BRL",
+                    "lowPrice": "49",
+                    "highPrice": "149",
+                    "offerCount": "3"
+                },
+                "aggregateRating": {
+                    "@type": "AggregateRating",
+                    "ratingValue": "5",
+                    "ratingCount": "3",
+                    "bestRating": "5",
+                    "worstRating": "1"
+                }
+            },
+            {
+                "@type": "FAQPage",
+                "mainEntity": faqs.map(faq => ({
+                    "@type": "Question",
+                    "name": faq.question,
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": faq.answer
+                    }
+                }))
+            }
+        ]
+    };
+
     return (
-        <div className={styles.page}>
-            {/* Hero Section */}
-            <section className={styles.hero}>
-                <div className={styles.heroBackground}>
-                    <div className={styles.heroGlow1}></div>
-                    <div className={styles.heroGlow2}></div>
-                </div>
-                <div className={styles.heroContent}>
-                    <span className={styles.heroBadge}>
-                        <FiZap /> Sistema #1 para Lanchonetes
-                    </span>
-                    <h1 className={styles.heroTitle}>
-                        Transforme sua <span className={styles.highlight}>Lanchonete</span> em uma Máquina de Vendas
-                    </h1>
-                    <p className={styles.heroSubtitle}>
-                        O sistema completo para gerenciar pedidos, fidelizar clientes e aumentar seu faturamento. Tudo em um só lugar, sem complicação.
-                    </p>
-                    <div className={styles.heroCtas}>
-                        <Link href="/assinatura" className={styles.primaryCta}>
-                            Começar Agora - 3 Dias Grátis
-                        </Link>
-                        <Link href="/menu" className={styles.secondaryCta}>
-                            Ver Demo <FiChevronDown />
-                        </Link>
+        <>
+            {/* JSON-LD Structured Data */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+
+            <div className={styles.page}>
+                {/* Hero Section */}
+                <section className={styles.hero}>
+                    <div className={styles.heroBackground}>
+                        <div className={styles.heroGlow1}></div>
+                        <div className={styles.heroGlow2}></div>
                     </div>
-                    <div className={styles.heroStats}>
-                        <div className={styles.heroStat}>
-                            <span className={styles.statNumber}>500+</span>
-                            <span className={styles.statLabel}>Negócios Ativos</span>
+                    <div className={styles.heroContent}>
+                        <span className={styles.heroBadge}>
+                            <FiZap /> Sistema #1 para Lanchonetes
+                        </span>
+                        <h1 className={styles.heroTitle}>
+                            Transforme sua <span className={styles.highlight}>Lanchonete</span> em uma Máquina de Vendas
+                        </h1>
+                        <p className={styles.heroSubtitle}>
+                            O sistema completo para gerenciar pedidos, fidelizar clientes e aumentar seu faturamento. Tudo em um só lugar, sem complicação.
+                        </p>
+                        <div className={styles.heroCtas}>
+                            <Link href="/assinatura" className={styles.primaryCta}>
+                                Começar Agora - 3 Dias Grátis
+                            </Link>
+                            <Link href="/menu" className={styles.secondaryCta}>
+                                Ver Demo <FiChevronDown />
+                            </Link>
                         </div>
-                        <div className={styles.heroStat}>
-                            <span className={styles.statNumber}>50k+</span>
-                            <span className={styles.statLabel}>Pedidos/Mês</span>
-                        </div>
-                        <div className={styles.heroStat}>
-                            <span className={styles.statNumber}>98%</span>
-                            <span className={styles.statLabel}>Satisfação</span>
+                        <div className={styles.heroStats}>
+                            <div className={styles.heroStat}>
+                                <span className={styles.statNumber}>3 dias</span>
+                                <span className={styles.statLabel}>Teste Grátis</span>
+                            </div>
+                            <div className={styles.heroStat}>
+                                <span className={styles.statNumber}>100%</span>
+                                <span className={styles.statLabel}>Online</span>
+                            </div>
+                            <div className={styles.heroStat}>
+                                <span className={styles.statNumber}>0</span>
+                                <span className={styles.statLabel}>Instalação</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            {/* Features Grid */}
-            <section className={styles.featuresSection}>
-                <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>Tudo que você precisa para crescer</h2>
-                    <p className={styles.sectionSubtitle}>
-                        Mais de 20 funcionalidades pensadas para o dia a dia do seu negócio
-                    </p>
-                </div>
-                <div className={styles.featuresGrid}>
-                    {highlights.map((feature, index) => (
-                        <div key={index} className={styles.featureCard}>
-                            <div className={styles.featureIcon}>{feature.icon}</div>
-                            <h3 className={styles.featureTitle}>{feature.title}</h3>
-                            <p className={styles.featureDescription}>{feature.description}</p>
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* Pricing Section */}
-            <section id="pricing" className={styles.pricingSection}>
-                <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>Escolha o plano ideal para você</h2>
-                    <p className={styles.sectionSubtitle}>
-                        Comece grátis por 3 dias. Cancele quando quiser.
-                    </p>
-                </div>
-
-                {/* Billing Toggle */}
-                <div className={styles.billingToggle}>
-                    <button
-                        className={`${styles.toggleBtn} ${billingPeriod === 'monthly' ? styles.active : ''}`}
-                        onClick={() => setBillingPeriod('monthly')}
-                    >
-                        Mensal
-                    </button>
-                    <button
-                        className={`${styles.toggleBtn} ${billingPeriod === 'annual' ? styles.active : ''}`}
-                        onClick={() => setBillingPeriod('annual')}
-                    >
-                        Anual
-                        <span className={styles.discountBadge}>2 Meses Grátis</span>
-                    </button>
-                </div>
-
-                {/* Pricing Cards */}
-                <div className={styles.pricingGrid}>
-                    {/* Basic Plan */}
-                    <div className={styles.pricingCard}>
-                        <div className={styles.planHeader}>
-                            <h3 className={styles.planName}>Básico</h3>
-                            <p className={styles.planDescription}>Para quem está começando</p>
-                        </div>
-                        <div className={styles.planPrice}>
-                            <span className={styles.currency}>R$</span>
-                            <span className={styles.amount}>{getMonthlyPrice('basic')}</span>
-                            <span className={styles.period}>/mês</span>
-                        </div>
-                        {billingPeriod !== 'monthly' && (
-                            <p className={styles.billingNote}>
-                                Cobrado {formatCurrency(prices.basic[billingPeriod])} anualmente
-                            </p>
-                        )}
-                        <ul className={styles.planFeatures}>
-                            <li><FiCheck /> Dashboard em tempo real</li>
-                            <li><FiCheck /> Gestão de pedidos</li>
-                            <li><FiCheck /> Até 30 produtos</li>
-                            <li><FiCheck /> Até 5 categorias</li>
-                            <li><FiCheck /> Relatórios básicos</li>
-                            <li><FiCheck /> Suporte por email</li>
-                        </ul>
-                        <Link href="/assinatura" className={styles.planCta}>Começar Grátis</Link>
+                {/* Features Grid */}
+                <section className={styles.featuresSection}>
+                    <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>Tudo que você precisa para crescer</h2>
+                        <p className={styles.sectionSubtitle}>
+                            Mais de 20 funcionalidades pensadas para o dia a dia do seu negócio
+                        </p>
                     </div>
-
-                    {/* Professional Plan */}
-                    <div className={`${styles.pricingCard} ${styles.featured}`}>
-                        <div className={styles.popularBadge}>Mais Popular</div>
-                        <div className={styles.planHeader}>
-                            <h3 className={styles.planName}>Avançado</h3>
-                            <p className={styles.planDescription}>Para negócios em crescimento</p>
-                        </div>
-                        <div className={styles.planPrice}>
-                            <span className={styles.currency}>R$</span>
-                            <span className={styles.amount}>{getMonthlyPrice('professional')}</span>
-                            <span className={styles.period}>/mês</span>
-                        </div>
-                        {billingPeriod !== 'monthly' && (
-                            <p className={styles.billingNote}>
-                                Cobrado {formatCurrency(prices.professional[billingPeriod])} anualmente
-                            </p>
-                        )}
-                        <ul className={styles.planFeatures}>
-                            <li><FiCheck /> Tudo do Básico +</li>
-                            <li><FiCheck /> Até 100 produtos</li>
-                            <li><FiCheck /> Tela de cozinha</li>
-                            <li><FiCheck /> Gestão de entregas</li>
-                            <li><FiCheck /> Controle de estoque</li>
-                            <li><FiCheck /> Programa de fidelidade</li>
-                            <li><FiCheck /> Cardápio Online</li>
-                            <li><FiCheck /> Relatórios avançados</li>
-                            <li><FiCheck /> Até 5 funcionários</li>
-                            <li><FiCheck /> Suporte via chat</li>
-                        </ul>
-                        <Link href="/assinatura" className={`${styles.planCta} ${styles.primaryPlanCta}`}>Começar Grátis</Link>
-                    </div>
-
-                    {/* Enterprise Plan */}
-                    <div className={styles.pricingCard}>
-                        <div className={styles.planHeader}>
-                            <h3 className={styles.planName}>Profissional</h3>
-                            <p className={styles.planDescription}>Para operações maiores</p>
-                        </div>
-                        <div className={styles.planPrice}>
-                            <span className={styles.currency}>R$</span>
-                            <span className={styles.amount}>{getMonthlyPrice('enterprise')}</span>
-                            <span className={styles.period}>/mês</span>
-                        </div>
-                        {billingPeriod !== 'monthly' && (
-                            <p className={styles.billingNote}>
-                                Cobrado {formatCurrency(prices.enterprise[billingPeriod])} anualmente
-                            </p>
-                        )}
-                        <ul className={styles.planFeatures}>
-                            <li><FiCheck /> Tudo do Avançado +</li>
-                            <li><FiCheck /> Produtos ilimitados</li>
-                            <li><FiCheck /> Cupons de desconto</li>
-                            <li><FiCheck /> Previsão de vendas (IA)</li>
-                            <li><FiCheck /> Funcionários ilimitados</li>
-                            <li><FiCheck /> Relatórios completos</li>
-                            <li><FiCheck /> Suporte prioritário 24/7</li>
-                        </ul>
-                        <Link href="/assinatura" className={styles.planCta}>Começar Grátis</Link>
-                    </div>
-                </div>
-
-                {/* Feature Comparison Table */}
-                <div className={styles.comparisonSection}>
-                    <h3 className={styles.comparisonTitle}>Comparativo Completo</h3>
-                    <div className={styles.comparisonTable}>
-                        <div className={styles.tableHeader}>
-                            <div className={styles.tableHeaderCell}>Recurso</div>
-                            <div className={styles.tableHeaderCell}>Básico</div>
-                            <div className={styles.tableHeaderCell}>Avançado</div>
-                            <div className={styles.tableHeaderCell}>Profissional</div>
-                        </div>
-                        {features.map((feature, index) => (
-                            <div key={index} className={styles.tableRow}>
-                                <div className={styles.tableCell}>{feature.name}</div>
-                                <div className={styles.tableCell}>{renderFeatureValue(feature.basic)}</div>
-                                <div className={styles.tableCell}>{renderFeatureValue(feature.professional)}</div>
-                                <div className={styles.tableCell}>{renderFeatureValue(feature.enterprise)}</div>
+                    <div className={styles.featuresGrid}>
+                        {highlights.map((feature, index) => (
+                            <div key={index} className={styles.featureCard}>
+                                <div className={styles.featureIcon}>{feature.icon}</div>
+                                <h3 className={styles.featureTitle}>{feature.title}</h3>
+                                <p className={styles.featureDescription}>{feature.description}</p>
                             </div>
                         ))}
                     </div>
-                </div>
-            </section>
+                </section>
 
-            {/* Testimonials */}
-            <section className={styles.testimonialsSection}>
-                <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>O que nossos clientes dizem</h2>
-                    <p className={styles.sectionSubtitle}>
-                        Mais de 500 negócios já transformaram suas operações
-                    </p>
-                </div>
-                <div className={styles.testimonialsGrid}>
-                    {testimonials.map((testimonial, index) => (
-                        <div key={index} className={styles.testimonialCard}>
-                            <div className={styles.testimonialStars}>
-                                {[...Array(testimonial.rating)].map((_, i) => (
-                                    <FiStar key={i} className={styles.starIcon} />
-                                ))}
+                {/* Pricing Section */}
+                <section id="pricing" className={styles.pricingSection}>
+                    <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>Escolha o plano ideal para você</h2>
+                        <p className={styles.sectionSubtitle}>
+                            Comece grátis por 3 dias. Cancele quando quiser.
+                        </p>
+                    </div>
+
+                    {/* Billing Toggle */}
+                    <div className={styles.billingToggle}>
+                        <button
+                            className={`${styles.toggleBtn} ${billingPeriod === 'monthly' ? styles.active : ''}`}
+                            onClick={() => setBillingPeriod('monthly')}
+                        >
+                            Mensal
+                        </button>
+                        <button
+                            className={`${styles.toggleBtn} ${billingPeriod === 'annual' ? styles.active : ''}`}
+                            onClick={() => setBillingPeriod('annual')}
+                        >
+                            Anual
+                            <span className={styles.discountBadge}>2 Meses Grátis</span>
+                        </button>
+                    </div>
+
+                    {/* Pricing Cards */}
+                    <div className={styles.pricingGrid}>
+                        {/* Basic Plan */}
+                        <div className={styles.pricingCard}>
+                            <div className={styles.planHeader}>
+                                <h3 className={styles.planName}>Básico</h3>
+                                <p className={styles.planDescription}>Para quem está começando</p>
                             </div>
-                            <p className={styles.testimonialText}>"{testimonial.text}"</p>
-                            <div className={styles.testimonialAuthor}>
-                                <span className={styles.testimonialAvatar}>{testimonial.avatar}</span>
-                                <div>
-                                    <span className={styles.testimonialName}>{testimonial.name}</span>
-                                    <span className={styles.testimonialBusiness}>{testimonial.business}</span>
+                            <div className={styles.planPrice}>
+                                <span className={styles.currency}>R$</span>
+                                <span className={styles.amount}>{getMonthlyPrice('basic')}</span>
+                                <span className={styles.period}>/mês</span>
+                            </div>
+                            {billingPeriod !== 'monthly' && (
+                                <p className={styles.billingNote}>
+                                    Cobrado {formatCurrency(prices.basic[billingPeriod])} anualmente
+                                </p>
+                            )}
+                            <ul className={styles.planFeatures}>
+                                <li><FiCheck /> Dashboard em tempo real</li>
+                                <li><FiCheck /> Gestão de pedidos</li>
+                                <li><FiCheck /> Até 30 produtos</li>
+                                <li><FiCheck /> Até 5 categorias</li>
+                                <li><FiCheck /> Relatórios básicos</li>
+                                <li><FiCheck /> Suporte por email</li>
+                            </ul>
+                            <Link href="/assinatura" className={styles.planCta}>Começar Grátis</Link>
+                        </div>
+
+                        {/* Professional Plan */}
+                        <div className={`${styles.pricingCard} ${styles.featured}`}>
+                            <div className={styles.popularBadge}>Mais Popular</div>
+                            <div className={styles.planHeader}>
+                                <h3 className={styles.planName}>Avançado</h3>
+                                <p className={styles.planDescription}>Para negócios em crescimento</p>
+                            </div>
+                            <div className={styles.planPrice}>
+                                <span className={styles.currency}>R$</span>
+                                <span className={styles.amount}>{getMonthlyPrice('professional')}</span>
+                                <span className={styles.period}>/mês</span>
+                            </div>
+                            {billingPeriod !== 'monthly' && (
+                                <p className={styles.billingNote}>
+                                    Cobrado {formatCurrency(prices.professional[billingPeriod])} anualmente
+                                </p>
+                            )}
+                            <ul className={styles.planFeatures}>
+                                <li><FiCheck /> Tudo do Básico +</li>
+                                <li><FiCheck /> Até 100 produtos</li>
+                                <li><FiCheck /> Tela de cozinha</li>
+                                <li><FiCheck /> Gestão de entregas</li>
+                                <li><FiCheck /> Controle de estoque</li>
+                                <li><FiCheck /> Programa de fidelidade</li>
+                                <li><FiCheck /> Cardápio Online</li>
+                                <li><FiCheck /> Relatórios avançados</li>
+                                <li><FiCheck /> Até 5 funcionários</li>
+                                <li><FiCheck /> Suporte via chat</li>
+                            </ul>
+                            <Link href="/assinatura" className={`${styles.planCta} ${styles.primaryPlanCta}`}>Começar Grátis</Link>
+                        </div>
+
+                        {/* Enterprise Plan */}
+                        <div className={styles.pricingCard}>
+                            <div className={styles.planHeader}>
+                                <h3 className={styles.planName}>Profissional</h3>
+                                <p className={styles.planDescription}>Para operações maiores</p>
+                            </div>
+                            <div className={styles.planPrice}>
+                                <span className={styles.currency}>R$</span>
+                                <span className={styles.amount}>{getMonthlyPrice('enterprise')}</span>
+                                <span className={styles.period}>/mês</span>
+                            </div>
+                            {billingPeriod !== 'monthly' && (
+                                <p className={styles.billingNote}>
+                                    Cobrado {formatCurrency(prices.enterprise[billingPeriod])} anualmente
+                                </p>
+                            )}
+                            <ul className={styles.planFeatures}>
+                                <li><FiCheck /> Tudo do Avançado +</li>
+                                <li><FiCheck /> Produtos ilimitados</li>
+                                <li><FiCheck /> Cupons de desconto</li>
+                                <li><FiCheck /> Previsão de vendas (IA)</li>
+                                <li><FiCheck /> Funcionários ilimitados</li>
+                                <li><FiCheck /> Relatórios completos</li>
+                                <li><FiCheck /> Suporte prioritário 24/7</li>
+                            </ul>
+                            <Link href="/assinatura" className={styles.planCta}>Começar Grátis</Link>
+                        </div>
+                    </div>
+
+                    {/* Feature Comparison Table */}
+                    <div className={styles.comparisonSection}>
+                        <h3 className={styles.comparisonTitle}>Comparativo Completo</h3>
+                        <div className={styles.comparisonTable}>
+                            <div className={styles.tableHeader}>
+                                <div className={styles.tableHeaderCell}>Recurso</div>
+                                <div className={styles.tableHeaderCell}>Básico</div>
+                                <div className={styles.tableHeaderCell}>Avançado</div>
+                                <div className={styles.tableHeaderCell}>Profissional</div>
+                            </div>
+                            {features.map((feature, index) => (
+                                <div key={index} className={styles.tableRow}>
+                                    <div className={styles.tableCell}>{feature.name}</div>
+                                    <div className={styles.tableCell}>{renderFeatureValue(feature.basic)}</div>
+                                    <div className={styles.tableCell}>{renderFeatureValue(feature.professional)}</div>
+                                    <div className={styles.tableCell}>{renderFeatureValue(feature.enterprise)}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Testimonials */}
+                <section className={styles.testimonialsSection}>
+                    <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>O que nossos clientes dizem</h2>
+                        <p className={styles.sectionSubtitle}>
+                            Mais de 500 negócios já transformaram suas operações
+                        </p>
+                    </div>
+                    <div className={styles.testimonialsGrid}>
+                        {testimonials.map((testimonial, index) => (
+                            <div key={index} className={styles.testimonialCard}>
+                                <div className={styles.testimonialStars}>
+                                    {[...Array(testimonial.rating)].map((_, i) => (
+                                        <FiStar key={i} className={styles.starIcon} />
+                                    ))}
+                                </div>
+                                <p className={styles.testimonialText}>"{testimonial.text}"</p>
+                                <div className={styles.testimonialAuthor}>
+                                    <span className={styles.testimonialAvatar}>{testimonial.avatar}</span>
+                                    <div>
+                                        <span className={styles.testimonialName}>{testimonial.name}</span>
+                                        <span className={styles.testimonialBusiness}>{testimonial.business}</span>
+                                    </div>
                                 </div>
                             </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* Trust Badges */}
+                <section className={styles.trustSection}>
+                    <div className={styles.trustGrid}>
+                        <div className={styles.trustItem}>
+                            <FiShield className={styles.trustIcon} />
+                            <h4>Dados Seguros</h4>
+                            <p>Criptografia de ponta a ponta</p>
                         </div>
-                    ))}
-                </div>
-            </section>
+                        <div className={styles.trustItem}>
+                            <FiZap className={styles.trustIcon} />
+                            <h4>99.9% Uptime</h4>
+                            <p>Sistema sempre disponível</p>
+                        </div>
+                        <div className={styles.trustItem}>
+                            <FiHeadphones className={styles.trustIcon} />
+                            <h4>Suporte Humano</h4>
+                            <p>Atendimento real, sem robôs</p>
+                        </div>
+                    </div>
+                </section>
 
-            {/* Trust Badges */}
-            <section className={styles.trustSection}>
-                <div className={styles.trustGrid}>
-                    <div className={styles.trustItem}>
-                        <FiShield className={styles.trustIcon} />
-                        <h4>Dados Seguros</h4>
-                        <p>Criptografia de ponta a ponta</p>
+                {/* FAQ Section */}
+                <section className={styles.faqSection}>
+                    <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>Perguntas Frequentes</h2>
+                        <p className={styles.sectionSubtitle}>
+                            Tire suas dúvidas sobre o Cola Aí
+                        </p>
                     </div>
-                    <div className={styles.trustItem}>
-                        <FiZap className={styles.trustIcon} />
-                        <h4>99.9% Uptime</h4>
-                        <p>Sistema sempre disponível</p>
-                    </div>
-                    <div className={styles.trustItem}>
-                        <FiHeadphones className={styles.trustIcon} />
-                        <h4>Suporte Humano</h4>
-                        <p>Atendimento real, sem robôs</p>
-                    </div>
-                </div>
-            </section>
-
-            {/* FAQ Section */}
-            <section className={styles.faqSection}>
-                <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>Perguntas Frequentes</h2>
-                    <p className={styles.sectionSubtitle}>
-                        Tire suas dúvidas sobre o Cola Aí
-                    </p>
-                </div>
-                <div className={styles.faqList}>
-                    {faqs.map((faq, index) => (
-                        <div
-                            key={index}
-                            className={`${styles.faqItem} ${openFaq === index ? styles.open : ''}`}
-                        >
-                            <button
-                                className={styles.faqQuestion}
-                                onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                    <div className={styles.faqList}>
+                        {faqs.map((faq, index) => (
+                            <div
+                                key={index}
+                                className={`${styles.faqItem} ${openFaq === index ? styles.open : ''}`}
                             >
-                                <span>{faq.question}</span>
-                                {openFaq === index ? <FiChevronUp /> : <FiChevronDown />}
-                            </button>
-                            <div className={styles.faqAnswer}>
-                                <p>{faq.answer}</p>
+                                <button
+                                    className={styles.faqQuestion}
+                                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                                >
+                                    <span>{faq.question}</span>
+                                    {openFaq === index ? <FiChevronUp /> : <FiChevronDown />}
+                                </button>
+                                <div className={styles.faqAnswer}>
+                                    <p>{faq.answer}</p>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
+                        ))}
+                    </div>
+                </section>
 
-            {/* Final CTA */}
-            <section className={styles.finalCta}>
-                <div className={styles.ctaContent}>
-                    <h2>Pronto para turbinar seu negócio?</h2>
-                    <p>Comece seus 3 dias grátis agora. Sem cartão de crédito.</p>
-                    <Link href="/assinatura" className={styles.ctaButton}>
-                        Começar Agora - É Grátis!
-                    </Link>
-                </div>
-            </section>
+                {/* Final CTA */}
+                <section className={styles.finalCta}>
+                    <div className={styles.ctaContent}>
+                        <h2>Pronto para turbinar seu negócio?</h2>
+                        <p>Comece seus 3 dias grátis agora. Sem cartão de crédito.</p>
+                        <Link href="/assinatura" className={styles.ctaButton}>
+                            Começar Agora - É Grátis!
+                        </Link>
+                    </div>
+                </section>
 
-            {/* Footer */}
-            <footer className={styles.footer}>
-                <p>© 2024 Cola Aí. Todos os direitos reservados.</p>
-            </footer>
-        </div>
+                {/* Footer */}
+                <footer className={styles.footer}>
+                    <div className={styles.footerLinks}>
+                        <Link href="/termos">Termos de Uso</Link>
+                        <span className={styles.footerSeparator}>|</span>
+                        <Link href="/privacidade">Política de Privacidade</Link>
+                    </div>
+                    <p>© 2026 Cola Aí. Todos os direitos reservados.</p>
+                </footer>
+            </div>
+        </>
     );
 }
+

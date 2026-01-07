@@ -89,6 +89,23 @@ export default function FidelidadePage() {
     const [showRewardModal, setShowRewardModal] = useState(false);
     const [editingReward, setEditingReward] = useState<LoyaltyReward | null>(null);
 
+    // Form states - must be declared before any conditional returns
+    const [rewardForm, setRewardForm] = useState({
+        name: '',
+        description: '',
+        points_cost: 100,
+        reward_type: 'discount_percent' as LoyaltyReward['reward_type'],
+        reward_value: 10,
+        min_order_value: 0
+    });
+
+    // useEffect must be called before any conditional returns
+    useEffect(() => {
+        if (user && canAccess('loyalty')) {
+            fetchData();
+        }
+    }, [user, canAccess]);
+
     // Check if user has access to loyalty feature
     if (!canAccess('loyalty')) {
         return (
@@ -102,22 +119,6 @@ export default function FidelidadePage() {
             </MainLayout>
         );
     }
-
-    // Form states
-    const [rewardForm, setRewardForm] = useState({
-        name: '',
-        description: '',
-        points_cost: 100,
-        reward_type: 'discount_percent' as LoyaltyReward['reward_type'],
-        reward_value: 10,
-        min_order_value: 0
-    });
-
-    useEffect(() => {
-        if (user) {
-            fetchData();
-        }
-    }, [user]);
 
     const fetchData = async () => {
         setLoading(true);

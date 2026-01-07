@@ -45,6 +45,28 @@ export default function CuponsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
+    // Modal states - must be declared before any conditional returns
+    const [showModal, setShowModal] = useState(false);
+    const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+
+    // Form states - must be declared before any conditional returns
+    const [formCode, setFormCode] = useState('');
+    const [formDescription, setFormDescription] = useState('');
+    const [formDiscountType, setFormDiscountType] = useState<'percentage' | 'fixed'>('percentage');
+    const [formDiscountValue, setFormDiscountValue] = useState('');
+    const [formMinOrderValue, setFormMinOrderValue] = useState('');
+    const [formMaxDiscount, setFormMaxDiscount] = useState('');
+    const [formUsageLimit, setFormUsageLimit] = useState('');
+    const [formValidUntil, setFormValidUntil] = useState('');
+    const [formFirstOrderOnly, setFormFirstOrderOnly] = useState(false);
+
+    // useEffect must be called before any conditional returns
+    useEffect(() => {
+        if (user && canAccess('coupons')) {
+            fetchCoupons();
+        }
+    }, [user, canAccess]);
+
     // Check if user has access to coupons feature (Enterprise only)
     if (!canAccess('coupons')) {
         return (
@@ -58,27 +80,6 @@ export default function CuponsPage() {
             </MainLayout>
         );
     }
-
-    // Modal states
-    const [showModal, setShowModal] = useState(false);
-    const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
-
-    // Form states
-    const [formCode, setFormCode] = useState('');
-    const [formDescription, setFormDescription] = useState('');
-    const [formDiscountType, setFormDiscountType] = useState<'percentage' | 'fixed'>('percentage');
-    const [formDiscountValue, setFormDiscountValue] = useState('');
-    const [formMinOrderValue, setFormMinOrderValue] = useState('');
-    const [formMaxDiscount, setFormMaxDiscount] = useState('');
-    const [formUsageLimit, setFormUsageLimit] = useState('');
-    const [formValidUntil, setFormValidUntil] = useState('');
-    const [formFirstOrderOnly, setFormFirstOrderOnly] = useState(false);
-
-    useEffect(() => {
-        if (user) {
-            fetchCoupons();
-        }
-    }, [user]);
 
     const fetchCoupons = async () => {
         if (!user) return;

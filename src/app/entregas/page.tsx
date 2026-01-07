@@ -29,6 +29,12 @@ export default function EntregasPage() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
 
+    useEffect(() => {
+        if (user && canAccess('deliveries')) {
+            fetchOrders();
+        }
+    }, [user, activeTab, canAccess]);
+
     // Check if user has access to deliveries feature
     if (!canAccess('deliveries')) {
         return (
@@ -42,12 +48,6 @@ export default function EntregasPage() {
             </MainLayout>
         );
     }
-
-    useEffect(() => {
-        if (user) {
-            fetchOrders();
-        }
-    }, [user, activeTab]);
 
     const fetchOrders = async () => {
         if (!user) return;

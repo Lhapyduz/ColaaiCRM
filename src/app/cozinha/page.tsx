@@ -55,22 +55,8 @@ export default function CozinhaPage() {
     const [soundEnabled, setSoundEnabled] = useState(true);
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
-    // Check if user has access to kitchen feature
-    if (!canAccess('kitchen')) {
-        return (
-            <MainLayout>
-                <UpgradePrompt
-                    feature="Tela de Cozinha"
-                    requiredPlan="Profissional"
-                    currentPlan={plan}
-                    fullPage
-                />
-            </MainLayout>
-        );
-    }
-
     useEffect(() => {
-        if (user) {
+        if (user && canAccess('kitchen')) {
             fetchOrders();
 
             // Set up real-time subscription
@@ -94,7 +80,21 @@ export default function CozinhaPage() {
                 subscription.unsubscribe();
             };
         }
-    }, [user, soundEnabled]);
+    }, [user, soundEnabled, canAccess]);
+
+    // Check if user has access to kitchen feature
+    if (!canAccess('kitchen')) {
+        return (
+            <MainLayout>
+                <UpgradePrompt
+                    feature="Tela de Cozinha"
+                    requiredPlan="Profissional"
+                    currentPlan={plan}
+                    fullPage
+                />
+            </MainLayout>
+        );
+    }
 
     const fetchOrders = async () => {
         if (!user) return;
