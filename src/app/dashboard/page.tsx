@@ -19,6 +19,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import { predictRemainingToday, predictSalesForDate, getConfidenceLabel, getConfidencePercentage } from '@/lib/salesPrediction';
 import styles from './page.module.css';
@@ -57,6 +58,7 @@ interface Prediction {
 
 export default function DashboardPage() {
     const { user, userSettings } = useAuth();
+    const { canAccess } = useSubscription();
     const [stats, setStats] = useState<Stats>({
         totalOrders: 0,
         totalRevenue: 0,
@@ -308,8 +310,8 @@ export default function DashboardPage() {
                     </Card>
                 </div>
 
-                {/* Sales Prediction Card */}
-                {prediction && (
+                {/* Sales Prediction Card - Only for Professional plan */}
+                {prediction && canAccess('salesPrediction') && (
                     <Card className={styles.predictionCard}>
                         <div className={styles.predictionHeader}>
                             <div className={styles.predictionTitle}>

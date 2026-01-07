@@ -45,7 +45,7 @@ export async function POST() {
         else if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE) planType = 'Profissional';
 
         // Mapear status
-        let status = activeSub.status;
+        let status: string = activeSub.status;
         if (status === 'trialing') status = 'trial';
         else if (status === 'canceled') status = 'cancelled';
         else if (status === 'past_due' || status === 'unpaid') status = 'expired';

@@ -38,6 +38,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
@@ -110,6 +111,7 @@ const PAYMENT_COLORS: Record<string, string> = {
 
 export default function RelatoriosPage() {
     const { user } = useAuth();
+    const { canAccess } = useSubscription();
     const [period, setPeriod] = useState<PeriodType>('month');
     const [comparison, setComparison] = useState<ComparisonType>('previous');
     const [customStartDate, setCustomStartDate] = useState('');
@@ -572,9 +574,11 @@ export default function RelatoriosPage() {
                         <h1 className={styles.title}>Relatórios</h1>
                         <p className={styles.subtitle}>Análise detalhada do desempenho do seu negócio</p>
                     </div>
-                    <Button leftIcon={<FiDownload />} onClick={handleExportPDF}>
-                        Exportar PDF
-                    </Button>
+                    {canAccess('exportPdf') && (
+                        <Button leftIcon={<FiDownload />} onClick={handleExportPDF}>
+                            Exportar PDF
+                        </Button>
+                    )}
                 </div>
 
                 {/* Period Selector */}

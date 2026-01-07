@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { FiUpload, FiSave, FiCheck, FiTrash2, FiLink, FiCopy } from 'react-icons/fi';
+import { FiUpload, FiSave, FiCheck, FiTrash2, FiLink, FiCopy, FiLock } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import QRCodeGenerator from '@/components/ui/QRCodeGenerator';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
@@ -25,6 +26,7 @@ const colorPresets = [
 
 export default function ConfiguracoesPage() {
     const { user, userSettings, updateSettings, signOut, previewSettings } = useAuth();
+    const { canAccess } = useSubscription();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [appName, setAppName] = useState(userSettings?.app_name || 'Cola Aí');
@@ -212,73 +214,86 @@ export default function ConfiguracoesPage() {
                             Cardápio Online
                         </h2>
 
-                        {/* WhatsApp Number */}
-                        <div className={styles.settingRow}>
-                            <label className={styles.settingLabel}>
-                                <FaWhatsapp style={{ marginRight: '8px', color: '#25D366' }} />
-                                Número do WhatsApp
-                            </label>
-                            <Input
-                                value={formatWhatsApp(whatsappNumber)}
-                                onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))}
-                                placeholder="(11) 99999-9999"
-                                maxLength={16}
-                            />
-                            <p className={styles.helpText}>
-                                Os clientes usarão este número para enviar pedidos via WhatsApp
-                            </p>
-                        </div>
-
-                        {/* Public Slug */}
-                        <div className={styles.settingRow}>
-                            <label className={styles.settingLabel}>Link do Cardápio</label>
-                            <div className={styles.slugInput}>
-                                <span className={styles.slugPrefix}>
-                                    {typeof window !== 'undefined' ? window.location.origin : ''}/menu/
-                                </span>
-                                <Input
-                                    value={publicSlug}
-                                    onChange={(e) => handleSlugChange(e.target.value)}
-                                    placeholder="seu-negocio"
-                                    className={styles.slugField}
-                                />
+                        {!canAccess('digitalMenu') ? (
+                            <div className={styles.blockedFeature}>
+                                <FiLock className={styles.blockedIcon} />
+                                <h3>Recurso não disponível no seu plano</h3>
+                                <p>O Cardápio Online está disponível nos planos Avançado e Profissional.</p>
+                                <a href="/assinatura" className={styles.upgradeLink}>
+                                    Fazer Upgrade
+                                </a>
                             </div>
-                            {slugError && <p className={styles.errorText}>{slugError}</p>}
-                            <p className={styles.helpText}>
-                                Crie um link personalizado para compartilhar seu cardápio
-                            </p>
-                        </div>
-
-                        {/* QR Code */}
-                        {publicSlug && userSettings?.public_slug && (
-                            <div className={styles.settingRow}>
-                                <label className={styles.settingLabel}>QR Code do Cardápio</label>
-                                <div className={styles.qrCodeSection}>
-                                    <QRCodeGenerator
-                                        url={getMenuUrl()}
-                                        appName={appName}
-                                        primaryColor={primaryColor}
+                        ) : (
+                            <>
+                                {/* WhatsApp Number */}
+                                <div className={styles.settingRow}>
+                                    <label className={styles.settingLabel}>
+                                        <FaWhatsapp style={{ marginRight: '8px', color: '#25D366' }} />
+                                        Número do WhatsApp
+                                    </label>
+                                    <Input
+                                        value={formatWhatsApp(whatsappNumber)}
+                                        onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))}
+                                        placeholder="(11) 99999-9999"
+                                        maxLength={16}
                                     />
-                                    <div className={styles.linkActions}>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            leftIcon={copied ? <FiCheck /> : <FiCopy />}
-                                            onClick={copyMenuLink}
-                                        >
-                                            {copied ? 'Copiado!' : 'Copiar Link'}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            leftIcon={<FiLink />}
-                                            onClick={() => window.open(getMenuUrl(), '_blank')}
-                                        >
-                                            Abrir Cardápio
-                                        </Button>
-                                    </div>
+                                    <p className={styles.helpText}>
+                                        Os clientes usarão este número para enviar pedidos via WhatsApp
+                                    </p>
                                 </div>
-                            </div>
+
+                                {/* Public Slug */}
+                                <div className={styles.settingRow}>
+                                    <label className={styles.settingLabel}>Link do Cardápio</label>
+                                    <div className={styles.slugInput}>
+                                        <span className={styles.slugPrefix}>
+                                            {typeof window !== 'undefined' ? window.location.origin : ''}/menu/
+                                        </span>
+                                        <Input
+                                            value={publicSlug}
+                                            onChange={(e) => handleSlugChange(e.target.value)}
+                                            placeholder="seu-negocio"
+                                            className={styles.slugField}
+                                        />
+                                    </div>
+                                    {slugError && <p className={styles.errorText}>{slugError}</p>}
+                                    <p className={styles.helpText}>
+                                        Crie um link personalizado para compartilhar seu cardápio
+                                    </p>
+                                </div>
+
+                                {/* QR Code */}
+                                {publicSlug && userSettings?.public_slug && (
+                                    <div className={styles.settingRow}>
+                                        <label className={styles.settingLabel}>QR Code do Cardápio</label>
+                                        <div className={styles.qrCodeSection}>
+                                            <QRCodeGenerator
+                                                url={getMenuUrl()}
+                                                appName={appName}
+                                                primaryColor={primaryColor}
+                                            />
+                                            <div className={styles.linkActions}>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    leftIcon={copied ? <FiCheck /> : <FiCopy />}
+                                                    onClick={copyMenuLink}
+                                                >
+                                                    {copied ? 'Copiado!' : 'Copiar Link'}
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    leftIcon={<FiLink />}
+                                                    onClick={() => window.open(getMenuUrl(), '_blank')}
+                                                >
+                                                    Abrir Cardápio
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </Card>
 
