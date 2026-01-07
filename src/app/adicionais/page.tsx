@@ -13,7 +13,9 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
@@ -36,6 +38,7 @@ interface AddonGroup {
 
 export default function AdicionaisPage() {
     const { user } = useAuth();
+    const { canAccess, plan } = useSubscription();
     const [addons, setAddons] = useState<Addon[]>([]);
     const [groups, setGroups] = useState<AddonGroup[]>([]);
     const [loading, setLoading] = useState(true);
@@ -57,6 +60,20 @@ export default function AdicionaisPage() {
     const [groupMaxSelection, setGroupMaxSelection] = useState('1');
     const [groupRequired, setGroupRequired] = useState(false);
     const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+
+    // Check access
+    if (!canAccess('addons')) {
+        return (
+            <MainLayout>
+                <UpgradePrompt
+                    feature="Adicionais de Produtos"
+                    requiredPlan="Avançado"
+                    currentPlan={plan}
+                    fullPage
+                />
+            </MainLayout>
+        );
+    }
 
     useEffect(() => {
         if (user) {

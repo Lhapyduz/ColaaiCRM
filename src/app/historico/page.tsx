@@ -13,7 +13,9 @@ import {
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import { getActionTypeLabel, getEntityTypeLabel, getActionIcon, ActionType, EntityType } from '@/lib/actionLogger';
 import styles from './page.module.css';
@@ -33,6 +35,7 @@ const PAGE_SIZE = 20;
 
 export default function HistoricoPage() {
     const { user } = useAuth();
+    const { canAccess, plan } = useSubscription();
     const [logs, setLogs] = useState<ActionLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -41,6 +44,20 @@ export default function HistoricoPage() {
     const [filterEntity, setFilterEntity] = useState<EntityType | ''>('');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+
+    // Check access
+    if (!canAccess('actionHistory')) {
+        return (
+            <MainLayout>
+                <UpgradePrompt
+                    feature="Histórico de Ações"
+                    requiredPlan="Avançado"
+                    currentPlan={plan}
+                    fullPage
+                />
+            </MainLayout>
+        );
+    }
 
     useEffect(() => {
         if (user) {

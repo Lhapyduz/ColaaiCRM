@@ -6,7 +6,9 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { LimitWarning } from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
@@ -22,6 +24,7 @@ const iconOptions = ['🌭', '🍔', '🍟', '🥤', '🍕', '🌮', '🥪', '�
 
 export default function CategoriasPage() {
     const { user } = useAuth();
+    const { getLimit, isWithinLimit } = useSubscription();
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -34,6 +37,9 @@ export default function CategoriasPage() {
         color: '#ff6b35'
     });
     const [saving, setSaving] = useState(false);
+
+    const categoriesLimit = getLimit('categories');
+    const isAtLimit = !isWithinLimit('categories', categories.length);
 
     useEffect(() => {
         if (user) {
@@ -72,6 +78,12 @@ export default function CategoriasPage() {
     };
 
     const openModal = (category?: Category) => {
+        // Block new categories if at limit
+        if (!category && isAtLimit) {
+            alert(`Limite de ${categoriesLimit} categorias atingido! Faça upgrade do seu plano para adicionar mais.`);
+            return;
+        }
+
         if (category) {
             setEditingCategory(category);
             setCategoryForm({
@@ -147,10 +159,17 @@ export default function CategoriasPage() {
                         <h1 className={styles.title}>Categorias</h1>
                         <p className={styles.subtitle}>Organize seus produtos em categorias</p>
                     </div>
-                    <Button leftIcon={<FiPlus />} onClick={() => openModal()}>
+                    <Button leftIcon={<FiPlus />} onClick={() => openModal()} disabled={isAtLimit}>
                         Nova Categoria
                     </Button>
                 </div>
+
+                <LimitWarning
+                    resource="categorias"
+                    current={categories.length}
+                    limit={categoriesLimit}
+                    requiredPlan="Avançado"
+                />
 
                 {loading ? (
                     <div className={styles.grid}>

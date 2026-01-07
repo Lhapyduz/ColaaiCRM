@@ -12,7 +12,9 @@ import {
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
@@ -36,12 +38,27 @@ interface DailySummary {
 
 export default function FluxoCaixaPage() {
     const { user } = useAuth();
+    const { canAccess, plan } = useSubscription();
     const [entries, setEntries] = useState<CashFlowEntry[]>([]);
     const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+
+    // Check access
+    if (!canAccess('cashFlow')) {
+        return (
+            <MainLayout>
+                <UpgradePrompt
+                    feature="Fluxo de Caixa"
+                    requiredPlan="Avançado"
+                    currentPlan={plan}
+                    fullPage
+                />
+            </MainLayout>
+        );
+    }
 
     useEffect(() => {
         // Set default date range

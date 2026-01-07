@@ -53,6 +53,10 @@ const PLAN_FEATURES = {
         salesPrediction: false,
         digitalMenu: false,
         customization: 'basic',
+        bills: false,           // Contas a Pagar/Receber
+        cashFlow: false,        // Fluxo de Caixa
+        addons: false,          // Adicionais de produtos
+        actionHistory: false,   // Histórico de ações
     },
     Avançado: {
         dashboard: true,
@@ -69,6 +73,10 @@ const PLAN_FEATURES = {
         salesPrediction: false,
         digitalMenu: true,
         customization: 'full',
+        bills: true,
+        cashFlow: true,
+        addons: true,
+        actionHistory: true,
     },
     Profissional: {
         dashboard: true,
@@ -85,6 +93,10 @@ const PLAN_FEATURES = {
         salesPrediction: true,
         digitalMenu: true,
         customization: 'full',
+        bills: true,
+        cashFlow: true,
+        addons: true,
+        actionHistory: true,
     }
 };
 

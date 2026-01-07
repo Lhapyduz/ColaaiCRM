@@ -11,7 +11,9 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { LimitWarning } from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
@@ -40,6 +42,7 @@ interface AddonGroup {
 
 export default function ProdutosPage() {
     const { user } = useAuth();
+    const { getLimit, isWithinLimit } = useSubscription();
     const [categories, setCategories] = useState<Category[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -61,6 +64,9 @@ export default function ProdutosPage() {
     // Addon groups
     const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([]);
     const [selectedAddonGroups, setSelectedAddonGroups] = useState<string[]>([]);
+
+    const productsLimit = getLimit('products');
+    const isAtLimit = !isWithinLimit('products', products.length);
 
     useEffect(() => {
         if (user) {
@@ -104,6 +110,12 @@ export default function ProdutosPage() {
     };
 
     const openProductModal = async (product?: Product) => {
+        // Block new products if at limit
+        if (!product && isAtLimit) {
+            alert(`Limite de ${productsLimit} produtos atingido! Faça upgrade do seu plano para adicionar mais.`);
+            return;
+        }
+
         if (product) {
             setEditingProduct(product);
             setProductForm({
@@ -220,10 +232,17 @@ export default function ProdutosPage() {
                         <h1 className={styles.title}>Produtos</h1>
                         <p className={styles.subtitle}>Gerencie seu cardápio</p>
                     </div>
-                    <Button leftIcon={<FiPlus />} onClick={() => openProductModal()}>
+                    <Button leftIcon={<FiPlus />} onClick={() => openProductModal()} disabled={isAtLimit}>
                         Novo Produto
                     </Button>
                 </div>
+
+                <LimitWarning
+                    resource="produtos"
+                    current={products.length}
+                    limit={productsLimit}
+                    requiredPlan="Avançado"
+                />
 
                 {/* Filters */}
                 <Card className={styles.filtersCard}>

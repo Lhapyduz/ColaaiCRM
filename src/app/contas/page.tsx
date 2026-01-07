@@ -18,7 +18,9 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import styles from './page.module.css';
 
@@ -47,6 +49,7 @@ type TabType = 'payable' | 'receivable' | 'all';
 
 export default function ContasPage() {
     const { user } = useAuth();
+    const { canAccess, plan } = useSubscription();
     const [bills, setBills] = useState<Bill[]>([]);
     const [categories, setCategories] = useState<BillCategory[]>([]);
     const [loading, setLoading] = useState(true);
@@ -64,6 +67,20 @@ export default function ContasPage() {
         supplier_customer: '',
         notes: ''
     });
+
+    // Check access
+    if (!canAccess('bills')) {
+        return (
+            <MainLayout>
+                <UpgradePrompt
+                    feature="Contas a Pagar/Receber"
+                    requiredPlan="Avançado"
+                    currentPlan={plan}
+                    fullPage
+                />
+            </MainLayout>
+        );
+    }
 
     useEffect(() => {
         if (user) {
