@@ -1,0 +1,263 @@
+.container {
+    min-height: 100vh;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Background Effects */
+.backgroundEffects {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.blob1 {
+    position: absolute;
+    top: -200px;
+    right: -200px;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(var(--primary-rgb), 0.15) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(60px);
+    animation: float 8s ease-in-out infinite;
+}
+
+.blob2 {
+    position: absolute;
+    bottom: -200px;
+    left: -200px;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(0, 184, 148, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    filter: blur(60px);
+    animation: float 10s ease-in-out infinite reverse;
+}
+
+.grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 50px 50px;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(30px, 30px);
+    }
+}
+
+/* Content Layout */
+.content {
+    display: flex;
+    flex: 1;
+    z-index: 1;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Form Section */
+.formSection {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px;
+}
+
+.formCard {
+    width: 100%;
+    max-width: 420px;
+    padding: 40px;
+    background: var(--bg-card);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-xl);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+.logoIcon {
+    font-size: 2.5rem;
+    animation: bounce 2s infinite;
+}
+
+.brandName {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.formHeader {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.formHeader h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.formHeader p {
+    color: var(--text-secondary);
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.error {
+    padding: 12px 16px;
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.3);
+    border-radius: var(--radius-md);
+    color: var(--error);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+/* Success State */
+.successState {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.successIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 24px;
+    background: rgba(0, 184, 148, 0.1);
+    border-radius: 50%;
+    color: #00b894;
+}
+
+.successState h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.successState p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* Error State */
+.errorState {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.errorIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 24px;
+    background: rgba(231, 76, 60, 0.1);
+    border-radius: 50%;
+    color: #e74c3c;
+}
+
+.errorState h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.errorState p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.actionButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--primary);
+    color: white;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    transition: opacity var(--transition-fast);
+}
+
+.actionButton:hover {
+    opacity: 0.9;
+}
+
+/* Loading State */
+.loadingState {
+    text-align: center;
+    padding: 40px 0;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 16px;
+    border: 3px solid rgba(var(--primary-rgb), 0.2);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loadingState p {
+    color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .formSection {
+        padding: 24px;
+    }
+
+    .formCard {
+        padding: 24px;
+    }
+}

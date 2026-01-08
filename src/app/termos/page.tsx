@@ -155,7 +155,7 @@ export default function TermosPage() {
                     <h2>13. Lei Aplicável e Foro</h2>
                     <p>
                         Estes Termos são regidos pelas leis da República Federativa do Brasil.
-                        Qualquer disputa será resolvida no foro da comarca de São Paulo, SP,
+                        Qualquer disputa será resolvida no foro da comarca de Guaratuba, PR,
                         com exclusão de qualquer outro.
                     </p>
                 </section>
