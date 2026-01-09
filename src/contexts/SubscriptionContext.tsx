@@ -153,28 +153,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
             } else if (data) {
                 setSubscription(data);
             } else {
-                // No subscription found (data is null), create default trial
-                const now = new Date();
-                const trialEnd = new Date(now);
-                trialEnd.setDate(now.getDate() + 3); // 3 days trial
-
-                const { data: newSub, error: insertError } = await supabase
-                    .from('subscriptions')
-                    .insert({
-                        user_id: user.id,
-                        plan_type: 'Avançado',
-                        status: 'trial',
-                        billing_period: 'monthly',
-                        trial_ends_at: trialEnd.toISOString(),
-                        current_period_start: now.toISOString(),
-                        current_period_end: trialEnd.toISOString(),
-                    })
-                    .select()
-                    .single();
-
-                if (!insertError && newSub) {
-                    setSubscription(newSub);
-                }
+                // No subscription found - user needs to choose a plan via Stripe
+                // Don't create automatic trial, let RouteGuard redirect to /assinatura
+                setSubscription(null);
             }
         } catch (error) {
             console.error('Error:', error);

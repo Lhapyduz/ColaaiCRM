@@ -40,7 +40,7 @@ export default function RegistroPage() {
             if (error) {
                 setError('Erro ao criar conta. Tente outro email.');
             } else {
-                router.push('/dashboard');
+                router.push('/assinatura');
             }
         } catch {
             setError('Ocorreu um erro. Tente novamente.');
