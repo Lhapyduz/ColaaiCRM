@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { stripe, getStripeCustomer } from '@/lib/stripe';
-import { cookies } from 'next/headers';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function POST(req: NextRequest) {
     try {
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
             return new NextResponse('Customer creation failed', { status: 500 });
         }
 
-        // Check for existing subscription
+        // Check for existing active subscription
         const { data: existingSub } = await supabase
             .from('subscriptions')
             .select('*')
@@ -40,6 +40,18 @@ export async function POST(req: NextRequest) {
             .maybeSingle();
 
         const hasActiveSubscription = !!existingSub;
+
+        // Check if user already used trial for this specific plan
+        const { data: usedTrial } = await supabaseAdmin
+            .from('used_trials')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('plan_type', planType)
+            .maybeSingle();
+
+        const hasUsedTrialForPlan = !!usedTrial;
+        console.log('[API Checkout] Trial check:', { planType, hasUsedTrialForPlan, hasActiveSubscription });
+
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
         const sessionConfig: any = {
@@ -65,8 +77,8 @@ export async function POST(req: NextRequest) {
             }
         };
 
-        // Only add trial if user DOES NOT have an active subscription
-        if (!hasActiveSubscription) {
+        // Only add trial if user DOES NOT have an active subscription AND has not used trial for this plan
+        if (!hasActiveSubscription && !hasUsedTrialForPlan) {
             sessionConfig.subscription_data.trial_period_days = 3;
         }
 

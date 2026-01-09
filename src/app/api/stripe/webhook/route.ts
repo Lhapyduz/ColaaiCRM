@@ -144,6 +144,25 @@ export async function POST(req: Request) {
                     console.error('[WEBHOOK] Supabase upsert error:', upsertError);
                 } else {
                     console.log('[WEBHOOK] Supabase upsert SUCCESS:', upsertData);
+
+                    // If subscription is in trial, record the used trial
+                    if (sub.status === 'trialing' && sub.trial_end) {
+                        console.log('[WEBHOOK] Recording used trial for plan:', finalPlanType);
+                        const { error: trialError } = await supabaseAdmin
+                            .from('used_trials')
+                            .upsert({
+                                user_id: userId,
+                                plan_type: finalPlanType,
+                                stripe_subscription_id: subscriptionId,
+                                used_at: new Date().toISOString()
+                            }, { onConflict: 'user_id,plan_type' });
+
+                        if (trialError) {
+                            console.error('[WEBHOOK] Error recording used trial:', trialError);
+                        } else {
+                            console.log('[WEBHOOK] Used trial recorded successfully');
+                        }
+                    }
                 }
 
                 break;
