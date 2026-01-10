@@ -222,6 +222,50 @@ export async function POST(req: Request) {
                 }
                 break;
             }
+
+            case 'invoice.paid': {
+                // Handle subscription renewal - update period dates
+                const invoice = event.data.object as Stripe.Invoice;
+                const stripeCustomerId = invoice.customer as string;
+                const subscriptionId = (invoice as any).subscription as string;
+
+                console.log('[WEBHOOK] invoice.paid - Processing renewal');
+                console.log('[WEBHOOK] Customer:', stripeCustomerId);
+                console.log('[WEBHOOK] Subscription:', subscriptionId);
+
+                if (subscriptionId) {
+                    // Fetch the updated subscription from Stripe
+                    const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+                    const priceId = stripeSub.items.data[0].price.id;
+
+                    const { data: userData } = await supabaseAdmin
+                        .from('subscriptions')
+                        .select('user_id')
+                        .eq('stripe_customer_id', stripeCustomerId)
+                        .single();
+
+                    if (userData) {
+                        const { error } = await supabaseAdmin
+                            .from('subscriptions')
+                            .update({
+                                status: mapStripeStatus(stripeSub.status),
+                                plan_type: getPlanTypeFromPriceId(priceId),
+                                trial_ends_at: stripeSub.trial_end ? new Date(stripeSub.trial_end * 1000).toISOString() : null,
+                                current_period_start: new Date((stripeSub as any).current_period_start * 1000).toISOString(),
+                                current_period_end: new Date((stripeSub as any).current_period_end * 1000).toISOString(),
+                                stripe_current_period_end: new Date((stripeSub as any).current_period_end * 1000).toISOString(),
+                            } as any)
+                            .eq('user_id', userData.user_id);
+
+                        if (error) {
+                            console.error('[WEBHOOK] Error updating subscription on invoice.paid:', error);
+                        } else {
+                            console.log('[WEBHOOK] Successfully updated subscription after invoice.paid');
+                        }
+                    }
+                }
+                break;
+            }
         }
     } catch (error) {
         console.error('Error handling webhook event:', error);
