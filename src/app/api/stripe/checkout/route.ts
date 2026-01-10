@@ -52,7 +52,9 @@ export async function POST(req: NextRequest) {
         const hasUsedTrialForPlan = !!usedTrial;
         console.log('[API Checkout] Trial check:', { planType, hasUsedTrialForPlan, hasActiveSubscription });
 
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        // Use VERCEL_URL for production deployments, fallback to NEXT_PUBLIC_APP_URL or localhost
+        const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || vercelUrl || 'http://localhost:3000';
 
         const sessionConfig: any = {
             customer: customer.id,
