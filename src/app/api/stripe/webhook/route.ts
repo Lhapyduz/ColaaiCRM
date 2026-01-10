@@ -205,20 +205,31 @@ export async function POST(req: Request) {
             case 'customer.subscription.deleted': {
                 const sub = event.data.object as Stripe.Subscription;
                 const stripeCustomerId = sub.customer as string;
+                const deletedSubscriptionId = sub.id;
 
+                console.log('[WEBHOOK] customer.subscription.deleted - Subscription:', deletedSubscriptionId);
+
+                // Find the user's current subscription
                 const { data: userData } = await supabaseAdmin
                     .from('subscriptions')
-                    .select('user_id')
+                    .select('user_id, stripe_subscription_id')
                     .eq('stripe_customer_id', stripeCustomerId)
                     .single();
 
                 if (userData) {
-                    await supabaseAdmin
-                        .from('subscriptions')
-                        .update({
-                            status: 'cancelled'
-                        } as any)
-                        .eq('user_id', userData.user_id);
+                    // Only mark as cancelled if the deleted subscription is the current one
+                    // If it's an old subscription being cancelled during a plan change, ignore it
+                    if (userData.stripe_subscription_id === deletedSubscriptionId) {
+                        console.log('[WEBHOOK] Current subscription deleted, marking as cancelled');
+                        await supabaseAdmin
+                            .from('subscriptions')
+                            .update({
+                                status: 'cancelled'
+                            } as any)
+                            .eq('user_id', userData.user_id);
+                    } else {
+                        console.log('[WEBHOOK] Old subscription deleted (plan change), ignoring. Current:', userData.stripe_subscription_id);
+                    }
                 }
                 break;
             }
