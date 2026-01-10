@@ -122,6 +122,24 @@ export async function POST(req: Request) {
                 const periodStart = (sub as any).current_period_start ? new Date((sub as any).current_period_start * 1000).toISOString() : now;
                 const periodEnd = (sub as any).current_period_end ? new Date((sub as any).current_period_end * 1000).toISOString() : now;
 
+                // Get the exact next invoice date from Stripe
+                let nextInvoiceDate = periodEnd;
+                try {
+                    const upcomingInvoice = await stripe.invoices.createPreview({
+                        customer: session.customer as string,
+                        subscription: subscriptionId
+                    } as any);
+                    if (upcomingInvoice.next_payment_attempt) {
+                        nextInvoiceDate = new Date(upcomingInvoice.next_payment_attempt * 1000).toISOString();
+                        console.log('[WEBHOOK] Next invoice date from Stripe:', nextInvoiceDate);
+                    } else if ((upcomingInvoice as any).period_end) {
+                        nextInvoiceDate = new Date((upcomingInvoice as any).period_end * 1000).toISOString();
+                        console.log('[WEBHOOK] Using period_end from invoice:', nextInvoiceDate);
+                    }
+                } catch (invoiceError: any) {
+                    console.log('[WEBHOOK] Could not get upcoming invoice, using current_period_end:', invoiceError.message);
+                }
+
                 console.log('[WEBHOOK] Upserting to Supabase...');
                 const { data: upsertData, error: upsertError } = await supabaseAdmin
                     .from('subscriptions')
@@ -135,7 +153,7 @@ export async function POST(req: Request) {
                         trial_ends_at: trialEndsAt,
                         current_period_start: periodStart,
                         current_period_end: periodEnd,
-                        stripe_current_period_end: periodEnd,
+                        stripe_current_period_end: nextInvoiceDate,
                         billing_period: 'monthly'
                     } as any, { onConflict: 'user_id' })
                     .select();
@@ -174,6 +192,8 @@ export async function POST(req: Request) {
                 const stripeCustomerId = sub.customer as string;
                 const priceId = sub.items.data[0].price.id;
 
+                console.log('[WEBHOOK] customer.subscription.updated - Status:', sub.status);
+
                 // Start by finding the user associated with this customer
                 const { data: userData } = await supabaseAdmin
                     .from('subscriptions')
@@ -185,6 +205,23 @@ export async function POST(req: Request) {
                     // Determine plan type from price ID using helper
                     const newPlanType = getPlanTypeFromPriceId(priceId);
 
+                    // Get the exact next invoice date from Stripe
+                    let nextInvoiceDate = new Date((sub as any).current_period_end * 1000).toISOString();
+                    try {
+                        const upcomingInvoice = await stripe.invoices.createPreview({
+                            customer: stripeCustomerId,
+                            subscription: sub.id
+                        } as any);
+                        if (upcomingInvoice.next_payment_attempt) {
+                            nextInvoiceDate = new Date(upcomingInvoice.next_payment_attempt * 1000).toISOString();
+                        } else if ((upcomingInvoice as any).period_end) {
+                            nextInvoiceDate = new Date((upcomingInvoice as any).period_end * 1000).toISOString();
+                        }
+                        console.log('[WEBHOOK] Next invoice date:', nextInvoiceDate);
+                    } catch (invoiceError: any) {
+                        console.log('[WEBHOOK] Could not get upcoming invoice:', invoiceError.message);
+                    }
+
                     await supabaseAdmin
                         .from('subscriptions')
                         .update({
@@ -194,7 +231,7 @@ export async function POST(req: Request) {
                             trial_ends_at: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
                             current_period_start: new Date((sub as any).current_period_start * 1000).toISOString(),
                             current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
-                            stripe_current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
+                            stripe_current_period_end: nextInvoiceDate,
                             stripe_price_id: priceId
                         } as any)
                         .eq('user_id', userData.user_id);
