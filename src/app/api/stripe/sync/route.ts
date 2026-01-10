@@ -101,6 +101,24 @@ export async function POST(req: NextRequest) {
 
         console.log('[Sync] Plan type:', planType, 'Status:', mappedStatus);
 
+        // Get the next invoice date from Stripe (this is the exact date of the next charge)
+        let nextInvoiceDate: string | null = null;
+        try {
+            const upcomingInvoice = await stripe.invoices.createPreview({
+                customer: stripeCustomerId,
+                subscription: stripeSub.id
+            } as any);
+            if (upcomingInvoice.next_payment_attempt) {
+                nextInvoiceDate = new Date(upcomingInvoice.next_payment_attempt * 1000).toISOString();
+            } else if (upcomingInvoice.created) {
+                nextInvoiceDate = new Date(upcomingInvoice.created * 1000 + 30 * 24 * 60 * 60 * 1000).toISOString();
+            }
+            console.log('[Sync] Next invoice date from Stripe:', nextInvoiceDate);
+        } catch (invoiceError) {
+            console.log('[Sync] No upcoming invoice found, using current_period_end');
+            nextInvoiceDate = new Date((stripeSub as any).current_period_end * 1000).toISOString();
+        }
+
         // Upsert to handle both insert and update cases
         const { error } = await supabaseAdmin
             .from('subscriptions')
@@ -114,7 +132,7 @@ export async function POST(req: NextRequest) {
                 trial_ends_at: stripeSub.trial_end ? new Date(stripeSub.trial_end * 1000).toISOString() : null,
                 current_period_start: new Date((stripeSub as any).current_period_start * 1000).toISOString(),
                 current_period_end: new Date((stripeSub as any).current_period_end * 1000).toISOString(),
-                stripe_current_period_end: new Date((stripeSub as any).current_period_end * 1000).toISOString(),
+                stripe_current_period_end: nextInvoiceDate || new Date((stripeSub as any).current_period_end * 1000).toISOString(),
                 billing_period: 'monthly'
             } as any, { onConflict: 'user_id' });
 
@@ -129,7 +147,7 @@ export async function POST(req: NextRequest) {
             message: 'Subscription synced successfully',
             status: mappedStatus,
             plan_type: planType,
-            current_period_end: new Date((stripeSub as any).current_period_end * 1000).toISOString()
+            current_period_end: nextInvoiceDate || new Date((stripeSub as any).current_period_end * 1000).toISOString()
         });
 
     } catch (error) {
