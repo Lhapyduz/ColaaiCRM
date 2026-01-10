@@ -206,9 +206,9 @@ const AssinaturaPage = () => {
                                 {getStatusLabel(subscription.status, subscription.plan_type).label}
                             </span>
                             <p>Plano: <strong>{PLANS.find(p => p.id === subscription.plan_type)?.name || subscription.plan_type}</strong></p>
-                            {subscription.current_period_end && (
+                            {(subscription.stripe_current_period_end || subscription.current_period_end) && (
                                 <p style={{ fontSize: '0.9rem', color: '#666' }}>
-                                    Renova em: {new Date(subscription.current_period_end).toLocaleDateString()}
+                                    Renova em: {new Date(subscription.stripe_current_period_end || subscription.current_period_end).toLocaleDateString()}
                                 </p>
                             )}
                         </div>

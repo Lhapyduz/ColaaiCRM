@@ -16,6 +16,10 @@ export interface Subscription {
     trial_ends_at: string | null;
     current_period_start: string;
     current_period_end: string;
+    stripe_customer_id?: string | null;
+    stripe_subscription_id?: string | null;
+    stripe_price_id?: string | null;
+    stripe_current_period_end?: string | null;
 }
 
 // Plan features and limits configuration
