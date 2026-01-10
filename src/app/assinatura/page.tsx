@@ -71,16 +71,33 @@ const AssinaturaPage = () => {
     const [loadingPortal, setLoadingPortal] = useState(false);
     const [syncing, setSyncing] = useState(false);
 
-    // Sync with Stripe on return from checkout or portal
+    // Sync with Stripe on page load and on return from checkout or portal
     React.useEffect(() => {
         const query = new URLSearchParams(window.location.search);
         if (query.get('success') === 'true' || query.get('portal') === 'true') {
             handleSync();
         } else {
-            // Always refresh subscription data on mount to get latest from database
-            refreshSubscription();
+            // Always sync with Stripe on mount to get latest status/dates
+            handleAutoSync();
         }
     }, []);
+
+    // Automatic sync that doesn't show loading state (for background updates)
+    const handleAutoSync = async () => {
+        try {
+            // First refresh from database
+            await refreshSubscription();
+
+            // Then try to sync with Stripe in background (only if user has subscription)
+            const res = await fetch('/api/stripe/sync', { method: 'POST' });
+            if (res.ok) {
+                // Refresh again after sync to show updated data
+                await refreshSubscription();
+            }
+        } catch (error) {
+            console.error('Auto sync failed:', error);
+        }
+    };
 
     const handleSync = async () => {
         try {
