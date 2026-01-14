@@ -71,6 +71,19 @@
     filter: drop-shadow(0 8px 30px rgba(255, 107, 53, 0.5));
 }
 
+/* Desktop logo sizing - Golden Ratio proportions for hero impact */
+@media (min-width: 769px) {
+    .logoImage {
+        max-width: 420px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .logoImage {
+        max-width: 480px;
+    }
+}
+
 .heroContent {
     position: relative;
     z-index: 1;
