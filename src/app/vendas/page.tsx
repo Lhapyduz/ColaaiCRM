@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
     FiCheck,
     FiX,
@@ -300,6 +301,16 @@ export default function VendasPage() {
                         <div className={styles.heroGlow2}></div>
                     </div>
                     <div className={styles.heroContent}>
+                        <div className={styles.heroLogo}>
+                            <Image
+                                src="/logo-colaai.webp"
+                                alt="Cola Aí - Sistema para Lanchonetes"
+                                width={280}
+                                height={120}
+                                priority
+                                className={styles.logoImage}
+                            />
+                        </div>
                         <span className={styles.heroBadge}>
                             <FiZap /> Sistema #1 para Lanchonetes
                         </span>
@@ -583,6 +594,15 @@ export default function VendasPage() {
 
                 {/* Footer */}
                 <footer className={styles.footer}>
+                    <div className={styles.footerLogo}>
+                        <Image
+                            src="/logo-colaai.webp"
+                            alt="Cola Aí"
+                            width={150}
+                            height={65}
+                            className={styles.logoImageFooter}
+                        />
+                    </div>
                     <div className={styles.footerLinks}>
                         <Link href="/termos">Termos de Uso</Link>
                         <span className={styles.footerSeparator}>|</span>
