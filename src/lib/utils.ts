@@ -1,3 +1,17 @@
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
+
+/**
+ * Utility function to merge Tailwind CSS classes with clsx
+ * This handles conditional classes and removes conflicting Tailwind classes
+ * 
+ * @example
+ * cn('px-2 py-1', condition && 'bg-primary', 'px-4') // px-4 will override px-2
+ */
+export function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs))
+}
+
 /**
  * Utility functions for phone number normalization
  * Ensures consistent phone number format across the app

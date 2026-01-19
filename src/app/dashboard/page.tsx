@@ -21,8 +21,8 @@ import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
-import { predictRemainingToday, predictSalesForDate, getConfidenceLabel, getConfidencePercentage } from '@/lib/salesPrediction';
-import styles from './page.module.css';
+import { predictRemainingToday, getConfidenceLabel } from '@/lib/salesPrediction';
+import { cn } from '@/lib/utils';
 
 interface Stats {
     totalOrders: number;
@@ -83,14 +83,12 @@ export default function DashboardPage() {
         if (!user) return;
 
         try {
-            // Fetch today's orders
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
 
-            // Get 30 days ago for prediction
             const thirtyDaysAgo = new Date(today);
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -101,7 +99,6 @@ export default function DashboardPage() {
                 .gte('created_at', today.toISOString())
                 .order('created_at', { ascending: false });
 
-            // Fetch yesterday's orders
             const { data: yesterdayOrders } = await supabase
                 .from('orders')
                 .select('*')
@@ -110,7 +107,6 @@ export default function DashboardPage() {
                 .lt('created_at', today.toISOString())
                 .neq('status', 'cancelled');
 
-            // Fetch historical data for prediction (last 30 days)
             const { data: historicalOrders } = await supabase
                 .from('orders')
                 .select('created_at, total, payment_status')
@@ -147,9 +143,7 @@ export default function DashboardPage() {
                 setRecentOrders(orders.slice(0, 5));
             }
 
-            // Calculate prediction
             if (historicalOrders && historicalOrders.length > 0) {
-                // Process historical data by day
                 const dailyData: Record<string, { revenue: number; orders: number }> = {};
 
                 historicalOrders.forEach(order => {
@@ -170,7 +164,6 @@ export default function DashboardPage() {
                     orders: data.orders
                 }));
 
-                // Get prediction for remaining day
                 const pred = predictRemainingToday(
                     historicalData,
                     orders?.filter(o => o.payment_status === 'paid').reduce((sum, o) => sum + o.total, 0) || 0,
@@ -235,12 +228,12 @@ export default function DashboardPage() {
 
     return (
         <MainLayout>
-            <div className={styles.container}>
+            <div className="max-w-[1400px] mx-auto">
                 {/* Header */}
-                <div className={styles.header}>
+                <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
                     <div>
-                        <h1 className={styles.title}>Dashboard</h1>
-                        <p className={styles.subtitle}>
+                        <h1 className="text-[2rem] font-bold mb-2">Dashboard</h1>
+                        <p className="text-text-secondary">
                             Bem-vindo ao {appName}! Aqui está o resumo de hoje.
                         </p>
                     </div>
@@ -250,104 +243,113 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Stats Grid */}
-                <div className={styles.statsGrid}>
-                    <Card className={styles.statCard} variant="gradient">
-                        <div className={styles.statIcon} style={{ background: 'rgba(255, 107, 53, 0.1)', color: 'var(--primary)' }}>
+                <div className="grid grid-cols-4 gap-5 mb-8 max-[1200px]:grid-cols-2 max-md:grid-cols-1">
+                    <Card className="flex items-center gap-4 p-5! relative overflow-hidden" variant="gradient">
+                        <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.05)_0%,transparent_70%)] rounded-full translate-x-[30%] -translate-y-[30%]" />
+                        <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl shrink-0 bg-primary/10 text-primary">
                             <FiShoppingBag />
                         </div>
-                        <div className={styles.statContent}>
-                            <span className={styles.statLabel}>Pedidos Hoje</span>
-                            <span className={styles.statValue}>{stats.totalOrders}</span>
+                        <div className="flex-1">
+                            <span className="block text-sm text-text-secondary mb-1">Pedidos Hoje</span>
+                            <span className="block text-2xl font-bold">{stats.totalOrders}</span>
                         </div>
-                        <div className={`${styles.statTrend} ${ordersChange >= 0 ? styles.positive : styles.negative}`}>
+                        <div className={cn('flex items-center gap-1 text-sm', ordersChange >= 0 ? 'text-accent' : 'text-error')}>
                             {ordersChange >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
                             <span>{ordersChange >= 0 ? '+' : ''}{ordersChange.toFixed(0)}%</span>
                         </div>
                     </Card>
 
-                    <Card className={styles.statCard} variant="gradient">
-                        <div className={styles.statIcon} style={{ background: 'rgba(0, 184, 148, 0.1)', color: 'var(--accent)' }}>
+                    <Card className="flex items-center gap-4 p-5! relative overflow-hidden" variant="gradient">
+                        <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.05)_0%,transparent_70%)] rounded-full translate-x-[30%] -translate-y-[30%]" />
+                        <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl shrink-0 bg-accent/10 text-accent">
                             <FiDollarSign />
                         </div>
-                        <div className={styles.statContent}>
-                            <span className={styles.statLabel}>Receita do Dia</span>
-                            <span className={styles.statValue}>{formatCurrency(stats.totalRevenue)}</span>
+                        <div className="flex-1">
+                            <span className="block text-sm text-text-secondary mb-1">Receita do Dia</span>
+                            <span className="block text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</span>
                         </div>
-                        <div className={`${styles.statTrend} ${revenueChange >= 0 ? styles.positive : styles.negative}`}>
+                        <div className={cn('flex items-center gap-1 text-sm', revenueChange >= 0 ? 'text-accent' : 'text-error')}>
                             {revenueChange >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
                             <span>{revenueChange >= 0 ? '+' : ''}{revenueChange.toFixed(0)}%</span>
                         </div>
                     </Card>
 
-                    <Card className={styles.statCard} variant="gradient">
-                        <div className={styles.statIcon} style={{ background: 'rgba(9, 132, 227, 0.1)', color: 'var(--info)' }}>
+                    <Card className="flex items-center gap-4 p-5! relative overflow-hidden" variant="gradient">
+                        <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.05)_0%,transparent_70%)] rounded-full translate-x-[30%] -translate-y-[30%]" />
+                        <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl shrink-0 bg-info/10 text-info">
                             <GiCookingPot />
                         </div>
-                        <div className={styles.statContent}>
-                            <span className={styles.statLabel}>Em Preparo</span>
-                            <span className={styles.statValue}>{stats.pendingOrders}</span>
+                        <div className="flex-1">
+                            <span className="block text-sm text-text-secondary mb-1">Em Preparo</span>
+                            <span className="block text-2xl font-bold">{stats.pendingOrders}</span>
                         </div>
                         {stats.pendingOrders > 0 && (
-                            <Link href="/cozinha" className={styles.statLink}>
+                            <Link href="/cozinha" className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-text-secondary transition-all duration-fast hover:bg-white/10 hover:text-text-primary">
                                 <FiArrowRight />
                             </Link>
                         )}
                     </Card>
 
-                    <Card className={styles.statCard} variant="gradient">
-                        <div className={styles.statIcon} style={{ background: 'rgba(253, 203, 110, 0.1)', color: 'var(--warning)' }}>
+                    <Card className="flex items-center gap-4 p-5! relative overflow-hidden" variant="gradient">
+                        <div className="absolute top-0 right-0 w-[100px] h-[100px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.05)_0%,transparent_70%)] rounded-full translate-x-[30%] -translate-y-[30%]" />
+                        <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl shrink-0 bg-warning/10 text-warning">
                             <FiTruck />
                         </div>
-                        <div className={styles.statContent}>
-                            <span className={styles.statLabel}>Para Entrega</span>
-                            <span className={styles.statValue}>{stats.pendingDeliveries}</span>
+                        <div className="flex-1">
+                            <span className="block text-sm text-text-secondary mb-1">Para Entrega</span>
+                            <span className="block text-2xl font-bold">{stats.pendingDeliveries}</span>
                         </div>
                         {stats.pendingDeliveries > 0 && (
-                            <Link href="/entregas" className={styles.statLink}>
+                            <Link href="/entregas" className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-text-secondary transition-all duration-fast hover:bg-white/10 hover:text-text-primary">
                                 <FiArrowRight />
                             </Link>
                         )}
                     </Card>
                 </div>
 
-                {/* Sales Prediction Card - Only for Professional plan */}
+                {/* Sales Prediction Card */}
                 {prediction && canAccess('salesPrediction') && (
-                    <Card className={styles.predictionCard}>
-                        <div className={styles.predictionHeader}>
-                            <div className={styles.predictionTitle}>
-                                <FiTarget className={styles.predictionIcon} />
-                                <h2>Previsão para Hoje</h2>
+                    <Card className="p-6! mb-8 bg-linear-to-br from-[rgba(108,92,231,0.1)] to-[rgba(0,184,148,0.05)] border-[rgba(108,92,231,0.2)]">
+                        <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+                            <div className="flex items-center gap-2.5">
+                                <FiTarget className="text-xl text-[#6c5ce7]" />
+                                <h2 className="text-lg font-semibold text-text-primary m-0">Previsão para Hoje</h2>
                             </div>
-                            <div className={styles.confidenceBadge} data-confidence={prediction.confidence}>
+                            <div className={cn(
+                                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium uppercase',
+                                prediction.confidence === 'high' && 'bg-accent/10 text-accent',
+                                prediction.confidence === 'medium' && 'bg-warning/10 text-warning',
+                                prediction.confidence === 'low' && 'bg-primary/10 text-primary'
+                            )}>
                                 <FiActivity />
                                 {getConfidenceLabel(prediction.confidence)}
                             </div>
                         </div>
 
-                        <div className={styles.predictionContent}>
-                            <div className={styles.predictionStats}>
-                                <div className={styles.predictionStat}>
-                                    <span className={styles.predictionStatLabel}>Receita Prevista</span>
-                                    <span className={styles.predictionStatValue}>{formatCurrency(prediction.predictedRevenue)}</span>
+                        <div className="grid grid-cols-[auto_1fr] gap-8 items-center max-[900px]:grid-cols-1 max-[900px]:gap-5">
+                            <div className="flex gap-8 max-[900px]:justify-around max-[480px]:flex-col max-[480px]:gap-4">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[0.8rem] text-text-secondary">Receita Prevista</span>
+                                    <span className="text-2xl font-bold text-text-primary">{formatCurrency(prediction.predictedRevenue)}</span>
                                 </div>
-                                <div className={styles.predictionStat}>
-                                    <span className={styles.predictionStatLabel}>Pedidos Previstos</span>
-                                    <span className={styles.predictionStatValue}>{prediction.predictedOrders}</span>
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[0.8rem] text-text-secondary">Pedidos Previstos</span>
+                                    <span className="text-2xl font-bold text-text-primary">{prediction.predictedOrders}</span>
                                 </div>
                             </div>
 
-                            <div className={styles.predictionProgress}>
-                                <div className={styles.progressHeader}>
+                            <div className="flex flex-col gap-2">
+                                <div className="flex justify-between items-center text-sm text-text-secondary">
                                     <span>Progresso do Dia</span>
-                                    <span className={styles.progressPercent}>{progressToGoal.toFixed(0)}%</span>
+                                    <span className="font-semibold text-accent">{progressToGoal.toFixed(0)}%</span>
                                 </div>
-                                <div className={styles.progressBar}>
+                                <div className="w-full h-2.5 bg-bg-tertiary rounded-full overflow-hidden">
                                     <div
-                                        className={styles.progressFill}
+                                        className="h-full bg-linear-to-r from-[#6c5ce7] to-accent rounded-full transition-[width] duration-500 ease-out"
                                         style={{ width: `${progressToGoal}%` }}
                                     />
                                 </div>
-                                <span className={styles.predictionMeta}>
+                                <span className="text-xs text-text-muted">
                                     Baseado em: {prediction.basedOn}
                                 </span>
                             </div>
@@ -356,42 +358,50 @@ export default function DashboardPage() {
                 )}
 
                 {/* Content Grid */}
-                <div className={styles.contentGrid}>
+                <div className="grid grid-cols-[1fr_400px] gap-6 max-[1200px]:grid-cols-1">
                     {/* Recent Orders */}
-                    <Card className={styles.recentOrdersCard}>
-                        <div className={styles.cardHeader}>
-                            <h2>Pedidos Recentes</h2>
-                            <Link href="/pedidos" className={styles.viewAll}>
+                    <Card className="p-6!">
+                        <div className="flex items-center justify-between mb-5">
+                            <h2 className="text-lg font-semibold">Pedidos Recentes</h2>
+                            <Link href="/pedidos" className="flex items-center gap-1.5 text-sm text-primary transition-opacity duration-fast hover:opacity-80">
                                 Ver todos <FiArrowRight />
                             </Link>
                         </div>
 
                         {loading ? (
-                            <div className={styles.loading}>
+                            <div className="flex flex-col gap-2">
                                 {[1, 2, 3].map(i => (
-                                    <div key={i} className={`${styles.orderItem} skeleton`} style={{ height: 60 }} />
+                                    <div key={i} className="h-[60px] rounded-md bg-bg-tertiary animate-pulse" />
                                 ))}
                             </div>
                         ) : recentOrders.length > 0 ? (
-                            <div className={styles.ordersList}>
+                            <div className="flex flex-col gap-2">
                                 {recentOrders.map((order) => (
                                     <Link
                                         key={order.id}
                                         href={`/pedidos/${order.id}`}
-                                        className={styles.orderItem}
+                                        className="flex items-center justify-between px-4 py-3.5 bg-bg-tertiary rounded-md border border-transparent transition-all duration-fast hover:border-border hover:translate-x-1"
                                     >
-                                        <div className={styles.orderInfo}>
-                                            <span className={styles.orderNumber}>#{order.order_number}</span>
-                                            <span className={styles.orderCustomer}>{order.customer_name}</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-semibold text-primary">#{order.order_number}</span>
+                                            <span className="text-text-primary">{order.customer_name}</span>
                                         </div>
-                                        <div className={styles.orderMeta}>
-                                            <span className={`${styles.orderStatus} status-${order.status}`}>
+                                        <div className="flex items-center gap-4 max-[480px]:flex-col max-[480px]:items-end max-[480px]:gap-1">
+                                            <span className={cn(
+                                                'px-2.5 py-1 rounded-full text-xs font-medium uppercase bg-white/5',
+                                                order.status === 'pending' && 'text-warning',
+                                                order.status === 'preparing' && 'text-info',
+                                                order.status === 'ready' && 'text-accent',
+                                                order.status === 'delivering' && 'text-primary',
+                                                order.status === 'delivered' && 'text-accent',
+                                                order.status === 'cancelled' && 'text-error'
+                                            )}>
                                                 {getStatusLabel(order.status)}
                                             </span>
-                                            <span className={styles.orderTotal}>
+                                            <span className="font-semibold text-accent">
                                                 {formatCurrency(order.total)}
                                             </span>
-                                            <span className={styles.orderTime}>
+                                            <span className="flex items-center gap-1 text-sm text-text-muted">
                                                 <FiClock /> {getTimeAgo(order.created_at)}
                                             </span>
                                         </div>
@@ -399,9 +409,9 @@ export default function DashboardPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className={styles.emptyState}>
-                                <span className={styles.emptyIcon}>📋</span>
-                                <p>Nenhum pedido hoje</p>
+                            <div className="flex flex-col items-center justify-center py-10 px-5 text-center">
+                                <span className="text-5xl mb-3">📋</span>
+                                <p className="text-text-secondary mb-4">Nenhum pedido hoje</p>
                                 <Link href="/pedidos/novo">
                                     <Button variant="outline" size="sm" leftIcon={<FiPlus />}>
                                         Criar Pedido
@@ -412,52 +422,52 @@ export default function DashboardPage() {
                     </Card>
 
                     {/* Quick Actions */}
-                    <Card className={styles.quickActionsCard}>
-                        <div className={styles.cardHeader}>
-                            <h2>Ações Rápidas</h2>
+                    <Card className="p-6!">
+                        <div className="flex items-center justify-between mb-5">
+                            <h2 className="text-lg font-semibold">Ações Rápidas</h2>
                         </div>
 
-                        <div className={styles.quickActions}>
-                            <Link href="/pedidos/novo" className={styles.quickAction}>
-                                <div className={styles.quickActionIcon} style={{ background: 'rgba(255, 107, 53, 0.1)' }}>
-                                    <FiPlus style={{ color: 'var(--primary)' }} />
+                        <div className="grid grid-cols-2 gap-3 max-md:grid-cols-3 max-[480px]:grid-cols-2">
+                            <Link href="/pedidos/novo" className="flex flex-col items-center gap-2.5 px-4 py-5 bg-bg-tertiary rounded-md border border-transparent transition-all duration-fast text-center hover:border-border hover:-translate-y-0.5 group">
+                                <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl bg-primary/10">
+                                    <FiPlus className="text-primary" />
                                 </div>
-                                <span>Novo Pedido</span>
+                                <span className="text-sm font-medium text-text-secondary group-hover:text-text-primary">Novo Pedido</span>
                             </Link>
 
-                            <Link href="/cozinha" className={styles.quickAction}>
-                                <div className={styles.quickActionIcon} style={{ background: 'rgba(9, 132, 227, 0.1)' }}>
-                                    <GiCookingPot style={{ color: 'var(--info)' }} />
+                            <Link href="/cozinha" className="flex flex-col items-center gap-2.5 px-4 py-5 bg-bg-tertiary rounded-md border border-transparent transition-all duration-fast text-center hover:border-border hover:-translate-y-0.5 group">
+                                <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl bg-info/10">
+                                    <GiCookingPot className="text-info" />
                                 </div>
-                                <span>Ver Cozinha</span>
+                                <span className="text-sm font-medium text-text-secondary group-hover:text-text-primary">Ver Cozinha</span>
                             </Link>
 
-                            <Link href="/entregas" className={styles.quickAction}>
-                                <div className={styles.quickActionIcon} style={{ background: 'rgba(253, 203, 110, 0.1)' }}>
-                                    <FiTruck style={{ color: 'var(--warning)' }} />
+                            <Link href="/entregas" className="flex flex-col items-center gap-2.5 px-4 py-5 bg-bg-tertiary rounded-md border border-transparent transition-all duration-fast text-center hover:border-border hover:-translate-y-0.5 group">
+                                <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl bg-warning/10">
+                                    <FiTruck className="text-warning" />
                                 </div>
-                                <span>Entregas</span>
+                                <span className="text-sm font-medium text-text-secondary group-hover:text-text-primary">Entregas</span>
                             </Link>
 
-                            <Link href="/caixa" className={styles.quickAction}>
-                                <div className={styles.quickActionIcon} style={{ background: 'rgba(0, 184, 148, 0.1)' }}>
-                                    <FiDollarSign style={{ color: 'var(--accent)' }} />
+                            <Link href="/caixa" className="flex flex-col items-center gap-2.5 px-4 py-5 bg-bg-tertiary rounded-md border border-transparent transition-all duration-fast text-center hover:border-border hover:-translate-y-0.5 group">
+                                <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl bg-accent/10">
+                                    <FiDollarSign className="text-accent" />
                                 </div>
-                                <span>Abrir Caixa</span>
+                                <span className="text-sm font-medium text-text-secondary group-hover:text-text-primary">Abrir Caixa</span>
                             </Link>
 
-                            <Link href="/produtos" className={styles.quickAction}>
-                                <div className={styles.quickActionIcon} style={{ background: 'rgba(155, 89, 182, 0.1)' }}>
-                                    <FiShoppingBag style={{ color: '#9b59b6' }} />
+                            <Link href="/produtos" className="flex flex-col items-center gap-2.5 px-4 py-5 bg-bg-tertiary rounded-md border border-transparent transition-all duration-fast text-center hover:border-border hover:-translate-y-0.5 group">
+                                <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl bg-[rgba(155,89,182,0.1)]">
+                                    <FiShoppingBag className="text-[#9b59b6]" />
                                 </div>
-                                <span>Produtos</span>
+                                <span className="text-sm font-medium text-text-secondary group-hover:text-text-primary">Produtos</span>
                             </Link>
 
-                            <Link href="/relatorios" className={styles.quickAction}>
-                                <div className={styles.quickActionIcon} style={{ background: 'rgba(52, 152, 219, 0.1)' }}>
-                                    <FiTrendingUp style={{ color: '#3498db' }} />
+                            <Link href="/relatorios" className="flex flex-col items-center gap-2.5 px-4 py-5 bg-bg-tertiary rounded-md border border-transparent transition-all duration-fast text-center hover:border-border hover:-translate-y-0.5 group">
+                                <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl bg-[rgba(52,152,219,0.1)]">
+                                    <FiTrendingUp className="text-[#3498db]" />
                                 </div>
-                                <span>Relatórios</span>
+                                <span className="text-sm font-medium text-text-secondary group-hover:text-text-primary">Relatórios</span>
                             </Link>
                         </div>
                     </Card>

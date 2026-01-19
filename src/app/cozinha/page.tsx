@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import { printKitchenTicket } from '@/lib/print';
-import styles from './page.module.css';
+import { cn } from '@/lib/utils';
 
 interface OrderItemAddon {
     id: string;
@@ -58,8 +58,6 @@ export default function CozinhaPage() {
     useEffect(() => {
         if (user && canAccess('kitchen')) {
             fetchOrders();
-
-            // Set up real-time subscription
             const subscription = supabase
                 .channel('kitchen_orders')
                 .on('postgres_changes', {
@@ -82,23 +80,16 @@ export default function CozinhaPage() {
         }
     }, [user, soundEnabled, canAccess]);
 
-    // Check if user has access to kitchen feature
     if (!canAccess('kitchen')) {
         return (
             <MainLayout>
-                <UpgradePrompt
-                    feature="Tela de Cozinha"
-                    requiredPlan="Profissional"
-                    currentPlan={plan}
-                    fullPage
-                />
+                <UpgradePrompt feature="Tela de Cozinha" requiredPlan="Profissional" currentPlan={plan} fullPage />
             </MainLayout>
         );
     }
 
     const fetchOrders = async () => {
         if (!user) return;
-
         try {
             const { data: ordersData, error } = await supabase
                 .from('orders')
@@ -109,29 +100,18 @@ export default function CozinhaPage() {
 
             if (error) throw error;
 
-            // Fetch items and addons for each order
             const ordersWithItems = await Promise.all(
                 (ordersData || []).map(async (order) => {
-                    const { data: items } = await supabase
-                        .from('order_items')
-                        .select('*')
-                        .eq('order_id', order.id);
-
-                    // Load addons for each item
+                    const { data: items } = await supabase.from('order_items').select('*').eq('order_id', order.id);
                     const itemsWithAddons = await Promise.all(
                         (items || []).map(async (item) => {
-                            const { data: addons } = await supabase
-                                .from('order_item_addons')
-                                .select('id, addon_name, addon_price, quantity')
-                                .eq('order_item_id', item.id);
+                            const { data: addons } = await supabase.from('order_item_addons').select('id, addon_name, addon_price, quantity').eq('order_item_id', item.id);
                             return { ...item, addons: addons || [] };
                         })
                     );
-
                     return { ...order, items: itemsWithAddons };
                 })
             );
-
             setOrders(ordersWithItems);
         } catch (error) {
             console.error('Error fetching orders:', error);
@@ -141,18 +121,12 @@ export default function CozinhaPage() {
     };
 
     const playNotificationSound = () => {
-        if (audioRef.current) {
-            audioRef.current.play().catch(() => { });
-        }
+        if (audioRef.current) audioRef.current.play().catch(() => { });
     };
 
     const updateOrderStatus = async (orderId: string, newStatus: string) => {
         try {
-            const { error } = await supabase
-                .from('orders')
-                .update({ status: newStatus, updated_at: new Date().toISOString() })
-                .eq('id', orderId);
-
+            const { error } = await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId);
             if (error) throw error;
             fetchOrders();
         } catch (error) {
@@ -163,9 +137,7 @@ export default function CozinhaPage() {
     const getTimeElapsed = (date: string) => {
         const now = new Date();
         const past = new Date(date);
-        const diffMs = now.getTime() - past.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-
+        const diffMins = Math.floor((now.getTime() - past.getTime()) / 60000);
         if (diffMins < 1) return '< 1 min';
         if (diffMins < 60) return `${diffMins} min`;
         const hours = Math.floor(diffMins / 60);
@@ -174,199 +146,118 @@ export default function CozinhaPage() {
     };
 
     const getTimeColor = (date: string) => {
-        const now = new Date();
-        const past = new Date(date);
-        const diffMins = Math.floor((now.getTime() - past.getTime()) / 60000);
-
-        if (diffMins < 10) return 'var(--accent)';
-        if (diffMins < 20) return 'var(--warning)';
-        return 'var(--error)';
+        const diffMins = Math.floor((new Date().getTime() - new Date(date).getTime()) / 60000);
+        if (diffMins < 10) return 'text-accent';
+        if (diffMins < 20) return 'text-warning';
+        return 'text-error';
     };
 
     const pendingOrders = orders.filter(o => o.status === 'pending');
     const preparingOrders = orders.filter(o => o.status === 'preparing');
 
+    const OrderCard = ({ order, isPreparing }: { order: Order; isPreparing?: boolean }) => (
+        <Card className={cn('p-4! animate-[slideInUp_0.3s_ease]', isPreparing && 'border-info shadow-[0_0_0_1px_rgba(9,132,227,0.2)]')}>
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold text-primary">#{order.order_number}</span>
+                    <span className="text-xl">{order.is_delivery ? '🚚' : '🏪'}</span>
+                </div>
+                <div className={cn('flex items-center gap-1.5 text-sm font-semibold px-2.5 py-1 bg-white/5 rounded-full', getTimeColor(order.created_at))}>
+                    <FiClock />
+                    {getTimeElapsed(order.created_at)}
+                </div>
+            </div>
+
+            <div className="font-medium mb-3 pb-3 border-b border-border">{order.customer_name}</div>
+
+            <div className="mb-4">
+                {order.items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 py-2 not-last:border-b not-last:border-dashed not-last:border-border">
+                        <span className="font-bold text-primary min-w-8">{item.quantity}x</span>
+                        <span className="flex-1 font-medium">{item.product_name}</span>
+                        {item.notes && <span className="text-[0.8125rem] text-text-secondary italic">({item.notes})</span>}
+                        {item.addons && item.addons.length > 0 && (
+                            <div className="flex flex-wrap gap-1 w-full mt-1 pl-8">
+                                {item.addons.map((addon) => (
+                                    <span key={addon.id} className="text-xs text-warning bg-warning/15 px-2 py-0.5 rounded-full font-medium">
+                                        + {addon.addon_name}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+                <Button
+                    fullWidth
+                    variant="primary"
+                    leftIcon={isPreparing ? <FiCheck /> : undefined}
+                    onClick={() => updateOrderStatus(order.id, isPreparing ? 'ready' : 'preparing')}
+                    style={isPreparing ? { background: 'var(--accent)' } : undefined}
+                >
+                    {isPreparing ? 'Marcar Pronto' : 'Iniciar Preparo'}
+                </Button>
+                <Button variant="ghost" leftIcon={<FiPrinter />} onClick={() => printKitchenTicket(order)} title="Imprimir comanda" />
+            </div>
+        </Card>
+    );
+
     return (
         <MainLayout>
-            <div className={styles.container}>
-                {/* Hidden audio element for notifications */}
+            <div className="max-w-[1400px] mx-auto">
                 <audio ref={audioRef} src="/notification.mp3" preload="auto" />
 
                 {/* Header */}
-                <div className={styles.header}>
+                <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
                     <div>
-                        <h1 className={styles.title}>Cozinha</h1>
-                        <p className={styles.subtitle}>
-                            Fila de preparo • {orders.length} pedido{orders.length !== 1 ? 's' : ''} ativo{orders.length !== 1 ? 's' : ''}
-                        </p>
+                        <h1 className="text-[2rem] font-bold mb-2">Cozinha</h1>
+                        <p className="text-text-secondary">Fila de preparo • {orders.length} pedido{orders.length !== 1 ? 's' : ''} ativo{orders.length !== 1 ? 's' : ''}</p>
                     </div>
-                    <Button
-                        variant={soundEnabled ? 'secondary' : 'ghost'}
-                        leftIcon={soundEnabled ? <FiVolume2 /> : <FiVolumeX />}
-                        onClick={() => setSoundEnabled(!soundEnabled)}
-                    >
+                    <Button variant={soundEnabled ? 'secondary' : 'ghost'} leftIcon={soundEnabled ? <FiVolume2 /> : <FiVolumeX />} onClick={() => setSoundEnabled(!soundEnabled)}>
                         {soundEnabled ? 'Som Ativo' : 'Som Mudo'}
                     </Button>
                 </div>
 
                 {loading ? (
-                    <div className={styles.loading}>
-                        <div className="skeleton" style={{ height: 200, borderRadius: 16 }} />
-                        <div className="skeleton" style={{ height: 200, borderRadius: 16 }} />
+                    <div className="grid grid-cols-2 gap-6 max-[1024px]:grid-cols-1">
+                        <div className="h-[200px] rounded-2xl bg-bg-tertiary animate-pulse" />
+                        <div className="h-[200px] rounded-2xl bg-bg-tertiary animate-pulse" />
                     </div>
                 ) : orders.length === 0 ? (
-                    <div className={styles.emptyState}>
-                        <span className={styles.emptyIcon}>👨‍🍳</span>
-                        <h3>Nenhum pedido na fila</h3>
-                        <p>Os novos pedidos aparecerão aqui automaticamente</p>
+                    <div className="flex flex-col items-center justify-center py-20 px-5 text-center">
+                        <span className="text-[5rem] mb-5">👨‍🍳</span>
+                        <h3 className="text-2xl mb-2">Nenhum pedido na fila</h3>
+                        <p className="text-text-secondary">Os novos pedidos aparecerão aqui automaticamente</p>
                     </div>
                 ) : (
-                    <div className={styles.kitchenGrid}>
+                    <div className="grid grid-cols-2 gap-6 items-start max-[1024px]:grid-cols-1">
                         {/* Pending Column */}
-                        <div className={styles.column}>
-                            <div className={styles.columnHeader}>
-                                <span className={styles.columnTitle}>
-                                    <span className={styles.statusDot} style={{ background: 'var(--warning)' }} />
+                        <div className="bg-bg-secondary rounded-lg border border-border overflow-hidden">
+                            <div className="flex items-center justify-between px-5 py-4 bg-bg-tertiary border-b border-border">
+                                <span className="flex items-center gap-2.5 font-semibold">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-warning" />
                                     Aguardando
                                 </span>
-                                <span className={styles.columnCount}>{pendingOrders.length}</span>
+                                <span className="px-3 py-1 bg-bg-card rounded-full text-sm font-semibold">{pendingOrders.length}</span>
                             </div>
-                            <div className={styles.ordersList}>
-                                {pendingOrders.map((order) => (
-                                    <Card key={order.id} className={styles.orderCard}>
-                                        <div className={styles.orderHeader}>
-                                            <div className={styles.orderInfo}>
-                                                <span className={styles.orderNumber}>#{order.order_number}</span>
-                                                <span className={styles.orderType}>
-                                                    {order.is_delivery ? '🚚' : '🏪'}
-                                                </span>
-                                            </div>
-                                            <div
-                                                className={styles.timer}
-                                                style={{ color: getTimeColor(order.created_at) }}
-                                            >
-                                                <FiClock />
-                                                {getTimeElapsed(order.created_at)}
-                                            </div>
-                                        </div>
-
-                                        <div className={styles.customerName}>
-                                            {order.customer_name}
-                                        </div>
-
-                                        <div className={styles.itemsList}>
-                                            {order.items.map((item) => (
-                                                <div key={item.id} className={styles.item}>
-                                                    <span className={styles.itemQuantity}>{item.quantity}x</span>
-                                                    <span className={styles.itemName}>{item.product_name}</span>
-                                                    {item.notes && (
-                                                        <span className={styles.itemNotes}>({item.notes})</span>
-                                                    )}
-                                                    {item.addons && item.addons.length > 0 && (
-                                                        <div className={styles.itemAddons}>
-                                                            {item.addons.map((addon) => (
-                                                                <span key={addon.id} className={styles.addonTag}>
-                                                                    + {addon.addon_name}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className={styles.orderActions}>
-                                            <Button
-                                                fullWidth
-                                                variant="primary"
-                                                onClick={() => updateOrderStatus(order.id, 'preparing')}
-                                            >
-                                                Iniciar Preparo
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                leftIcon={<FiPrinter />}
-                                                onClick={() => printKitchenTicket(order)}
-                                                title="Imprimir comanda"
-                                            />
-                                        </div>
-                                    </Card>
-                                ))}
+                            <div className="p-4 flex flex-col gap-3 max-h-[calc(100vh-220px)] overflow-y-auto">
+                                {pendingOrders.map((order) => <OrderCard key={order.id} order={order} />)}
                             </div>
                         </div>
 
                         {/* Preparing Column */}
-                        <div className={styles.column}>
-                            <div className={styles.columnHeader}>
-                                <span className={styles.columnTitle}>
-                                    <span className={styles.statusDot} style={{ background: 'var(--info)' }} />
+                        <div className="bg-bg-secondary rounded-lg border border-border overflow-hidden">
+                            <div className="flex items-center justify-between px-5 py-4 bg-bg-tertiary border-b border-border">
+                                <span className="flex items-center gap-2.5 font-semibold">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-info" />
                                     Preparando
                                 </span>
-                                <span className={styles.columnCount}>{preparingOrders.length}</span>
+                                <span className="px-3 py-1 bg-bg-card rounded-full text-sm font-semibold">{preparingOrders.length}</span>
                             </div>
-                            <div className={styles.ordersList}>
-                                {preparingOrders.map((order) => (
-                                    <Card key={order.id} className={`${styles.orderCard} ${styles.preparing}`}>
-                                        <div className={styles.orderHeader}>
-                                            <div className={styles.orderInfo}>
-                                                <span className={styles.orderNumber}>#{order.order_number}</span>
-                                                <span className={styles.orderType}>
-                                                    {order.is_delivery ? '🚚' : '🏪'}
-                                                </span>
-                                            </div>
-                                            <div
-                                                className={styles.timer}
-                                                style={{ color: getTimeColor(order.created_at) }}
-                                            >
-                                                <FiClock />
-                                                {getTimeElapsed(order.created_at)}
-                                            </div>
-                                        </div>
-
-                                        <div className={styles.customerName}>
-                                            {order.customer_name}
-                                        </div>
-
-                                        <div className={styles.itemsList}>
-                                            {order.items.map((item) => (
-                                                <div key={item.id} className={styles.item}>
-                                                    <span className={styles.itemQuantity}>{item.quantity}x</span>
-                                                    <span className={styles.itemName}>{item.product_name}</span>
-                                                    {item.notes && (
-                                                        <span className={styles.itemNotes}>({item.notes})</span>
-                                                    )}
-                                                    {item.addons && item.addons.length > 0 && (
-                                                        <div className={styles.itemAddons}>
-                                                            {item.addons.map((addon) => (
-                                                                <span key={addon.id} className={styles.addonTag}>
-                                                                    + {addon.addon_name}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className={styles.orderActions}>
-                                            <Button
-                                                fullWidth
-                                                variant="primary"
-                                                leftIcon={<FiCheck />}
-                                                onClick={() => updateOrderStatus(order.id, 'ready')}
-                                                style={{ background: 'var(--accent)' }}
-                                            >
-                                                Marcar Pronto
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                leftIcon={<FiPrinter />}
-                                                onClick={() => printKitchenTicket(order)}
-                                                title="Imprimir comanda"
-                                            />
-                                        </div>
-                                    </Card>
-                                ))}
+                            <div className="p-4 flex flex-col gap-3 max-h-[calc(100vh-220px)] overflow-y-auto">
+                                {preparingOrders.map((order) => <OrderCard key={order.id} order={order} isPreparing />)}
                             </div>
                         </div>
                     </div>

@@ -9,7 +9,7 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
-import styles from './page.module.css';
+import { cn } from '@/lib/utils';
 
 interface Order {
     id: string;
@@ -30,76 +30,34 @@ export default function EntregasPage() {
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
 
     useEffect(() => {
-        if (user && canAccess('deliveries')) {
-            fetchOrders();
-        }
+        if (user && canAccess('deliveries')) fetchOrders();
     }, [user, activeTab, canAccess]);
 
-    // Check if user has access to deliveries feature
     if (!canAccess('deliveries')) {
-        return (
-            <MainLayout>
-                <UpgradePrompt
-                    feature="Gestão de Entregas"
-                    requiredPlan="Avançado"
-                    currentPlan={plan}
-                    fullPage
-                />
-            </MainLayout>
-        );
+        return (<MainLayout><UpgradePrompt feature="Gestão de Entregas" requiredPlan="Avançado" currentPlan={plan} fullPage /></MainLayout>);
     }
 
     const fetchOrders = async () => {
         if (!user) return;
-
         try {
-            let query = supabase
-                .from('orders')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('is_delivery', true)
-                .order('created_at', { ascending: activeTab === 'pending' });
-
-            if (activeTab === 'pending') {
-                query = query.in('status', ['ready', 'delivering']);
-            } else {
-                query = query.eq('status', 'delivered');
-            }
-
+            let query = supabase.from('orders').select('*').eq('user_id', user.id).eq('is_delivery', true).order('created_at', { ascending: activeTab === 'pending' });
+            if (activeTab === 'pending') query = query.in('status', ['ready', 'delivering']);
+            else query = query.eq('status', 'delivered');
             const { data } = await query;
             setOrders(data || []);
-        } catch (error) {
-            console.error('Error fetching orders:', error);
-        } finally {
-            setLoading(false);
-        }
+        } catch (error) { console.error('Error fetching orders:', error); }
+        finally { setLoading(false); }
     };
 
     const updateOrderStatus = async (orderId: string, newStatus: string) => {
-        try {
-            await supabase
-                .from('orders')
-                .update({ status: newStatus, updated_at: new Date().toISOString() })
-                .eq('id', orderId);
-            fetchOrders();
-        } catch (error) {
-            console.error('Error updating order:', error);
-        }
+        try { await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId); fetchOrders(); }
+        catch (error) { console.error('Error updating order:', error); }
     };
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value);
-    };
+    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
     const getTimeAgo = (date: string) => {
-        const now = new Date();
-        const past = new Date(date);
-        const diffMs = now.getTime() - past.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-
+        const diffMins = Math.floor((new Date().getTime() - new Date(date).getTime()) / 60000);
         if (diffMins < 60) return `${diffMins} min`;
         const hours = Math.floor(diffMins / 60);
         if (hours < 24) return `${hours}h`;
@@ -111,75 +69,49 @@ export default function EntregasPage() {
 
     return (
         <MainLayout>
-            <div className={styles.container}>
-                <div className={styles.header}>
-                    <div>
-                        <h1 className={styles.title}>Entregas</h1>
-                        <p className={styles.subtitle}>Gerencie suas entregas</p>
-                    </div>
+            <div className="max-w-[1200px] mx-auto">
+                <div className="mb-6">
+                    <h1 className="text-[2rem] font-bold mb-2">Entregas</h1>
+                    <p className="text-text-secondary">Gerencie suas entregas</p>
                 </div>
 
-                <div className={styles.tabs}>
-                    <button
-                        className={`${styles.tab} ${activeTab === 'pending' ? styles.active : ''}`}
-                        onClick={() => setActiveTab('pending')}
-                    >
+                {/* Tabs */}
+                <div className="flex gap-1 bg-bg-secondary p-1 rounded-lg mb-6 w-fit">
+                    <button className={cn('flex items-center gap-2 px-5 py-2.5 bg-transparent border-none rounded-md text-text-secondary text-[0.9375rem] font-medium cursor-pointer transition-all duration-fast hover:text-text-primary', activeTab === 'pending' && 'bg-bg-card text-text-primary')} onClick={() => setActiveTab('pending')}>
                         Pendentes
-                        {activeTab === 'pending' && orders.length > 0 && (
-                            <span className={styles.tabBadge}>{orders.length}</span>
-                        )}
+                        {activeTab === 'pending' && orders.length > 0 && <span className="px-2 py-0.5 bg-primary text-white text-xs font-semibold rounded-full">{orders.length}</span>}
                     </button>
-                    <button
-                        className={`${styles.tab} ${activeTab === 'history' ? styles.active : ''}`}
-                        onClick={() => setActiveTab('history')}
-                    >
+                    <button className={cn('flex items-center gap-2 px-5 py-2.5 bg-transparent border-none rounded-md text-text-secondary text-[0.9375rem] font-medium cursor-pointer transition-all duration-fast hover:text-text-primary', activeTab === 'history' && 'bg-bg-card text-text-primary')} onClick={() => setActiveTab('history')}>
                         Histórico
                     </button>
                 </div>
 
                 {loading ? (
-                    <div className={styles.loading}>
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="skeleton" style={{ height: 140, borderRadius: 12 }} />
-                        ))}
+                    <div className="flex flex-col gap-3">
+                        {[1, 2, 3].map(i => <div key={i} className="h-[140px] rounded-xl bg-bg-tertiary animate-pulse" />)}
                     </div>
                 ) : activeTab === 'pending' ? (
                     orders.length > 0 ? (
-                        <div className={styles.columns}>
+                        <div className="grid grid-cols-2 gap-6 items-start max-md:grid-cols-1">
                             {/* Ready for Delivery */}
-                            <div className={styles.column}>
-                                <h3 className={styles.columnTitle}>
-                                    <span className={styles.statusDot} style={{ background: 'var(--accent)' }} />
+                            <div className="bg-bg-secondary rounded-lg border border-border p-4">
+                                <h3 className="flex items-center gap-2.5 text-[0.9375rem] font-semibold mb-4 pb-3 border-b border-border">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-accent" />
                                     Prontos para Entrega ({readyOrders.length})
                                 </h3>
-                                <div className={styles.ordersList}>
+                                <div className="flex flex-col gap-3">
                                     {readyOrders.map((order) => (
-                                        <Card key={order.id} className={styles.orderCard}>
-                                            <div className={styles.orderHeader}>
-                                                <span className={styles.orderNumber}>#{order.order_number}</span>
-                                                <span className={styles.orderTime}>
-                                                    <FiClock /> {getTimeAgo(order.created_at)}
-                                                </span>
+                                        <Card key={order.id} className="p-4!">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-lg font-bold text-primary">#{order.order_number}</span>
+                                                <span className="flex items-center gap-1 text-[0.8125rem] text-text-muted"><FiClock /> {getTimeAgo(order.created_at)}</span>
                                             </div>
-                                            <div className={styles.customerName}>{order.customer_name}</div>
-                                            {order.customer_phone && (
-                                                <div className={styles.customerDetail}>
-                                                    <FiPhone /> {order.customer_phone}
-                                                </div>
-                                            )}
-                                            {order.customer_address && (
-                                                <div className={styles.customerDetail}>
-                                                    <FiMapPin /> {order.customer_address}
-                                                </div>
-                                            )}
-                                            <div className={styles.orderFooter}>
-                                                <span className={styles.orderTotal}>{formatCurrency(order.total)}</span>
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => updateOrderStatus(order.id, 'delivering')}
-                                                >
-                                                    Saiu para Entrega
-                                                </Button>
+                                            <div className="font-medium mb-2">{order.customer_name}</div>
+                                            {order.customer_phone && <div className="flex items-center gap-2 text-sm text-text-secondary mb-1"><FiPhone /> {order.customer_phone}</div>}
+                                            {order.customer_address && <div className="flex items-center gap-2 text-sm text-text-secondary mb-1"><FiMapPin /> {order.customer_address}</div>}
+                                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
+                                                <span className="text-lg font-bold text-accent">{formatCurrency(order.total)}</span>
+                                                <Button size="sm" onClick={() => updateOrderStatus(order.id, 'delivering')}>Saiu para Entrega</Button>
                                             </div>
                                         </Card>
                                     ))}
@@ -187,36 +119,23 @@ export default function EntregasPage() {
                             </div>
 
                             {/* Delivering */}
-                            <div className={styles.column}>
-                                <h3 className={styles.columnTitle}>
-                                    <span className={styles.statusDot} style={{ background: 'var(--primary)' }} />
+                            <div className="bg-bg-secondary rounded-lg border border-border p-4">
+                                <h3 className="flex items-center gap-2.5 text-[0.9375rem] font-semibold mb-4 pb-3 border-b border-border">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-primary" />
                                     Em Entrega ({deliveringOrders.length})
                                 </h3>
-                                <div className={styles.ordersList}>
+                                <div className="flex flex-col gap-3">
                                     {deliveringOrders.map((order) => (
-                                        <Card key={order.id} className={`${styles.orderCard} ${styles.delivering}`}>
-                                            <div className={styles.orderHeader}>
-                                                <span className={styles.orderNumber}>#{order.order_number}</span>
-                                                <span className={styles.orderTime}>
-                                                    <FiClock /> {getTimeAgo(order.created_at)}
-                                                </span>
+                                        <Card key={order.id} className="p-4! border-primary">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-lg font-bold text-primary">#{order.order_number}</span>
+                                                <span className="flex items-center gap-1 text-[0.8125rem] text-text-muted"><FiClock /> {getTimeAgo(order.created_at)}</span>
                                             </div>
-                                            <div className={styles.customerName}>{order.customer_name}</div>
-                                            {order.customer_address && (
-                                                <div className={styles.customerDetail}>
-                                                    <FiMapPin /> {order.customer_address}
-                                                </div>
-                                            )}
-                                            <div className={styles.orderFooter}>
-                                                <span className={styles.orderTotal}>{formatCurrency(order.total)}</span>
-                                                <Button
-                                                    size="sm"
-                                                    leftIcon={<FiCheck />}
-                                                    onClick={() => updateOrderStatus(order.id, 'delivered')}
-                                                    style={{ background: 'var(--accent)' }}
-                                                >
-                                                    Entregue
-                                                </Button>
+                                            <div className="font-medium mb-2">{order.customer_name}</div>
+                                            {order.customer_address && <div className="flex items-center gap-2 text-sm text-text-secondary mb-1"><FiMapPin /> {order.customer_address}</div>}
+                                            <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
+                                                <span className="text-lg font-bold text-accent">{formatCurrency(order.total)}</span>
+                                                <Button size="sm" leftIcon={<FiCheck />} onClick={() => updateOrderStatus(order.id, 'delivered')} style={{ background: 'var(--accent)' }}>Entregue</Button>
                                             </div>
                                         </Card>
                                     ))}
@@ -224,41 +143,34 @@ export default function EntregasPage() {
                             </div>
                         </div>
                     ) : (
-                        <div className={styles.emptyState}>
-                            <span className={styles.emptyIcon}>🚚</span>
-                            <h3>Nenhuma entrega pendente</h3>
-                            <p>As entregas prontas aparecerão aqui</p>
+                        <div className="flex flex-col items-center justify-center py-20 px-5 text-center">
+                            <span className="text-6xl mb-4">🚚</span>
+                            <h3 className="text-xl mb-2">Nenhuma entrega pendente</h3>
+                            <p className="text-text-secondary">As entregas prontas aparecerão aqui</p>
                         </div>
                     )
                 ) : (
                     orders.length > 0 ? (
-                        <div className={styles.historyList}>
+                        <div className="flex flex-col gap-2">
                             {orders.map((order) => (
-                                <Card key={order.id} className={styles.historyCard}>
-                                    <div className={styles.historyInfo}>
-                                        <span className={styles.orderNumber}>#{order.order_number}</span>
-                                        <span className={styles.customerName}>{order.customer_name}</span>
+                                <Card key={order.id} className="flex justify-between items-center px-5! py-4! max-md:flex-col max-md:items-start max-md:gap-3">
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-lg font-bold text-primary">#{order.order_number}</span>
+                                        <span className="font-medium">{order.customer_name}</span>
                                     </div>
-                                    <div className={styles.historyMeta}>
-                                        <span className={styles.orderTotal}>{formatCurrency(order.total)}</span>
-                                        <span className={styles.historyTime}>
-                                            {new Intl.DateTimeFormat('pt-BR', {
-                                                day: '2-digit',
-                                                month: '2-digit',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            }).format(new Date(order.created_at))}
-                                        </span>
-                                        <span className={styles.deliveredBadge}>✓ Entregue</span>
+                                    <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
+                                        <span className="text-lg font-bold text-accent">{formatCurrency(order.total)}</span>
+                                        <span className="text-sm text-text-secondary">{new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(order.created_at))}</span>
+                                        <span className="px-2.5 py-1 bg-accent/10 text-accent text-xs font-medium rounded-full">✓ Entregue</span>
                                     </div>
                                 </Card>
                             ))}
                         </div>
                     ) : (
-                        <div className={styles.emptyState}>
-                            <span className={styles.emptyIcon}>📦</span>
-                            <h3>Nenhuma entrega no histórico</h3>
-                            <p>As entregas finalizadas aparecerão aqui</p>
+                        <div className="flex flex-col items-center justify-center py-20 px-5 text-center">
+                            <span className="text-6xl mb-4">📦</span>
+                            <h3 className="text-xl mb-2">Nenhuma entrega no histórico</h3>
+                            <p className="text-text-secondary">As entregas finalizadas aparecerão aqui</p>
                         </div>
                     )
                 )}

@@ -6,14 +6,13 @@ import { useEmployee } from '@/contexts/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import SubscriptionExpiredScreen from '@/components/subscription/SubscriptionExpiredScreen';
-import styles from './RouteGuard.module.css';
 
 // Define which permission is required for each route
 export const ROUTE_PERMISSIONS: Record<string, string> = {
-    '/dashboard': 'orders',           // All employees with orders permission
+    '/dashboard': 'orders',
     '/pedidos': 'orders',
-    '/cozinha': 'orders',             // Kitchen view
-    '/entregas': 'orders',            // Deliveries view
+    '/cozinha': 'orders',
+    '/entregas': 'orders',
     '/produtos': 'products',
     '/adicionais': 'products',
     '/categorias': 'categories',
@@ -30,7 +29,7 @@ export const ROUTE_PERMISSIONS: Record<string, string> = {
     '/funcionarios': 'employees',
 };
 
-// Routes that specific roles can access (override for role-specific pages)
+// Routes that specific roles can access
 export const ROLE_SPECIFIC_ROUTES: Record<string, string[]> = {
     '/cozinha': ['admin', 'manager', 'kitchen'],
     '/entregas': ['admin', 'manager', 'delivery'],
@@ -53,43 +52,36 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     const [authorized, setAuthorized] = useState(false);
     const [checking, setChecking] = useState(true);
 
-    // Check if current path is allowed when subscription is expired
     const isPathAllowedWhenExpired = ALLOWED_WHEN_EXPIRED.some(route => pathname.startsWith(route));
 
     useEffect(() => {
         if (authLoading || employeeLoading) return;
 
-        // Not logged in at all - redirect to login
         if (!user) {
             router.replace('/login');
             return;
         }
 
-        // Screen is locked
         if (isLocked) {
             setChecking(false);
             setAuthorized(false);
             return;
         }
 
-        // Get required permission for this route
         const permission = requiredPermission || ROUTE_PERMISSIONS[pathname];
 
-        // No permission required for this route
         if (!permission) {
             setAuthorized(true);
             setChecking(false);
             return;
         }
 
-        // If no active employee (owner mode), allow everything
         if (!activeEmployee) {
             setAuthorized(true);
             setChecking(false);
             return;
         }
 
-        // Check role-specific routes first
         const roleSpecific = ROLE_SPECIFIC_ROUTES[pathname];
         if (roleSpecific) {
             if (roleSpecific.includes(activeEmployee.role)) {
@@ -99,7 +91,6 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
             }
         }
 
-        // Check general permission
         const canAccess = hasPermission(permission);
         setAuthorized(canAccess);
         setChecking(false);
@@ -109,14 +100,14 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     // Still loading
     if (authLoading || employeeLoading || subscriptionLoading || checking) {
         return (
-            <div className={styles.loadingContainer}>
-                <div className={styles.spinner}></div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-text-secondary">
+                <div className="w-10 h-10 border-[3px] border-border border-t-primary rounded-full animate-spin" />
                 <p>Verificando permissões...</p>
             </div>
         );
     }
 
-    // Check subscription expiration (only for logged-in users, on restricted paths)
+    // Check subscription expiration
     if (user && isBlocked && !isPathAllowedWhenExpired) {
         return <SubscriptionExpiredScreen />;
     }
@@ -124,11 +115,11 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     // Locked screen
     if (isLocked) {
         return (
-            <div className={styles.accessDenied}>
-                <div className={styles.deniedContent}>
-                    <span className={styles.lockIcon}>🔒</span>
-                    <h2>Tela Bloqueada</h2>
-                    <p>Faça login com seu PIN para continuar.</p>
+            <div className="flex items-center justify-center min-h-[70vh] p-8">
+                <div className="text-center max-w-[400px] p-12 bg-bg-card rounded-2xl border border-border shadow-lg">
+                    <span className="text-[4rem] block mb-6">🔒</span>
+                    <h2 className="m-0 mb-2 text-2xl text-text-primary">Tela Bloqueada</h2>
+                    <p className="m-0 text-text-secondary">Faça login com seu PIN para continuar.</p>
                 </div>
             </div>
         );
@@ -137,16 +128,16 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     // Not authorized
     if (!authorized) {
         return (
-            <div className={styles.accessDenied}>
-                <div className={styles.deniedContent}>
-                    <span className={styles.deniedIcon}>🚫</span>
-                    <h2>Acesso Negado</h2>
-                    <p>Você não tem permissão para acessar esta página.</p>
-                    <p className={styles.roleInfo}>
-                        Seu cargo: <strong>{getRoleLabel(activeEmployee?.role)}</strong>
+            <div className="flex items-center justify-center min-h-[70vh] p-8">
+                <div className="text-center max-w-[400px] p-12 bg-bg-card rounded-2xl border border-border shadow-lg">
+                    <span className="text-[4rem] block mb-6">🚫</span>
+                    <h2 className="m-0 mb-2 text-2xl text-text-primary">Acesso Negado</h2>
+                    <p className="m-0 mb-2 text-text-secondary">Você não tem permissão para acessar esta página.</p>
+                    <p className="mt-4 px-3 py-3 bg-bg-tertiary rounded-lg text-[0.9rem]">
+                        Seu cargo: <strong className="text-primary">{getRoleLabel(activeEmployee?.role)}</strong>
                     </p>
                     <button
-                        className={styles.backButton}
+                        className="mt-6 px-6 py-3 bg-primary text-white border-none rounded-lg text-base font-medium cursor-pointer transition-all duration-200 hover:opacity-90 hover:-translate-y-0.5"
                         onClick={() => router.push('/pedidos')}
                     >
                         Voltar para Pedidos

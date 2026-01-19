@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { FiStar } from 'react-icons/fi';
-import styles from './StarRating.module.css';
+import { cn } from '@/lib/utils';
 
 interface StarRatingProps {
     rating: number;
@@ -43,9 +43,16 @@ export default function StarRating({
 
     const displayRating = hoverRating || rating;
 
+    // Size mappings
+    const sizeStyles = {
+        sm: { star: 'w-4 h-4', value: 'text-sm' },
+        md: { star: 'w-6 h-6', value: 'text-base' },
+        lg: { star: 'w-9 h-9', value: 'text-xl' },
+    };
+
     return (
-        <div className={`${styles.container} ${styles[size]}`}>
-            <div className={styles.stars}>
+        <div className="inline-flex items-center gap-2">
+            <div className="flex gap-0.5">
                 {Array.from({ length: maxRating }, (_, i) => {
                     const value = i + 1;
                     const filled = value <= displayRating;
@@ -55,20 +62,27 @@ export default function StarRating({
                         <button
                             key={i}
                             type="button"
-                            className={`${styles.star} ${filled ? styles.filled : ''} ${halfFilled ? styles.half : ''} ${interactive ? styles.interactive : ''}`}
+                            className={cn(
+                                'bg-transparent border-none p-0 cursor-default flex items-center justify-center transition-all duration-150',
+                                interactive && 'cursor-pointer hover:scale-110',
+                                filled ? 'text-[#fbbf24]' : 'text-border',
+                                halfFilled && 'text-[#fbbf24]'
+                            )}
                             onClick={() => handleClick(value)}
                             onMouseEnter={() => handleMouseEnter(value)}
                             onMouseLeave={handleMouseLeave}
                             disabled={!interactive}
                             aria-label={`${value} estrela${value > 1 ? 's' : ''}`}
                         >
-                            <FiStar />
+                            <FiStar className={cn(sizeStyles[size].star, filled && 'fill-[#fbbf24]')} />
                         </button>
                     );
                 })}
             </div>
             {showValue && rating > 0 && (
-                <span className={styles.value}>{rating.toFixed(1)}</span>
+                <span className={cn('font-semibold text-text-primary', sizeStyles[size].value)}>
+                    {rating.toFixed(1)}
+                </span>
             )}
         </div>
     );

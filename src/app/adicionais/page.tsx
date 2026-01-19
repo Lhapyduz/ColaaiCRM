@@ -1,14 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import {
-    FiPlus,
-    FiEdit2,
-    FiTrash2,
-    FiSearch,
-    FiLayers,
-    FiTag
-} from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiLayers, FiTag } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -17,7 +10,7 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
-import styles from './page.module.css';
+import { cn } from '@/lib/utils';
 
 interface Addon {
     id: string;
@@ -45,13 +38,11 @@ export default function AdicionaisPage() {
     const [activeTab, setActiveTab] = useState<'addons' | 'groups'>('addons');
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Addon Modal
     const [showAddonModal, setShowAddonModal] = useState(false);
     const [editingAddon, setEditingAddon] = useState<Addon | null>(null);
     const [addonName, setAddonName] = useState('');
     const [addonPrice, setAddonPrice] = useState('');
 
-    // Group Modal
     const [showGroupModal, setShowGroupModal] = useState(false);
     const [editingGroup, setEditingGroup] = useState<AddonGroup | null>(null);
     const [groupName, setGroupName] = useState('');
@@ -63,385 +54,162 @@ export default function AdicionaisPage() {
 
     const hasAccess = canAccess('addons');
 
-    useEffect(() => {
-        if (user && hasAccess) {
-            fetchData();
-        }
-    }, [user, hasAccess]);
+    useEffect(() => { if (user && hasAccess) fetchData(); }, [user, hasAccess]);
 
-    // Check access after hooks
     if (!hasAccess) {
-        return (
-            <MainLayout>
-                <UpgradePrompt
-                    feature="Adicionais de Produtos"
-                    requiredPlan="Avançado"
-                    currentPlan={plan}
-                    fullPage
-                />
-            </MainLayout>
-        );
+        return (<MainLayout><UpgradePrompt feature="Adicionais de Produtos" requiredPlan="Avançado" currentPlan={plan} fullPage /></MainLayout>);
     }
 
     const fetchData = async () => {
         if (!user) return;
-
         try {
-            // Fetch addons
-            const { data: addonsData } = await supabase
-                .from('product_addons')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('name');
-
+            const { data: addonsData } = await supabase.from('product_addons').select('*').eq('user_id', user.id).order('name');
             setAddons(addonsData || []);
-
-            // Fetch groups with their addons
-            const { data: groupsData } = await supabase
-                .from('addon_groups')
-                .select(`
-                    *,
-                    addon_group_items (
-                        addon_id,
-                        product_addons (*)
-                    )
-                `)
-                .eq('user_id', user.id)
-                .order('name');
-
+            const { data: groupsData } = await supabase.from('addon_groups').select(`*, addon_group_items (addon_id, product_addons (*))`).eq('user_id', user.id).order('name');
             if (groupsData) {
-                const formattedGroups = groupsData.map(g => ({
-                    ...g,
-                    addons: g.addon_group_items?.map((item: any) => item.product_addons).filter(Boolean) || []
-                }));
+                const formattedGroups = groupsData.map(g => ({ ...g, addons: g.addon_group_items?.map((item: any) => item.product_addons).filter(Boolean) || [] }));
                 setGroups(formattedGroups);
             }
-        } catch (error) {
-            console.error('Error fetching data:', error);
-        } finally {
-            setLoading(false);
-        }
+        } catch (error) { console.error('Error fetching data:', error); }
+        finally { setLoading(false); }
     };
 
-    // Addon Functions
-    const openAddAddonModal = () => {
-        setEditingAddon(null);
-        setAddonName('');
-        setAddonPrice('');
-        setShowAddonModal(true);
-    };
-
-    const openEditAddonModal = (addon: Addon) => {
-        setEditingAddon(addon);
-        setAddonName(addon.name);
-        setAddonPrice(addon.price.toString());
-        setShowAddonModal(true);
-    };
+    const openAddAddonModal = () => { setEditingAddon(null); setAddonName(''); setAddonPrice(''); setShowAddonModal(true); };
+    const openEditAddonModal = (addon: Addon) => { setEditingAddon(addon); setAddonName(addon.name); setAddonPrice(addon.price.toString()); setShowAddonModal(true); };
 
     const handleSaveAddon = async () => {
         if (!user || !addonName) return;
-
         try {
-            const addonData = {
-                user_id: user.id,
-                name: addonName,
-                price: parseFloat(addonPrice) || 0
-            };
-
-            if (editingAddon) {
-                await supabase
-                    .from('product_addons')
-                    .update(addonData)
-                    .eq('id', editingAddon.id);
-            } else {
-                await supabase
-                    .from('product_addons')
-                    .insert(addonData);
-            }
-
-            setShowAddonModal(false);
-            fetchData();
-        } catch (error) {
-            console.error('Error saving addon:', error);
-        }
+            const addonData = { user_id: user.id, name: addonName, price: parseFloat(addonPrice) || 0 };
+            if (editingAddon) await supabase.from('product_addons').update(addonData).eq('id', editingAddon.id);
+            else await supabase.from('product_addons').insert(addonData);
+            setShowAddonModal(false); fetchData();
+        } catch (error) { console.error('Error saving addon:', error); }
     };
 
     const handleDeleteAddon = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir este adicional?')) return;
-
-        try {
-            await supabase.from('product_addons').delete().eq('id', id);
-            fetchData();
-        } catch (error) {
-            console.error('Error deleting addon:', error);
-        }
+        try { await supabase.from('product_addons').delete().eq('id', id); fetchData(); }
+        catch (error) { console.error('Error deleting addon:', error); }
     };
 
     const toggleAddonAvailability = async (addon: Addon) => {
-        try {
-            await supabase
-                .from('product_addons')
-                .update({ available: !addon.available })
-                .eq('id', addon.id);
-            fetchData();
-        } catch (error) {
-            console.error('Error toggling addon:', error);
-        }
+        try { await supabase.from('product_addons').update({ available: !addon.available }).eq('id', addon.id); fetchData(); }
+        catch (error) { console.error('Error toggling addon:', error); }
     };
 
-    // Group Functions
-    const openAddGroupModal = () => {
-        setEditingGroup(null);
-        setGroupName('');
-        setGroupDescription('');
-        setGroupMinSelection('0');
-        setGroupMaxSelection('1');
-        setGroupRequired(false);
-        setSelectedAddons([]);
-        setShowGroupModal(true);
-    };
-
-    const openEditGroupModal = (group: AddonGroup) => {
-        setEditingGroup(group);
-        setGroupName(group.name);
-        setGroupDescription(group.description || '');
-        setGroupMinSelection(group.min_selection.toString());
-        setGroupMaxSelection(group.max_selection.toString());
-        setGroupRequired(group.required);
-        setSelectedAddons(group.addons?.map(a => a.id) || []);
-        setShowGroupModal(true);
-    };
+    const openAddGroupModal = () => { setEditingGroup(null); setGroupName(''); setGroupDescription(''); setGroupMinSelection('0'); setGroupMaxSelection('1'); setGroupRequired(false); setSelectedAddons([]); setShowGroupModal(true); };
+    const openEditGroupModal = (group: AddonGroup) => { setEditingGroup(group); setGroupName(group.name); setGroupDescription(group.description || ''); setGroupMinSelection(group.min_selection.toString()); setGroupMaxSelection(group.max_selection.toString()); setGroupRequired(group.required); setSelectedAddons(group.addons?.map(a => a.id) || []); setShowGroupModal(true); };
 
     const handleSaveGroup = async () => {
         if (!user || !groupName) return;
-
         try {
-            const groupData = {
-                user_id: user.id,
-                name: groupName,
-                description: groupDescription || null,
-                min_selection: parseInt(groupMinSelection) || 0,
-                max_selection: parseInt(groupMaxSelection) || 1,
-                required: groupRequired
-            };
-
+            const groupData = { user_id: user.id, name: groupName, description: groupDescription || null, min_selection: parseInt(groupMinSelection) || 0, max_selection: parseInt(groupMaxSelection) || 1, required: groupRequired };
             let groupId: string;
-
-            if (editingGroup) {
-                await supabase
-                    .from('addon_groups')
-                    .update(groupData)
-                    .eq('id', editingGroup.id);
-                groupId = editingGroup.id;
-            } else {
-                const { data } = await supabase
-                    .from('addon_groups')
-                    .insert(groupData)
-                    .select()
-                    .single();
-                groupId = data.id;
-            }
-
-            // Update group items
-            await supabase
-                .from('addon_group_items')
-                .delete()
-                .eq('group_id', groupId);
-
-            if (selectedAddons.length > 0) {
-                await supabase
-                    .from('addon_group_items')
-                    .insert(selectedAddons.map(addonId => ({
-                        group_id: groupId,
-                        addon_id: addonId
-                    })));
-            }
-
-            setShowGroupModal(false);
-            fetchData();
-        } catch (error) {
-            console.error('Error saving group:', error);
-        }
+            if (editingGroup) { await supabase.from('addon_groups').update(groupData).eq('id', editingGroup.id); groupId = editingGroup.id; }
+            else { const { data } = await supabase.from('addon_groups').insert(groupData).select().single(); groupId = data.id; }
+            await supabase.from('addon_group_items').delete().eq('group_id', groupId);
+            if (selectedAddons.length > 0) await supabase.from('addon_group_items').insert(selectedAddons.map(addonId => ({ group_id: groupId, addon_id: addonId })));
+            setShowGroupModal(false); fetchData();
+        } catch (error) { console.error('Error saving group:', error); }
     };
 
     const handleDeleteGroup = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir este grupo?')) return;
-
-        try {
-            await supabase.from('addon_groups').delete().eq('id', id);
-            fetchData();
-        } catch (error) {
-            console.error('Error deleting group:', error);
-        }
+        try { await supabase.from('addon_groups').delete().eq('id', id); fetchData(); }
+        catch (error) { console.error('Error deleting group:', error); }
     };
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value);
-    };
+    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-    const filteredAddons = addons.filter(a =>
-        a.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const filteredGroups = groups.filter(g =>
-        g.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredAddons = addons.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <MainLayout>
-            <div className={styles.container}>
+            <div className="max-w-[1200px] mx-auto">
                 {/* Header */}
-                <div className={styles.header}>
+                <div className="flex items-start justify-between mb-6 gap-5 max-md:flex-col">
                     <div>
-                        <h1 className={styles.title}>Adicionais</h1>
-                        <p className={styles.subtitle}>Gerencie extras e complementos para seus produtos</p>
+                        <h1 className="text-[2rem] font-bold mb-2">Adicionais</h1>
+                        <p className="text-text-secondary">Gerencie extras e complementos para seus produtos</p>
                     </div>
-                    <Button
-                        leftIcon={<FiPlus />}
-                        onClick={activeTab === 'addons' ? openAddAddonModal : openAddGroupModal}
-                    >
+                    <Button leftIcon={<FiPlus />} onClick={activeTab === 'addons' ? openAddAddonModal : openAddGroupModal}>
                         {activeTab === 'addons' ? 'Novo Adicional' : 'Novo Grupo'}
                     </Button>
                 </div>
 
                 {/* Tabs */}
-                <div className={styles.tabs}>
-                    <button
-                        className={`${styles.tab} ${activeTab === 'addons' ? styles.active : ''}`}
-                        onClick={() => setActiveTab('addons')}
-                    >
+                <div className="flex gap-2 mb-6 max-md:w-full">
+                    <button className={cn('flex items-center gap-2 px-5 py-3 bg-bg-card border border-border rounded-md text-text-secondary text-[0.95rem] cursor-pointer transition-all duration-fast hover:border-border-light hover:text-text-primary max-md:flex-1 max-md:justify-center', activeTab === 'addons' && 'bg-primary border-primary text-white')} onClick={() => setActiveTab('addons')}>
                         <FiTag /> Adicionais ({addons.length})
                     </button>
-                    <button
-                        className={`${styles.tab} ${activeTab === 'groups' ? styles.active : ''}`}
-                        onClick={() => setActiveTab('groups')}
-                    >
+                    <button className={cn('flex items-center gap-2 px-5 py-3 bg-bg-card border border-border rounded-md text-text-secondary text-[0.95rem] cursor-pointer transition-all duration-fast hover:border-border-light hover:text-text-primary max-md:flex-1 max-md:justify-center', activeTab === 'groups' && 'bg-primary border-primary text-white')} onClick={() => setActiveTab('groups')}>
                         <FiLayers /> Grupos ({groups.length})
                     </button>
                 </div>
 
                 {/* Search */}
-                <Card className={styles.searchCard}>
-                    <Input
-                        placeholder={`Buscar ${activeTab === 'addons' ? 'adicionais' : 'grupos'}...`}
-                        leftIcon={<FiSearch />}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                <Card className="mb-6 p-4!">
+                    <Input placeholder={`Buscar ${activeTab === 'addons' ? 'adicionais' : 'grupos'}...`} leftIcon={<FiSearch />} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </Card>
 
                 {/* Content */}
                 {loading ? (
-                    <div className={styles.loading}>
-                        {[1, 2, 3].map(i => (
-                            <div key={i} className="skeleton" style={{ height: 70, borderRadius: 10 }} />
-                        ))}
-                    </div>
+                    <div className="flex flex-col gap-3">{[1, 2, 3].map(i => <div key={i} className="h-[70px] rounded-[10px] bg-bg-tertiary animate-pulse" />)}</div>
                 ) : activeTab === 'addons' ? (
-                    /* Addons List */
-                    <div className={styles.list}>
-                        {filteredAddons.length > 0 ? (
-                            filteredAddons.map((addon) => (
-                                <Card key={addon.id} className={`${styles.itemCard} ${!addon.available ? styles.unavailable : ''}`}>
-                                    <div className={styles.itemInfo}>
-                                        <h3 className={styles.itemName}>{addon.name}</h3>
-                                        <span className={styles.itemPrice}>
-                                            {addon.price > 0 ? `+ ${formatCurrency(addon.price)}` : 'Grátis'}
-                                        </span>
-                                    </div>
-                                    <div className={styles.itemActions}>
-                                        <button
-                                            className={`${styles.toggleBtn} ${addon.available ? styles.active : ''}`}
-                                            onClick={() => toggleAddonAvailability(addon)}
-                                        >
-                                            {addon.available ? 'Disponível' : 'Indisponível'}
-                                        </button>
-                                        <button
-                                            className={styles.iconBtn}
-                                            onClick={() => openEditAddonModal(addon)}
-                                        >
-                                            <FiEdit2 />
-                                        </button>
-                                        <button
-                                            className={`${styles.iconBtn} ${styles.danger}`}
-                                            onClick={() => handleDeleteAddon(addon.id)}
-                                        >
-                                            <FiTrash2 />
-                                        </button>
-                                    </div>
-                                </Card>
-                            ))
-                        ) : (
-                            <div className={styles.emptyState}>
-                                <FiTag className={styles.emptyIcon} />
-                                <h3>Nenhum adicional cadastrado</h3>
-                                <p>Crie adicionais para personalizar seus produtos</p>
-                                <Button leftIcon={<FiPlus />} onClick={openAddAddonModal}>
-                                    Criar Adicional
-                                </Button>
+                    <div className="flex flex-col gap-3">
+                        {filteredAddons.length > 0 ? filteredAddons.map((addon) => (
+                            <Card key={addon.id} className={cn('flex items-center justify-between px-5! py-4! max-md:flex-col max-md:items-stretch max-md:gap-3', !addon.available && 'opacity-60')}>
+                                <div className="flex-1">
+                                    <h3 className="text-[1.1rem] font-semibold flex items-center gap-2.5">{addon.name}</h3>
+                                    <span className="inline-block mt-1 text-[0.9rem] text-accent font-semibold">{addon.price > 0 ? `+ ${formatCurrency(addon.price)}` : 'Grátis'}</span>
+                                </div>
+                                <div className="flex items-center gap-2 max-md:justify-end">
+                                    <button className={cn('px-3 py-1.5 bg-bg-tertiary border border-border rounded-full text-text-secondary text-[0.8rem] cursor-pointer transition-all duration-fast', addon.available && 'bg-accent/15 border-accent text-accent')} onClick={() => toggleAddonAvailability(addon)}>
+                                        {addon.available ? 'Disponível' : 'Indisponível'}
+                                    </button>
+                                    <button className="w-9 h-9 flex items-center justify-center bg-bg-tertiary border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:border-border-light hover:text-text-primary" onClick={() => openEditAddonModal(addon)}><FiEdit2 /></button>
+                                    <button className="w-9 h-9 flex items-center justify-center bg-bg-tertiary border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:bg-error/10 hover:border-error hover:text-error" onClick={() => handleDeleteAddon(addon.id)}><FiTrash2 /></button>
+                                </div>
+                            </Card>
+                        )) : (
+                            <div className="text-center py-15 px-5">
+                                <FiTag className="text-6xl text-text-muted mb-4 mx-auto" />
+                                <h3 className="text-xl mb-2">Nenhum adicional cadastrado</h3>
+                                <p className="text-text-secondary mb-5">Crie adicionais para personalizar seus produtos</p>
+                                <Button leftIcon={<FiPlus />} onClick={openAddAddonModal}>Criar Adicional</Button>
                             </div>
                         )}
                     </div>
                 ) : (
-                    /* Groups List */
-                    <div className={styles.list}>
-                        {filteredGroups.length > 0 ? (
-                            filteredGroups.map((group) => (
-                                <Card key={group.id} className={styles.itemCard}>
-                                    <div className={styles.itemInfo}>
-                                        <h3 className={styles.itemName}>
-                                            {group.name}
-                                            {group.required && <span className={styles.requiredBadge}>Obrigatório</span>}
-                                        </h3>
-                                        <p className={styles.groupMeta}>
-                                            {group.addons?.length || 0} adicionais •
-                                            {group.max_selection > 1
-                                                ? ` Até ${group.max_selection} seleções`
-                                                : ' 1 seleção'
-                                            }
-                                        </p>
-                                        {group.addons && group.addons.length > 0 && (
-                                            <div className={styles.groupAddons}>
-                                                {group.addons.slice(0, 5).map(a => (
-                                                    <span key={a.id} className={styles.addonChip}>
-                                                        {a.name}
-                                                    </span>
-                                                ))}
-                                                {group.addons.length > 5 && (
-                                                    <span className={styles.moreChip}>
-                                                        +{group.addons.length - 5}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className={styles.itemActions}>
-                                        <button
-                                            className={styles.iconBtn}
-                                            onClick={() => openEditGroupModal(group)}
-                                        >
-                                            <FiEdit2 />
-                                        </button>
-                                        <button
-                                            className={`${styles.iconBtn} ${styles.danger}`}
-                                            onClick={() => handleDeleteGroup(group.id)}
-                                        >
-                                            <FiTrash2 />
-                                        </button>
-                                    </div>
-                                </Card>
-                            ))
-                        ) : (
-                            <div className={styles.emptyState}>
-                                <FiLayers className={styles.emptyIcon} />
-                                <h3>Nenhum grupo cadastrado</h3>
-                                <p>Agrupe adicionais para facilitar a seleção nos produtos</p>
-                                <Button leftIcon={<FiPlus />} onClick={openAddGroupModal}>
-                                    Criar Grupo
-                                </Button>
+                    <div className="flex flex-col gap-3">
+                        {filteredGroups.length > 0 ? filteredGroups.map((group) => (
+                            <Card key={group.id} className="flex items-center justify-between px-5! py-4! max-md:flex-col max-md:items-stretch max-md:gap-3">
+                                <div className="flex-1">
+                                    <h3 className="text-[1.1rem] font-semibold flex items-center gap-2.5">
+                                        {group.name}
+                                        {group.required && <span className="text-[0.7rem] px-2 py-0.5 bg-warning/20 text-warning rounded-full font-medium">Obrigatório</span>}
+                                    </h3>
+                                    <p className="my-1 text-sm text-text-secondary">{group.addons?.length || 0} adicionais • {group.max_selection > 1 ? `Até ${group.max_selection} seleções` : '1 seleção'}</p>
+                                    {group.addons && group.addons.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {group.addons.slice(0, 5).map(a => <span key={a.id} className="px-2.5 py-1 bg-bg-tertiary rounded-full text-xs text-text-secondary">{a.name}</span>)}
+                                            {group.addons.length > 5 && <span className="px-2.5 py-1 bg-primary rounded-full text-xs text-white">+{group.addons.length - 5}</span>}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2 max-md:justify-end">
+                                    <button className="w-9 h-9 flex items-center justify-center bg-bg-tertiary border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:border-border-light hover:text-text-primary" onClick={() => openEditGroupModal(group)}><FiEdit2 /></button>
+                                    <button className="w-9 h-9 flex items-center justify-center bg-bg-tertiary border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:bg-error/10 hover:border-error hover:text-error" onClick={() => handleDeleteGroup(group.id)}><FiTrash2 /></button>
+                                </div>
+                            </Card>
+                        )) : (
+                            <div className="text-center py-15 px-5">
+                                <FiLayers className="text-6xl text-text-muted mb-4 mx-auto" />
+                                <h3 className="text-xl mb-2">Nenhum grupo cadastrado</h3>
+                                <p className="text-text-secondary mb-5">Agrupe adicionais para facilitar a seleção nos produtos</p>
+                                <Button leftIcon={<FiPlus />} onClick={openAddGroupModal}>Criar Grupo</Button>
                             </div>
                         )}
                     </div>
@@ -449,136 +217,41 @@ export default function AdicionaisPage() {
 
                 {/* Addon Modal */}
                 {showAddonModal && (
-                    <div className={styles.modalOverlay} onClick={() => setShowAddonModal(false)}>
-                        <div className={styles.modal} onClick={e => e.stopPropagation()}>
-                            <h2>{editingAddon ? 'Editar Adicional' : 'Novo Adicional'}</h2>
-
-                            <div className={styles.formGroup}>
-                                <label>Nome do Adicional</label>
-                                <Input
-                                    value={addonName}
-                                    onChange={(e) => setAddonName(e.target.value)}
-                                    placeholder="Ex: Bacon extra, Queijo cheddar..."
-                                />
-                            </div>
-
-                            <div className={styles.formGroup}>
-                                <label>Preço (R$)</label>
-                                <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={addonPrice}
-                                    onChange={(e) => setAddonPrice(e.target.value)}
-                                    placeholder="0.00"
-                                />
-                            </div>
-
-                            <div className={styles.modalActions}>
-                                <Button variant="outline" onClick={() => setShowAddonModal(false)}>
-                                    Cancelar
-                                </Button>
-                                <Button onClick={handleSaveAddon}>
-                                    {editingAddon ? 'Salvar' : 'Criar'}
-                                </Button>
-                            </div>
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-1000 p-4" onClick={() => setShowAddonModal(false)}>
+                        <div className="bg-bg-card rounded-lg p-6 w-full max-w-[500px] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                            <h2 className="text-xl font-semibold mb-5">{editingAddon ? 'Editar Adicional' : 'Novo Adicional'}</h2>
+                            <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Nome do Adicional</label><Input value={addonName} onChange={(e) => setAddonName(e.target.value)} placeholder="Ex: Bacon extra, Queijo cheddar..." /></div>
+                            <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Preço (R$)</label><Input type="number" step="0.01" value={addonPrice} onChange={(e) => setAddonPrice(e.target.value)} placeholder="0.00" /></div>
+                            <div className="flex gap-3 justify-end mt-6"><Button variant="outline" onClick={() => setShowAddonModal(false)}>Cancelar</Button><Button onClick={handleSaveAddon}>{editingAddon ? 'Salvar' : 'Criar'}</Button></div>
                         </div>
                     </div>
                 )}
 
                 {/* Group Modal */}
                 {showGroupModal && (
-                    <div className={styles.modalOverlay} onClick={() => setShowGroupModal(false)}>
-                        <div className={styles.modal} onClick={e => e.stopPropagation()}>
-                            <h2>{editingGroup ? 'Editar Grupo' : 'Novo Grupo'}</h2>
-
-                            <div className={styles.formGroup}>
-                                <label>Nome do Grupo</label>
-                                <Input
-                                    value={groupName}
-                                    onChange={(e) => setGroupName(e.target.value)}
-                                    placeholder="Ex: Molhos, Extras, Acompanhamentos..."
-                                />
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-1000 p-4" onClick={() => setShowGroupModal(false)}>
+                        <div className="bg-bg-card rounded-lg p-6 w-full max-w-[500px] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                            <h2 className="text-xl font-semibold mb-5">{editingGroup ? 'Editar Grupo' : 'Novo Grupo'}</h2>
+                            <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Nome do Grupo</label><Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Ex: Molhos, Extras, Acompanhamentos..." /></div>
+                            <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Descrição (opcional)</label><Input value={groupDescription} onChange={(e) => setGroupDescription(e.target.value)} placeholder="Ex: Escolha seus molhos favoritos" /></div>
+                            <div className="grid grid-cols-2 gap-4 mb-4 max-md:grid-cols-1">
+                                <div><label className="block text-sm text-text-secondary mb-2">Mínimo de seleções</label><Input type="number" min="0" value={groupMinSelection} onChange={(e) => setGroupMinSelection(e.target.value)} /></div>
+                                <div><label className="block text-sm text-text-secondary mb-2">Máximo de seleções</label><Input type="number" min="1" value={groupMaxSelection} onChange={(e) => setGroupMaxSelection(e.target.value)} /></div>
                             </div>
-
-                            <div className={styles.formGroup}>
-                                <label>Descrição (opcional)</label>
-                                <Input
-                                    value={groupDescription}
-                                    onChange={(e) => setGroupDescription(e.target.value)}
-                                    placeholder="Ex: Escolha seus molhos favoritos"
-                                />
-                            </div>
-
-                            <div className={styles.formRow}>
-                                <div className={styles.formGroup}>
-                                    <label>Mínimo de seleções</label>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        value={groupMinSelection}
-                                        onChange={(e) => setGroupMinSelection(e.target.value)}
-                                    />
-                                </div>
-                                <div className={styles.formGroup}>
-                                    <label>Máximo de seleções</label>
-                                    <Input
-                                        type="number"
-                                        min="1"
-                                        value={groupMaxSelection}
-                                        onChange={(e) => setGroupMaxSelection(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className={styles.formGroup}>
-                                <label className={styles.checkboxLabel}>
-                                    <input
-                                        type="checkbox"
-                                        checked={groupRequired}
-                                        onChange={(e) => setGroupRequired(e.target.checked)}
-                                    />
-                                    Seleção obrigatória
-                                </label>
-                            </div>
-
-                            <div className={styles.formGroup}>
-                                <label>Adicionais do Grupo</label>
-                                <div className={styles.addonGrid}>
+                            <div className="mb-4"><label className="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" className="w-[18px] h-[18px] accent-primary" checked={groupRequired} onChange={(e) => setGroupRequired(e.target.checked)} />Seleção obrigatória</label></div>
+                            <div className="mb-4">
+                                <label className="block text-sm text-text-secondary mb-2">Adicionais do Grupo</label>
+                                <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto p-3 bg-bg-tertiary rounded-md">
                                     {addons.map(addon => (
-                                        <label
-                                            key={addon.id}
-                                            className={`${styles.addonOption} ${selectedAddons.includes(addon.id) ? styles.selected : ''}`}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedAddons.includes(addon.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedAddons([...selectedAddons, addon.id]);
-                                                    } else {
-                                                        setSelectedAddons(selectedAddons.filter(id => id !== addon.id));
-                                                    }
-                                                }}
-                                            />
-                                            <span>{addon.name}</span>
-                                            {addon.price > 0 && (
-                                                <span className={styles.optionPrice}>
-                                                    +{formatCurrency(addon.price)}
-                                                </span>
-                                            )}
+                                        <label key={addon.id} className={cn('flex items-center gap-2.5 px-3 py-2.5 bg-bg-card border border-border rounded-md cursor-pointer transition-all duration-fast hover:border-border-light', selectedAddons.includes(addon.id) && 'border-primary bg-primary/10')}>
+                                            <input type="checkbox" className="accent-primary" checked={selectedAddons.includes(addon.id)} onChange={(e) => { if (e.target.checked) setSelectedAddons([...selectedAddons, addon.id]); else setSelectedAddons(selectedAddons.filter(id => id !== addon.id)); }} />
+                                            <span className="flex-1">{addon.name}</span>
+                                            {addon.price > 0 && <span className="text-[0.85rem] text-accent font-medium">+{formatCurrency(addon.price)}</span>}
                                         </label>
                                     ))}
                                 </div>
                             </div>
-
-                            <div className={styles.modalActions}>
-                                <Button variant="outline" onClick={() => setShowGroupModal(false)}>
-                                    Cancelar
-                                </Button>
-                                <Button onClick={handleSaveGroup}>
-                                    {editingGroup ? 'Salvar' : 'Criar'}
-                                </Button>
-                            </div>
+                            <div className="flex gap-3 justify-end mt-6"><Button variant="outline" onClick={() => setShowGroupModal(false)}>Cancelar</Button><Button onClick={handleSaveGroup}>{editingGroup ? 'Salvar' : 'Criar'}</Button></div>
                         </div>
                     </div>
                 )}

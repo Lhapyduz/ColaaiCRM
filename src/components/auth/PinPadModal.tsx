@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { FiDelete, FiUser, FiUnlock, FiX, FiAlertCircle } from 'react-icons/fi';
 import Button from '@/components/ui/Button';
 import { checkRateLimit, formatBlockTime } from '@/lib/rateLimiter';
-import styles from './PinPadModal.module.css';
+import { cn } from '@/lib/utils';
 
 interface PinPadModalProps {
     isOpen: boolean;
@@ -12,8 +12,8 @@ interface PinPadModalProps {
     onSuccess: (pin: string) => Promise<boolean>;
     onSignOutOwner?: () => void;
     title?: string;
-    isLocked?: boolean; // If true, cannot be closed without success (for Lock Screen mode)
-    onBack?: () => void; // Optional back action (e.g. if no admin configured)
+    isLocked?: boolean;
+    onBack?: () => void;
 }
 
 export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner, title = 'Acesso de Funcionário', isLocked = false, onBack }: PinPadModalProps) {
@@ -23,7 +23,6 @@ export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner
     const [isBlocked, setIsBlocked] = useState(false);
     const [blockTimeRemaining, setBlockTimeRemaining] = useState<number | null>(null);
 
-    // Reset state when opening
     useEffect(() => {
         if (isOpen) {
             setPin('');
@@ -32,7 +31,6 @@ export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner
         }
     }, [isOpen]);
 
-    // Check rate limit status
     const checkBlockStatus = () => {
         const status = checkRateLimit();
         if (!status.allowed && status.blockRemaining) {
@@ -44,7 +42,6 @@ export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner
         }
     };
 
-    // Update block timer every second
     useEffect(() => {
         if (!isBlocked || blockTimeRemaining === null) return;
 
@@ -95,11 +92,8 @@ export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner
         try {
             const success = await onSuccess(pin);
             if (success) {
-                // Success is handled by parent (closing modal etc)
                 setPin('');
             } else {
-                // Error message comes from parent via context
-                // Check if we're now blocked
                 checkBlockStatus();
                 setPin('');
             }
@@ -113,49 +107,59 @@ export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner
     if (!isOpen) return null;
 
     return (
-        <div className={styles.overlay}>
-            <div className={styles.modal}>
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-9999 p-4 animate-fadeIn">
+            <div className="bg-bg-card rounded-3xl p-8 w-full max-w-[400px] relative shadow-[0_20px_40px_rgba(0,0,0,0.4)] border border-border animate-fadeInUp">
                 {!isLocked && (
-                    <button className={styles.closeBtn} onClick={onClose} aria-label="Fechar">
+                    <button
+                        className="absolute top-4 right-4 bg-transparent border-none text-text-secondary text-2xl cursor-pointer p-2 rounded-full transition-all duration-200 hover:bg-bg-tertiary hover:text-text-primary"
+                        onClick={onClose}
+                        aria-label="Fechar"
+                    >
                         <FiX />
                     </button>
                 )}
 
-                <div className={styles.header}>
-                    <div className={styles.iconWrapper}>
-                        {isLocked ? <FiUnlock className={styles.icon} /> : <FiUser className={styles.icon} />}
+                <div className="text-center mb-8">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                        {isLocked ? <FiUnlock className="text-[2rem] text-primary" /> : <FiUser className="text-[2rem] text-primary" />}
                     </div>
-                    <h2>{title}</h2>
-                    <p>Digite seu PIN de 4 a 6 dígitos</p>
+                    <h2 className="m-0 text-2xl text-text-primary">{title}</h2>
+                    <p className="mt-2 text-text-secondary">Digite seu PIN de 4 a 6 dígitos</p>
                 </div>
 
                 {isBlocked && blockTimeRemaining !== null ? (
-                    <div className={styles.blockedState}>
-                        <FiAlertCircle className={styles.blockedIcon} />
-                        <p>Muitas tentativas incorretas</p>
-                        <span className={styles.blockTimer}>
+                    <div className="text-center py-8">
+                        <FiAlertCircle className="text-[3rem] text-error mb-4" />
+                        <p className="text-text-primary font-medium">Muitas tentativas incorretas</p>
+                        <span className="text-primary text-lg font-semibold">
                             Tente novamente em {formatBlockTime(blockTimeRemaining)}
                         </span>
                     </div>
                 ) : (
                     <>
-                        <div className={styles.display}>
-                            <div className={`${styles.pinDots} ${error ? styles.shake : ''}`}>
+                        <div className="mb-8 text-center">
+                            <div className={cn(
+                                'flex justify-center gap-4 mb-2',
+                                error && 'animate-[shake_0.5s_cubic-bezier(.36,.07,.19,.97)_both]'
+                            )}>
                                 {[...Array(6)].map((_, i) => (
                                     <div
                                         key={i}
-                                        className={`${styles.dot} ${i < pin.length ? styles.filled : ''}`}
+                                        className={cn(
+                                            'w-4 h-4 rounded-full border-2 border-border transition-all duration-200',
+                                            i < pin.length && 'bg-primary border-primary scale-110'
+                                        )}
                                     />
                                 ))}
                             </div>
-                            {error && <p className={styles.errorText}>{error}</p>}
+                            {error && <p className="text-error text-sm mt-2">{error}</p>}
                         </div>
 
-                        <div className={styles.keypad}>
+                        <div className="grid grid-cols-3 gap-4 mb-8">
                             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                                 <button
                                     key={num}
-                                    className={styles.keyBtn}
+                                    className="aspect-square rounded-full border border-border bg-bg-card text-text-primary text-2xl font-medium cursor-pointer transition-all duration-100 flex items-center justify-center hover:enabled:bg-bg-tertiary hover:enabled:border-primary hover:enabled:text-primary active:enabled:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                     onClick={() => handleNumberClick(num)}
                                     disabled={loading || isBlocked}
                                 >
@@ -163,21 +167,21 @@ export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner
                                 </button>
                             ))}
                             <button
-                                className={styles.keyBtn}
+                                className="aspect-square rounded-full border border-border bg-bg-card text-text-primary text-2xl font-medium cursor-pointer transition-all duration-100 flex items-center justify-center hover:enabled:bg-bg-tertiary hover:enabled:border-primary hover:enabled:text-primary active:enabled:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={handleClear}
                                 disabled={loading || pin.length === 0 || isBlocked}
                             >
                                 C
                             </button>
                             <button
-                                className={styles.keyBtn}
+                                className="aspect-square rounded-full border border-border bg-bg-card text-text-primary text-2xl font-medium cursor-pointer transition-all duration-100 flex items-center justify-center hover:enabled:bg-bg-tertiary hover:enabled:border-primary hover:enabled:text-primary active:enabled:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={() => handleNumberClick(0)}
                                 disabled={loading || isBlocked}
                             >
                                 0
                             </button>
                             <button
-                                className={styles.keyBtn}
+                                className="aspect-square rounded-full border border-border bg-bg-card text-text-primary text-2xl font-medium cursor-pointer transition-all duration-100 flex items-center justify-center hover:enabled:bg-bg-tertiary hover:enabled:border-primary hover:enabled:text-primary active:enabled:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={handleDelete}
                                 disabled={loading || pin.length === 0 || isBlocked}
                             >
@@ -187,7 +191,7 @@ export default function PinPadModal({ isOpen, onClose, onSuccess, onSignOutOwner
                     </>
                 )}
 
-                <div className={styles.actions}>
+                <div className="flex flex-col gap-2">
                     {isLocked && onSignOutOwner && (
                         <Button
                             variant="ghost"

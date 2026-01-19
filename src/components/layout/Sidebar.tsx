@@ -51,7 +51,7 @@ import { GiCookingPot } from 'react-icons/gi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
 import PinPadModal from '@/components/auth/PinPadModal';
-import styles from './Sidebar.module.css';
+import { cn } from '@/lib/utils';
 
 interface MenuItem {
     href: string;
@@ -111,9 +111,14 @@ function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableN
             {...attributes}
             {...listeners}
             href={item.href}
-            className={`${styles.navItem} ${isActive ? styles.active : ''} ${isDragging ? styles.dragging : ''}`}
+            className={cn(
+                'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem] touch-none',
+                'hover:bg-bg-tertiary hover:text-text-primary',
+                isActive && 'bg-primary/10 text-primary',
+                isDragging && 'opacity-50 bg-bg-tertiary',
+                collapsed && 'justify-center px-3.5'
+            )}
             onClick={(e) => {
-                // Prevent navigation if dragging
                 if (isDragging) {
                     e.preventDefault();
                     return;
@@ -121,9 +126,11 @@ function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableN
                 onMobileClose();
             }}
         >
-            <Icon className={styles.navIcon} />
-            {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
-            {isActive && <div className={styles.activeIndicator} />}
+            <Icon className="text-xl shrink-0" />
+            {!collapsed && <span className="whitespace-nowrap overflow-hidden">{item.label}</span>}
+            {isActive && !collapsed && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-primary rounded-r-sm" />
+            )}
         </Link>
     );
 }
@@ -137,9 +144,9 @@ interface OverlayItemProps {
 function OverlayItem({ item, collapsed }: OverlayItemProps) {
     const Icon = item.icon;
     return (
-        <div className={`${styles.navItem} ${styles.dragOverlay}`}>
-            <Icon className={styles.navIcon} />
-            {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
+        <div className="relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary opacity-95 bg-bg-card shadow-lg border border-primary cursor-grabbing">
+            <Icon className="text-xl shrink-0" />
+            {!collapsed && <span className="whitespace-nowrap overflow-hidden">{item.label}</span>}
         </div>
     );
 }
@@ -174,7 +181,6 @@ export default function Sidebar() {
                 .map((href: string) => MENU_ITEMS.find(item => item.href === href))
                 .filter((item): item is MenuItem => item !== undefined);
 
-            // Add any new items that aren't in the saved order
             const missingItems = MENU_ITEMS.filter(
                 item => !savedOrder.includes(item.href)
             );
@@ -187,12 +193,12 @@ export default function Sidebar() {
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 5, // 5px threshold to start dragging
+                distance: 5,
             },
         }),
         useSensor(TouchSensor, {
             activationConstraint: {
-                delay: 250, // 250ms delay for touch
+                delay: 250,
                 tolerance: 5,
             },
         }),
@@ -211,13 +217,9 @@ export default function Sidebar() {
     const filteredMenuItems = visibleMenuItems.filter(item => {
         const path = item.href.replace('/', '');
 
-        // Always show Dashboard
         if (path === 'dashboard') return true;
-
-        // If owner (no active employee), show everything
         if (!activeEmployee) return true;
 
-        // Permission mapping
         const permissionMap: Record<string, string> = {
             'produtos': 'products',
             'adicionais': 'products',
@@ -253,26 +255,22 @@ export default function Sidebar() {
         setActiveId(null);
 
         if (over && active.id !== over.id) {
-            // Optimistic update - update UI immediately
             const oldIndex = orderedItems.findIndex(item => item.href === active.id);
             const newIndex = orderedItems.findIndex(item => item.href === over.id);
 
             const newOrder = arrayMove(orderedItems, oldIndex, newIndex);
             setOrderedItems(newOrder);
 
-            // Save to Supabase
             try {
                 const newOrderHrefs = newOrder.map(item => item.href);
                 const { error } = await updateSettings({ sidebar_order: newOrderHrefs });
 
                 if (error) {
                     console.error('Error saving sidebar order:', error);
-                    // Rollback on error
                     setOrderedItems(previousOrder);
                 }
             } catch (error) {
                 console.error('Error saving sidebar order:', error);
-                // Rollback on error
                 setOrderedItems(previousOrder);
             }
         }
@@ -301,7 +299,7 @@ export default function Sidebar() {
         <>
             {/* Mobile Menu Button */}
             <button
-                className={styles.mobileMenuBtn}
+                className="hidden max-md:flex fixed top-4 left-4 w-11 h-11 bg-bg-card border border-border rounded-md text-text-primary text-xl items-center justify-center cursor-pointer z-sticky"
                 onClick={() => setMobileOpen(!mobileOpen)}
             >
                 <FiMenu />
@@ -310,33 +308,36 @@ export default function Sidebar() {
             {/* Mobile Overlay */}
             {mobileOpen && (
                 <div
-                    className={styles.overlay}
+                    className="hidden max-md:block fixed inset-0 bg-black/50 z-[calc(var(--z-sticky)-1)]"
                     onClick={() => setMobileOpen(false)}
                 />
             )}
 
-            <aside className={`
-                ${styles.sidebar}
-                ${collapsed ? styles.collapsed : ''}
-                ${mobileOpen ? styles.mobileOpen : ''}
-            `}>
+            <aside className={cn(
+                'fixed top-0 left-0 h-screen w-sidebar bg-bg-secondary border-r border-border flex flex-col z-sticky transition-[width] duration-normal',
+                collapsed && 'w-sidebar-collapsed',
+                'max-md:-translate-x-full max-md:w-sidebar',
+                mobileOpen && 'max-md:translate-x-0'
+            )}>
                 {/* Header */}
-                <div className={styles.header}>
-                    <Link href="/dashboard" className={styles.brand}>
+                <div className="p-5 border-b border-border">
+                    <Link href="/dashboard" className="flex items-center gap-3 no-underline">
                         {userSettings?.logo_url ? (
                             <img
                                 src={userSettings.logo_url}
                                 alt={appName}
-                                className={styles.logo}
+                                className="w-10 h-10 rounded-md object-cover"
                             />
                         ) : (
-                            <span className={styles.logoEmoji}>🌭</span>
+                            <span className="text-[2rem]">🌭</span>
                         )}
                         {!collapsed && (
-                            <div className={styles.brandInfo}>
-                                <span className={styles.brandName}>{appName}</span>
+                            <div className="flex flex-col gap-0.5">
+                                <span className="text-xl font-bold bg-linear-to-br from-primary to-accent bg-clip-text text-transparent whitespace-nowrap">
+                                    {appName}
+                                </span>
                                 {activeEmployee && (
-                                    <span className={styles.employeeBadge}>
+                                    <span className="text-xs text-text-muted font-normal">
                                         {activeEmployee.name}
                                     </span>
                                 )}
@@ -346,7 +347,7 @@ export default function Sidebar() {
                 </div>
 
                 {/* Navigation with Drag and Drop */}
-                <nav className={styles.nav}>
+                <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto overscroll-contain touch-pan-y">
                     {isMounted ? (
                         <DndContext
                             sensors={sensors}
@@ -375,7 +376,6 @@ export default function Sidebar() {
                             </DragOverlay>
                         </DndContext>
                     ) : (
-                        // SSR fallback - render without drag and drop
                         filteredMenuItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = pathname === item.href;
@@ -384,12 +384,19 @@ export default function Sidebar() {
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`${styles.navItem} ${isActive ? styles.active : ''}`}
+                                    className={cn(
+                                        'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                                        'hover:bg-bg-tertiary hover:text-text-primary',
+                                        isActive && 'bg-primary/10 text-primary',
+                                        collapsed && 'justify-center px-3.5'
+                                    )}
                                     onClick={() => setMobileOpen(false)}
                                 >
-                                    <Icon className={styles.navIcon} />
-                                    {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
-                                    {isActive && <div className={styles.activeIndicator} />}
+                                    <Icon className="text-xl shrink-0" />
+                                    {!collapsed && <span className="whitespace-nowrap overflow-hidden">{item.label}</span>}
+                                    {isActive && !collapsed && (
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-primary rounded-r-sm" />
+                                    )}
                                 </Link>
                             );
                         })
@@ -397,50 +404,84 @@ export default function Sidebar() {
                 </nav>
 
                 {/* Footer */}
-                <div className={styles.footer}>
+                <div className="p-3 border-t border-border flex flex-col gap-1">
                     {((!activeEmployee && !hasPermission('settings')) === false) && hasPermission('settings') && (
                         <Link
                             href="/configuracoes"
-                            className={`${styles.navItem} ${pathname === '/configuracoes' ? styles.active : ''}`}
+                            className={cn(
+                                'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                                'hover:bg-bg-tertiary hover:text-text-primary',
+                                pathname === '/configuracoes' && 'bg-primary/10 text-primary',
+                                collapsed && 'justify-center px-3.5'
+                            )}
                             onClick={() => setMobileOpen(false)}
                         >
-                            <FiSettings className={styles.navIcon} />
-                            {!collapsed && <span className={styles.navLabel}>Configurações</span>}
+                            <FiSettings className="text-xl shrink-0" />
+                            {!collapsed && <span className="whitespace-nowrap overflow-hidden">Configurações</span>}
                         </Link>
                     )}
 
                     {activeEmployee ? (
-                        <div className={styles.employeeControls}>
-                            <button className={styles.navItem} onClick={handleEmployeeLogout} title="Sair do Funcionário">
-                                <FiLogOut className={styles.navIcon} />
-                                {!collapsed && <span className={styles.navLabel}>
+                        <div className="flex flex-col gap-1">
+                            <button
+                                className={cn(
+                                    'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                                    'hover:bg-bg-tertiary hover:text-text-primary',
+                                    collapsed && 'justify-center px-3.5'
+                                )}
+                                onClick={handleEmployeeLogout}
+                                title="Sair do Funcionário"
+                            >
+                                <FiLogOut className="text-xl shrink-0" />
+                                {!collapsed && <span className="whitespace-nowrap overflow-hidden">
                                     Sair ({activeEmployee.name.split(' ')[0]})
                                 </span>}
                             </button>
                         </div>
                     ) : (
                         <>
-                            <button className={styles.navItem} onClick={handleLockScreen} title="Bloquear Tela">
-                                <FiUsers className={styles.navIcon} />
-                                {!collapsed && <span className={styles.navLabel}>Bloquear Tela</span>}
+                            <button
+                                className={cn(
+                                    'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                                    'hover:bg-bg-tertiary hover:text-text-primary',
+                                    collapsed && 'justify-center px-3.5'
+                                )}
+                                onClick={handleLockScreen}
+                                title="Bloquear Tela"
+                            >
+                                <FiUsers className="text-xl shrink-0" />
+                                {!collapsed && <span className="whitespace-nowrap overflow-hidden">Bloquear Tela</span>}
                             </button>
-                            <button className={styles.navItem} onClick={signOut} title="Sair do Sistema">
-                                <FiLogOut className={styles.navIcon} />
-                                {!collapsed && <span className={styles.navLabel}>Sair</span>}
+                            <button
+                                className={cn(
+                                    'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                                    'hover:bg-bg-tertiary hover:text-text-primary',
+                                    collapsed && 'justify-center px-3.5'
+                                )}
+                                onClick={signOut}
+                                title="Sair do Sistema"
+                            >
+                                <FiLogOut className="text-xl shrink-0" />
+                                {!collapsed && <span className="whitespace-nowrap overflow-hidden">Sair</span>}
                             </button>
                         </>
                     )}
 
                     <button
-                        className={`${styles.navItem} ${styles.shortcutsBtn}`}
+                        className={cn(
+                            'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                            'hover:bg-bg-tertiary hover:text-text-primary',
+                            'mt-2 border-t border-border pt-3',
+                            collapsed && 'justify-center px-3.5'
+                        )}
                         onClick={() => setShowHelp(true)}
                         title="Atalhos de Teclado (Ctrl + /)"
                     >
-                        <FiCommand className={styles.navIcon} />
+                        <FiCommand className="text-xl shrink-0" />
                         {!collapsed && (
-                            <span className={styles.navLabel}>
+                            <span className="flex items-center justify-between gap-2 flex-1 whitespace-nowrap overflow-hidden">
                                 Atalhos
-                                <kbd className={styles.kbd}>Ctrl+/</kbd>
+                                <kbd className="font-mono text-[0.6875rem] px-1.5 py-0.5 bg-bg-tertiary border border-border rounded text-text-muted ml-auto">Ctrl+/</kbd>
                             </span>
                         )}
                     </button>
@@ -448,7 +489,7 @@ export default function Sidebar() {
 
                 {/* Collapse Toggle */}
                 <button
-                    className={styles.collapseBtn}
+                    className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-bg-secondary border border-border rounded-full flex items-center justify-center text-text-secondary cursor-pointer transition-all duration-fast z-10 hover:bg-bg-tertiary hover:text-text-primary max-md:hidden"
                     onClick={() => setCollapsed(!collapsed)}
                 >
                     {collapsed ? <FiChevronRight /> : <FiChevronLeft />}

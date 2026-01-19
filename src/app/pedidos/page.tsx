@@ -4,14 +4,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
     FiPlus,
-    FiFilter,
     FiSearch,
     FiClock,
     FiMoreVertical,
     FiEye,
     FiEdit,
-    FiTrash2,
-    FiMessageCircle
+    FiTrash2
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import MainLayout from '@/components/layout/MainLayout';
@@ -22,7 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { openWhatsAppNotification, shouldNotifyOnStatusChange, OrderDetails } from '@/lib/whatsapp';
 import { logOrderStatusChange, logPaymentReceived } from '@/lib/actionLogger';
-import styles from './page.module.css';
+import { cn } from '@/lib/utils';
 
 interface Order {
     id: string;
@@ -64,7 +62,6 @@ export default function PedidosPage() {
         }
     }, [user, statusFilter]);
 
-    // Create Map for O(1) order lookup instead of O(n) find()
     const ordersMap = useMemo(() => {
         const map = new Map<string, Order>();
         orders.forEach(o => map.set(o.id, o));
@@ -121,7 +118,6 @@ export default function PedidosPage() {
 
     const updateOrderStatus = async (orderId: string, newStatus: string, sendNotification: boolean = false) => {
         try {
-            // O(1) lookup using Map
             const order = ordersMap.get(orderId);
 
             const { error } = await supabase
@@ -131,12 +127,10 @@ export default function PedidosPage() {
 
             if (error) throw error;
 
-            // Log the status change
             if (order) {
                 logOrderStatusChange(orderId, order.order_number, order.status, newStatus);
             }
 
-            // Send WhatsApp notification if enabled and order has phone
             if (sendNotification && order?.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
                 sendWhatsAppNotification(order, newStatus);
             }
@@ -152,7 +146,6 @@ export default function PedidosPage() {
     const handleStatusChangeWithNotification = (order: Order, newStatus: string) => {
         if (order.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
             setShowWhatsAppModal(order);
-            // Store the new status for the modal
             (order as any)._pendingStatus = newStatus;
         } else {
             updateOrderStatus(order.id, newStatus, false);
@@ -161,7 +154,6 @@ export default function PedidosPage() {
 
     const updatePaymentStatus = async (orderId: string) => {
         try {
-            // O(1) lookup using Map
             const order = ordersMap.get(orderId);
             if (!order) return;
 
@@ -172,15 +164,12 @@ export default function PedidosPage() {
 
             if (error) throw error;
 
-            // Log the payment
             logPaymentReceived(orderId, order.order_number, order.total, order.payment_method);
 
-            // Update customer's total_spent if the order has a phone number
             if (order.customer_phone && user) {
                 try {
                     const cleanPhone = order.customer_phone.replace(/\D/g, '');
 
-                    // Find the customer
                     const { data: customer } = await supabase
                         .from('customers')
                         .select('id, total_spent, total_points')
@@ -189,7 +178,6 @@ export default function PedidosPage() {
                         .single();
 
                     if (customer) {
-                        // Get loyalty settings for points calculation
                         const { data: settings } = await supabase
                             .from('loyalty_settings')
                             .select('points_per_real')
@@ -199,7 +187,6 @@ export default function PedidosPage() {
                         const pointsPerReal = settings?.points_per_real || 1;
                         const pointsEarned = Math.floor(order.total * pointsPerReal);
 
-                        // Update customer with total_spent and points
                         await supabase
                             .from('customers')
                             .update({
@@ -208,7 +195,6 @@ export default function PedidosPage() {
                             })
                             .eq('id', customer.id);
 
-                        // Add points transaction if earned
                         if (pointsEarned > 0) {
                             await supabase.from('points_transactions').insert({
                                 user_id: user.id,
@@ -289,12 +275,12 @@ export default function PedidosPage() {
 
     return (
         <MainLayout>
-            <div className={styles.container}>
+            <div className="max-w-[1200px] mx-auto">
                 {/* Header */}
-                <div className={styles.header}>
+                <div className="flex items-start justify-between mb-6 gap-5 max-md:flex-col">
                     <div>
-                        <h1 className={styles.title}>Pedidos</h1>
-                        <p className={styles.subtitle}>Gerencie todos os seus pedidos</p>
+                        <h1 className="text-[2rem] font-bold mb-2">Pedidos</h1>
+                        <p className="text-text-secondary">Gerencie todos os seus pedidos</p>
                     </div>
                     <Link href="/pedidos/novo">
                         <Button leftIcon={<FiPlus />}>Novo Pedido</Button>
@@ -302,9 +288,9 @@ export default function PedidosPage() {
                 </div>
 
                 {/* Filters */}
-                <Card className={styles.filtersCard}>
-                    <div className={styles.filters}>
-                        <div className={styles.searchWrapper}>
+                <Card className="mb-6 px-5! py-4!">
+                    <div className="flex flex-col gap-4">
+                        <div className="max-w-[400px]">
                             <Input
                                 placeholder="Buscar por cliente ou número..."
                                 leftIcon={<FiSearch />}
@@ -313,11 +299,14 @@ export default function PedidosPage() {
                             />
                         </div>
 
-                        <div className={styles.statusFilter}>
+                        <div className="flex flex-wrap gap-2">
                             {statusOptions.map((option) => (
                                 <button
                                     key={option.value}
-                                    className={`${styles.statusBtn} ${statusFilter === option.value ? styles.active : ''}`}
+                                    className={cn(
+                                        'px-4 py-2 bg-bg-tertiary border border-border rounded-full text-text-secondary text-sm cursor-pointer transition-all duration-fast hover:border-border-light hover:text-text-primary',
+                                        statusFilter === option.value && 'bg-primary border-primary text-white'
+                                    )}
                                     onClick={() => setStatusFilter(option.value)}
                                 >
                                     {option.label}
@@ -328,51 +317,62 @@ export default function PedidosPage() {
                 </Card>
 
                 {/* Orders List */}
-                <div className={styles.ordersContainer}>
+                <div className="min-h-[200px]">
                     {loading ? (
-                        <div className={styles.loading}>
+                        <div className="flex flex-col gap-3">
                             {[1, 2, 3, 4, 5].map(i => (
-                                <div key={i} className="skeleton" style={{ height: 80, borderRadius: 10 }} />
+                                <div key={i} className="h-20 rounded-[10px] bg-bg-tertiary animate-pulse" />
                             ))}
                         </div>
                     ) : filteredOrders.length > 0 ? (
-                        <div className={styles.ordersList}>
+                        <div className="flex flex-col gap-3">
                             {filteredOrders.map((order) => (
-                                <Card key={order.id} className={styles.orderCard} hoverable>
-                                    <div className={styles.orderHeader}>
-                                        <div className={styles.orderIdentifier}>
-                                            <span className={styles.orderNumber}>#{order.order_number}</span>
-                                            <span className={`${styles.orderType} ${order.is_delivery ? styles.delivery : styles.pickup}`}>
+                                <Card key={order.id} className="px-5! py-4!" hoverable>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-lg font-bold text-primary">#{order.order_number}</span>
+                                            <span className={cn(
+                                                'px-2.5 py-1 rounded-full text-xs font-medium',
+                                                order.is_delivery ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'
+                                            )}>
                                                 {order.is_delivery ? '🚚 Entrega' : '🏪 Balcão'}
                                             </span>
                                             {order.customer_phone && (
-                                                <span className={styles.hasPhone} title="Cliente com WhatsApp">
+                                                <span className="flex items-center justify-center w-6 h-6 bg-[rgba(37,211,102,0.15)] text-[#25D366] rounded-full text-xs" title="Cliente com WhatsApp">
                                                     <FaWhatsapp />
                                                 </span>
                                             )}
                                         </div>
-                                        <div className={styles.orderActions}>
-                                            <span className={`${styles.statusBadge} status-${order.status}`}>
+                                        <div className="flex items-center gap-3">
+                                            <span className={cn(
+                                                'px-3 py-1.5 rounded-full text-xs font-semibold uppercase bg-bg-tertiary',
+                                                order.status === 'pending' && 'text-warning',
+                                                order.status === 'preparing' && 'text-info',
+                                                order.status === 'ready' && 'text-accent',
+                                                order.status === 'delivering' && 'text-primary',
+                                                order.status === 'delivered' && 'text-accent',
+                                                order.status === 'cancelled' && 'text-error'
+                                            )}>
                                                 {getStatusLabel(order.status)}
                                             </span>
-                                            <div className={styles.dropdown}>
+                                            <div className="relative">
                                                 <button
-                                                    className={styles.dropdownTrigger}
+                                                    className="w-8 h-8 flex items-center justify-center bg-transparent border-none rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:bg-bg-tertiary hover:text-text-primary"
                                                     onClick={() => setShowDropdown(showDropdown === order.id ? null : order.id)}
                                                 >
                                                     <FiMoreVertical />
                                                 </button>
                                                 {showDropdown === order.id && (
-                                                    <div className={styles.dropdownMenu}>
-                                                        <Link href={`/pedidos/${order.id}`} className={styles.dropdownItem}>
+                                                    <div className="absolute top-full right-0 mt-1 min-w-[180px] bg-bg-card border border-border rounded-md shadow-lg z-dropdown animate-[fadeInDown_0.15s_ease]">
+                                                        <Link href={`/pedidos/${order.id}`} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 bg-transparent border-none text-text-secondary text-sm text-left cursor-pointer transition-all duration-fast hover:bg-bg-tertiary hover:text-text-primary">
                                                             <FiEye /> Ver Detalhes
                                                         </Link>
-                                                        <Link href={`/pedidos/${order.id}/editar`} className={styles.dropdownItem}>
+                                                        <Link href={`/pedidos/${order.id}/editar`} className="flex items-center gap-2.5 w-full px-3.5 py-2.5 bg-transparent border-none text-text-secondary text-sm text-left cursor-pointer transition-all duration-fast hover:bg-bg-tertiary hover:text-text-primary">
                                                             <FiEdit /> Editar
                                                         </Link>
                                                         {order.customer_phone && (
                                                             <button
-                                                                className={`${styles.dropdownItem} ${styles.whatsapp}`}
+                                                                className="flex items-center gap-2.5 w-full px-3.5 py-2.5 bg-transparent border-none text-[#25D366] text-sm text-left cursor-pointer transition-all duration-fast hover:bg-[rgba(37,211,102,0.1)]"
                                                                 onClick={() => {
                                                                     sendWhatsAppNotification(order, order.status);
                                                                     setShowDropdown(null);
@@ -381,9 +381,9 @@ export default function PedidosPage() {
                                                                 <FaWhatsapp /> Enviar WhatsApp
                                                             </button>
                                                         )}
-                                                        <div className={styles.dropdownDivider} />
+                                                        <div className="h-px bg-border my-1" />
                                                         <button
-                                                            className={`${styles.dropdownItem} ${styles.danger}`}
+                                                            className="flex items-center gap-2.5 w-full px-3.5 py-2.5 bg-transparent border-none text-error text-sm text-left cursor-pointer transition-all duration-fast hover:bg-error/10"
                                                             onClick={() => deleteOrder(order.id)}
                                                         >
                                                             <FiTrash2 /> Excluir
@@ -394,25 +394,28 @@ export default function PedidosPage() {
                                         </div>
                                     </div>
 
-                                    <div className={styles.orderContent}>
-                                        <div className={styles.customerInfo}>
-                                            <span className={styles.customerName}>{order.customer_name}</span>
+                                    <div className="flex justify-between items-start mb-3 pb-3 border-b border-border max-md:flex-col max-md:gap-3">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="font-medium">{order.customer_name}</span>
                                             {order.customer_phone && (
-                                                <span className={styles.customerPhone}>{order.customer_phone}</span>
+                                                <span className="text-sm text-text-secondary">{order.customer_phone}</span>
                                             )}
                                         </div>
 
-                                        <div className={styles.orderDetails}>
-                                            <div className={styles.detailItem}>
-                                                <span className={styles.detailLabel}>Pagamento</span>
-                                                <span className={styles.detailValue}>
+                                        <div className="flex gap-8 max-md:w-full max-md:justify-between">
+                                            <div className="flex flex-col items-end gap-1 max-md:items-start">
+                                                <span className="text-xs text-text-muted uppercase">Pagamento</span>
+                                                <span className="flex items-center gap-2 text-sm">
                                                     {getPaymentLabel(order.payment_method)}
-                                                    <span className={`${styles.paymentStatus} ${order.payment_status === 'paid' ? styles.paid : ''}`}>
+                                                    <span className={cn(
+                                                        'px-2 py-0.5 rounded-full text-[0.7rem]',
+                                                        order.payment_status === 'paid' ? 'bg-accent/20 text-accent' : 'bg-warning/20 text-warning'
+                                                    )}>
                                                         {order.payment_status === 'paid' ? '✓ Pago' : 'Pendente'}
                                                     </span>
                                                     {order.payment_status === 'pending' && (
                                                         <button
-                                                            className={`${styles.paymentReceivedBtn}`}
+                                                            className="px-2.5 py-1 ml-1.5 bg-accent border-none rounded-full text-white text-[0.7rem] font-medium cursor-pointer transition-all duration-fast hover:opacity-90 hover:-translate-y-px"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 updatePaymentStatus(order.id);
@@ -423,22 +426,22 @@ export default function PedidosPage() {
                                                     )}
                                                 </span>
                                             </div>
-                                            <div className={styles.detailItem}>
-                                                <span className={styles.detailLabel}>Total</span>
-                                                <span className={styles.detailTotal}>{formatCurrency(order.total)}</span>
+                                            <div className="flex flex-col items-end gap-1 max-md:items-start">
+                                                <span className="text-xs text-text-muted uppercase">Total</span>
+                                                <span className="text-lg font-bold text-accent">{formatCurrency(order.total)}</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className={styles.orderFooter}>
-                                        <span className={styles.orderTime}>
+                                    <div className="flex items-center justify-between max-md:flex-col max-md:gap-3 max-md:items-stretch">
+                                        <span className="flex items-center gap-1.5 text-sm text-text-muted">
                                             <FiClock /> {formatDate(order.created_at)}
                                         </span>
 
-                                        <div className={styles.quickActions}>
+                                        <div className="flex gap-2 max-md:justify-end">
                                             {order.status === 'pending' && (
                                                 <button
-                                                    className={styles.quickActionBtn}
+                                                    className="px-4 py-2 bg-primary border-none rounded-md text-white text-sm font-medium cursor-pointer transition-all duration-fast hover:opacity-90 hover:-translate-y-px"
                                                     onClick={() => handleStatusChangeWithNotification(order, 'preparing')}
                                                 >
                                                     Iniciar Preparo
@@ -446,7 +449,7 @@ export default function PedidosPage() {
                                             )}
                                             {order.status === 'preparing' && (
                                                 <button
-                                                    className={styles.quickActionBtn}
+                                                    className="px-4 py-2 bg-primary border-none rounded-md text-white text-sm font-medium cursor-pointer transition-all duration-fast hover:opacity-90 hover:-translate-y-px"
                                                     onClick={() => handleStatusChangeWithNotification(order, 'ready')}
                                                 >
                                                     Marcar Pronto
@@ -454,7 +457,7 @@ export default function PedidosPage() {
                                             )}
                                             {order.status === 'ready' && order.is_delivery && (
                                                 <button
-                                                    className={styles.quickActionBtn}
+                                                    className="px-4 py-2 bg-primary border-none rounded-md text-white text-sm font-medium cursor-pointer transition-all duration-fast hover:opacity-90 hover:-translate-y-px"
                                                     onClick={() => handleStatusChangeWithNotification(order, 'delivering')}
                                                 >
                                                     Saiu para Entrega
@@ -462,7 +465,7 @@ export default function PedidosPage() {
                                             )}
                                             {((order.status === 'ready' && !order.is_delivery) || order.status === 'delivering') && (
                                                 <button
-                                                    className={`${styles.quickActionBtn} ${styles.success}`}
+                                                    className="px-4 py-2 bg-accent border-none rounded-md text-white text-sm font-medium cursor-pointer transition-all duration-fast hover:opacity-90 hover:-translate-y-px"
                                                     onClick={() => handleStatusChangeWithNotification(order, 'delivered')}
                                                 >
                                                     Finalizar
@@ -474,10 +477,10 @@ export default function PedidosPage() {
                             ))}
                         </div>
                     ) : (
-                        <div className={styles.emptyState}>
-                            <span className={styles.emptyIcon}>📋</span>
-                            <h3>Nenhum pedido encontrado</h3>
-                            <p>Crie um novo pedido para começar</p>
+                        <div className="flex flex-col items-center justify-center py-15 px-5 text-center">
+                            <span className="text-6xl mb-4">📋</span>
+                            <h3 className="text-xl mb-2">Nenhum pedido encontrado</h3>
+                            <p className="text-text-secondary mb-5">Crie um novo pedido para começar</p>
                             <Link href="/pedidos/novo">
                                 <Button leftIcon={<FiPlus />}>Novo Pedido</Button>
                             </Link>
@@ -487,16 +490,16 @@ export default function PedidosPage() {
 
                 {/* WhatsApp Notification Modal */}
                 {showWhatsAppModal && (
-                    <div className={styles.modalOverlay} onClick={() => setShowWhatsAppModal(null)}>
-                        <div className={styles.modal} onClick={e => e.stopPropagation()}>
-                            <div className={styles.modalHeader}>
-                                <FaWhatsapp className={styles.whatsappIcon} />
-                                <h3>Notificar Cliente?</h3>
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-1000 animate-[fadeIn_0.2s_ease]" onClick={() => setShowWhatsAppModal(null)}>
+                        <div className="bg-bg-card rounded-lg p-6 max-w-[400px] w-[90%] animate-[scaleIn_0.2s_ease]" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center gap-3 mb-4">
+                                <FaWhatsapp className="text-2xl text-[#25D366]" />
+                                <h3 className="m-0 text-xl">Notificar Cliente?</h3>
                             </div>
-                            <p className={styles.modalText}>
-                                Deseja enviar uma notificação via WhatsApp para <strong>{showWhatsAppModal.customer_name}</strong> sobre a atualização do pedido?
+                            <p className="text-text-secondary mb-6 leading-relaxed">
+                                Deseja enviar uma notificação via WhatsApp para <strong className="text-text-primary">{showWhatsAppModal.customer_name}</strong> sobre a atualização do pedido?
                             </p>
-                            <div className={styles.modalActions}>
+                            <div className="flex gap-3 justify-end max-[480px]:flex-col-reverse">
                                 <Button
                                     variant="outline"
                                     onClick={() => {

@@ -7,7 +7,6 @@ import { FiMail, FiLock, FiArrowRight } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import styles from './page.module.css';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -37,52 +36,61 @@ export default function LoginPage() {
     };
 
     return (
-        <div className={styles.container}>
-            <div className={styles.backgroundEffects}>
-                <div className={styles.blob1} />
-                <div className={styles.blob2} />
-                <div className={styles.grid} />
+        <div className="min-h-screen flex relative overflow-hidden">
+            {/* Background Effects */}
+            <div className="absolute inset-0 z-0 overflow-hidden">
+                <div className="absolute -top-[200px] -right-[200px] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.15)_0%,transparent_70%)] rounded-full blur-[60px] animate-[float_8s_ease-in-out_infinite]" />
+                <div className="absolute -bottom-[200px] -left-[200px] w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(0,184,148,0.1)_0%,transparent_70%)] rounded-full blur-[60px] animate-[float_10s_ease-in-out_infinite_reverse]" />
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-size-[50px_50px]" />
             </div>
 
-            <div className={styles.content}>
-                <div className={styles.brandSection}>
-                    <div className={styles.logo}>
-                        <span className={styles.logoIcon}>🌭</span>
-                        <h1 className={styles.brandName}>Cola Aí</h1>
+            <div className="flex flex-1 z-1">
+                {/* Brand Section */}
+                <div className="flex-1 flex flex-col justify-center p-15 bg-linear-to-br from-primary/10 to-transparent max-lg:hidden">
+                    <div className="flex items-center gap-4 mb-6">
+                        <span className="text-[3.5rem] animate-bounce">🌭</span>
+                        <h1 className="text-5xl font-extrabold bg-linear-to-br from-primary to-accent bg-clip-text text-transparent">
+                            Cola Aí
+                        </h1>
                     </div>
-                    <p className={styles.tagline}>
+                    <p className="text-xl text-text-secondary max-w-[400px] leading-relaxed mb-12">
                         Gerencie seu negócio de lanches de forma simples e eficiente
                     </p>
 
-                    <div className={styles.features}>
-                        <div className={styles.feature}>
-                            <span className={styles.featureIcon}>📋</span>
+                    <div className="grid grid-cols-2 gap-5">
+                        <div className="flex items-center gap-3 px-5 py-4 bg-white/3 rounded-md border border-white/5 transition-all duration-normal hover:bg-white/6 hover:border-white/10 hover:translate-x-1">
+                            <span className="text-2xl">📋</span>
                             <span>Controle de Pedidos</span>
                         </div>
-                        <div className={styles.feature}>
-                            <span className={styles.featureIcon}>👨‍🍳</span>
+                        <div className="flex items-center gap-3 px-5 py-4 bg-white/3 rounded-md border border-white/5 transition-all duration-normal hover:bg-white/6 hover:border-white/10 hover:translate-x-1">
+                            <span className="text-2xl">👨‍🍳</span>
                             <span>Fila de Preparo</span>
                         </div>
-                        <div className={styles.feature}>
-                            <span className={styles.featureIcon}>🚚</span>
+                        <div className="flex items-center gap-3 px-5 py-4 bg-white/3 rounded-md border border-white/5 transition-all duration-normal hover:bg-white/6 hover:border-white/10 hover:translate-x-1">
+                            <span className="text-2xl">🚚</span>
                             <span>Gestão de Entregas</span>
                         </div>
-                        <div className={styles.feature}>
-                            <span className={styles.featureIcon}>💰</span>
+                        <div className="flex items-center gap-3 px-5 py-4 bg-white/3 rounded-md border border-white/5 transition-all duration-normal hover:bg-white/6 hover:border-white/10 hover:translate-x-1">
+                            <span className="text-2xl">💰</span>
                             <span>Controle Financeiro</span>
                         </div>
                     </div>
                 </div>
 
-                <div className={styles.formSection}>
-                    <div className={styles.formCard}>
-                        <div className={styles.formHeader}>
-                            <h2>Bem-vindo de volta!</h2>
-                            <p>Entre na sua conta para continuar</p>
+                {/* Form Section */}
+                <div className="flex-1 flex items-center justify-center p-15 max-lg:p-6">
+                    <div className="w-full max-w-[420px] p-10 bg-bg-card rounded-xl border border-border shadow-xl max-[480px]:p-6">
+                        <div className="text-center mb-8">
+                            <h2 className="text-[1.75rem] font-bold mb-2">Bem-vindo de volta!</h2>
+                            <p className="text-text-secondary">Entre na sua conta para continuar</p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className={styles.form}>
-                            {error && <div className={styles.error}>{error}</div>}
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                            {error && (
+                                <div className="px-4 py-3 bg-error/10 border border-error/30 rounded-md text-error text-sm text-center">
+                                    {error}
+                                </div>
+                            )}
 
                             <Input
                                 label="E-mail"
@@ -104,8 +112,10 @@ export default function LoginPage() {
                                 required
                             />
 
-                            <div className={styles.forgotPassword}>
-                                <Link href="/recuperar-senha">Esqueceu a senha?</Link>
+                            <div className="text-right -mt-2">
+                                <Link href="/recuperar-senha" className="text-sm text-text-secondary transition-colors duration-fast hover:text-primary">
+                                    Esqueceu a senha?
+                                </Link>
                             </div>
 
                             <Button
@@ -119,13 +129,17 @@ export default function LoginPage() {
                             </Button>
                         </form>
 
-                        <div className={styles.divider}>
-                            <span>ou</span>
+                        <div className="flex items-center gap-4 my-6">
+                            <div className="flex-1 h-px bg-border" />
+                            <span className="text-sm text-text-muted">ou</span>
+                            <div className="flex-1 h-px bg-border" />
                         </div>
 
-                        <p className={styles.signupLink}>
+                        <p className="text-center text-text-secondary">
                             Não tem uma conta?{' '}
-                            <Link href="/registro">Crie gratuitamente</Link>
+                            <Link href="/registro" className="text-primary font-medium transition-opacity duration-fast hover:opacity-80">
+                                Crie gratuitamente
+                            </Link>
                         </p>
                     </div>
                 </div>

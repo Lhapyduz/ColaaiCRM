@@ -36,7 +36,7 @@ import { LimitWarning } from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
-import styles from './page.module.css';
+import { cn } from '@/lib/utils';
 
 interface Category {
     id: string;
@@ -63,7 +63,6 @@ interface AddonGroup {
     required: boolean;
 }
 
-// Sortable Product Card Component
 function SortableProductCard({
     product,
     category,
@@ -93,54 +92,62 @@ function SortableProductCard({
         transition,
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 1000 : 'auto',
-        touchAction: 'none', // Prevent browser native touch gestures
+        touchAction: 'none',
     };
 
     return (
         <div ref={setNodeRef} style={style}>
-            <Card className={`${styles.productCard} ${!product.available ? styles.unavailable : ''} ${isDragging ? styles.dragging : ''}`}>
+            <Card className={cn(
+                'p-4! flex flex-col relative transition-all duration-200 touch-none select-none',
+                !product.available && 'opacity-60',
+                isDragging && 'shadow-[0_8px_24px_rgba(0,0,0,0.3)] border-primary'
+            )}>
                 <div
-                    className={styles.dragHandle}
+                    className="absolute top-2 right-2 flex items-center justify-center w-6 h-6 text-text-muted opacity-0 cursor-grab transition-all duration-fast rounded-sm z-10 touch-none select-none hover:text-primary hover:bg-primary/10 active:cursor-grabbing group-hover:opacity-100"
                     {...attributes}
                     {...listeners}
                     title="Arraste para reordenar"
+                    style={{ opacity: 1 }}
                 >
                     <FiMove size={14} />
                 </div>
-                <div className={styles.productContent}>
+                <div className="flex gap-4">
                     {product.image_url && (
-                        <div className={styles.productImageWrapper}>
+                        <div className="shrink-0 w-20 h-20 rounded-md overflow-hidden bg-bg-tertiary">
                             <img
                                 src={product.image_url}
                                 alt={product.name}
-                                className={styles.productImage}
+                                className="w-full h-full object-cover"
                             />
                         </div>
                     )}
-                    <div className={styles.productInfo}>
-                        <div className={styles.productHeader}>
-                            <span className={styles.productCategory}>
+                    <div className="flex-1 min-w-0 flex flex-col">
+                        <div className="flex justify-between items-center mb-3">
+                            <span className="text-xs text-text-muted">
                                 {category?.icon} {category?.name}
                             </span>
                             <button
-                                className={`${styles.availabilityToggle} ${product.available ? styles.available : ''}`}
+                                className={cn(
+                                    'px-2.5 py-1 border-none rounded-full text-[0.7rem] font-medium cursor-pointer transition-all duration-fast',
+                                    product.available ? 'bg-accent/10 text-accent' : 'bg-error/10 text-error'
+                                )}
                                 onClick={onToggleAvailability}
                             >
                                 {product.available ? 'Disponível' : 'Indisponível'}
                             </button>
                         </div>
-                        <h3 className={styles.productName}>{product.name}</h3>
+                        <h3 className="text-base font-semibold mb-1">{product.name}</h3>
                         {product.description && (
-                            <p className={styles.productDescription}>{product.description}</p>
+                            <p className="text-[0.8125rem] text-text-secondary mb-3 flex-1 line-clamp-2 overflow-hidden">{product.description}</p>
                         )}
-                        <div className={styles.productFooter}>
-                            <span className={styles.productPrice}>{formatCurrency(product.price)}</span>
-                            <div className={styles.productActions}>
-                                <button className={styles.actionBtn} onClick={onEdit}>
+                        <div className="flex justify-between items-center mt-auto pt-3 border-t border-border">
+                            <span className="text-lg font-bold text-primary">{formatCurrency(product.price)}</span>
+                            <div className="flex gap-1">
+                                <button className="w-8 h-8 flex items-center justify-center bg-transparent border-none rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:bg-bg-tertiary hover:text-text-primary" onClick={onEdit}>
                                     <FiEdit2 />
                                 </button>
                                 <button
-                                    className={`${styles.actionBtn} ${styles.danger}`}
+                                    className="w-8 h-8 flex items-center justify-center bg-transparent border-none rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:bg-error/10 hover:text-error"
                                     onClick={onDelete}
                                 >
                                     <FiTrash2 />
@@ -163,7 +170,6 @@ export default function ProdutosPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
 
-    // Modal states
     const [showProductModal, setShowProductModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [productForm, setProductForm] = useState({
@@ -176,47 +182,27 @@ export default function ProdutosPage() {
     });
     const [saving, setSaving] = useState(false);
 
-    // Addon groups
     const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([]);
     const [selectedAddonGroups, setSelectedAddonGroups] = useState<string[]>([]);
 
-    // Debounce timer ref for saving order
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-    // State to track dragging and block scroll/refresh
     const [isDragging, setIsDragging] = useState(false);
 
     const productsLimit = getLimit('products');
     const isAtLimit = !isWithinLimit('products', products.length);
 
-    // DnD sensors - with delay to prevent pull-to-refresh on touch devices
     const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 8,
-            },
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: {
-                delay: 200,
-                tolerance: 5,
-            },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    // Block body scroll/refresh while dragging
     useEffect(() => {
         if (isDragging) {
-            const preventScroll = (e: TouchEvent) => {
-                e.preventDefault();
-            };
+            const preventScroll = (e: TouchEvent) => e.preventDefault();
             document.body.style.overflow = 'hidden';
             document.body.style.touchAction = 'none';
             document.addEventListener('touchmove', preventScroll, { passive: false });
-
             return () => {
                 document.body.style.overflow = '';
                 document.body.style.touchAction = '';
@@ -226,21 +212,17 @@ export default function ProdutosPage() {
     }, [isDragging]);
 
     useEffect(() => {
-        if (user) {
-            fetchData();
-        }
+        if (user) fetchData();
     }, [user]);
 
     const fetchData = async () => {
         if (!user) return;
-
         try {
             const [categoriesRes, productsRes, groupsRes] = await Promise.all([
                 supabase.from('categories').select('*').eq('user_id', user.id),
                 supabase.from('products').select('*').eq('user_id', user.id).order('display_order', { ascending: true }),
                 supabase.from('addon_groups').select('id, name, description, required').eq('user_id', user.id).order('name')
             ]);
-
             if (categoriesRes.data) setCategories(categoriesRes.data);
             if (productsRes.data) setProducts(productsRes.data);
             if (groupsRes.data) setAddonGroups(groupsRes.data);
@@ -260,61 +242,39 @@ export default function ProdutosPage() {
     const getCategoryById = (id: string) => categories.find(c => c.id === id);
 
     const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value);
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     };
 
-    // Handle drag start - prevent scroll/refresh
-    const handleDragStart = useCallback((_event: DragStartEvent) => {
-        setIsDragging(true);
-    }, []);
+    const handleDragStart = useCallback((_event: DragStartEvent) => setIsDragging(true), []);
 
-    // Handle drag end - instant local update + background save
     const handleDragEnd = useCallback((event: DragEndEvent) => {
         setIsDragging(false);
         const { active, over } = event;
-
         if (over && active.id !== over.id) {
             setProducts((items) => {
                 const oldIndex = items.findIndex(item => item.id === active.id);
                 const newIndex = items.findIndex(item => item.id === over.id);
                 const newItems = arrayMove(items, oldIndex, newIndex);
-
-                // Clear any pending save
-                if (saveTimeoutRef.current) {
-                    clearTimeout(saveTimeoutRef.current);
-                }
-
-                // Background save to database
+                if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
                 saveTimeoutRef.current = setTimeout(async () => {
                     try {
-                        await Promise.all(
-                            newItems.map((item, index) =>
-                                supabase
-                                    .from('products')
-                                    .update({ display_order: index })
-                                    .eq('id', item.id)
-                            )
-                        );
+                        await Promise.all(newItems.map((item, index) =>
+                            supabase.from('products').update({ display_order: index }).eq('id', item.id)
+                        ));
                     } catch (error) {
                         console.error('Failed to save product order:', error);
                     }
                 }, 500);
-
                 return newItems;
             });
         }
     }, []);
 
     const openProductModal = async (product?: Product) => {
-        // Block new products if at limit
         if (!product && isAtLimit) {
             alert(`Limite de ${productsLimit} produtos atingido! Faça upgrade do seu plano para adicionar mais.`);
             return;
         }
-
         if (product) {
             setEditingProduct(product);
             setProductForm({
@@ -325,22 +285,11 @@ export default function ProdutosPage() {
                 available: product.available,
                 image_url: product.image_url
             });
-            // Load existing addon groups for this product
-            const { data } = await supabase
-                .from('product_addon_groups')
-                .select('group_id')
-                .eq('product_id', product.id);
+            const { data } = await supabase.from('product_addon_groups').select('group_id').eq('product_id', product.id);
             setSelectedAddonGroups(data?.map(g => g.group_id) || []);
         } else {
             setEditingProduct(null);
-            setProductForm({
-                name: '',
-                description: '',
-                price: '',
-                category_id: categories[0]?.id || '',
-                available: true,
-                image_url: null
-            });
+            setProductForm({ name: '', description: '', price: '', category_id: categories[0]?.id || '', available: true, image_url: null });
             setSelectedAddonGroups([]);
         }
         setShowProductModal(true);
@@ -354,9 +303,7 @@ export default function ProdutosPage() {
 
     const handleSaveProduct = async () => {
         if (!user || !productForm.name || !productForm.price || !productForm.category_id) return;
-
         setSaving(true);
-
         try {
             const productData = {
                 user_id: user.id,
@@ -367,39 +314,19 @@ export default function ProdutosPage() {
                 available: productForm.available,
                 image_url: productForm.image_url
             };
-
             let productId: string;
-
             if (editingProduct) {
-                await supabase
-                    .from('products')
-                    .update(productData)
-                    .eq('id', editingProduct.id);
+                await supabase.from('products').update(productData).eq('id', editingProduct.id);
                 productId = editingProduct.id;
             } else {
-                // Set display_order for new product
-                const maxOrder = products.length > 0
-                    ? Math.max(...products.map(p => p.display_order || 0))
-                    : -1;
-                const { data } = await supabase.from('products').insert({
-                    ...productData,
-                    display_order: maxOrder + 1
-                }).select().single();
+                const maxOrder = products.length > 0 ? Math.max(...products.map(p => p.display_order || 0)) : -1;
+                const { data } = await supabase.from('products').insert({ ...productData, display_order: maxOrder + 1 }).select().single();
                 productId = data.id;
             }
-
-            // Update addon groups
             await supabase.from('product_addon_groups').delete().eq('product_id', productId);
-
             if (selectedAddonGroups.length > 0) {
-                await supabase.from('product_addon_groups').insert(
-                    selectedAddonGroups.map(groupId => ({
-                        product_id: productId,
-                        group_id: groupId
-                    }))
-                );
+                await supabase.from('product_addon_groups').insert(selectedAddonGroups.map(groupId => ({ product_id: productId, group_id: groupId })));
             }
-
             fetchData();
             closeProductModal();
         } catch (error) {
@@ -411,20 +338,14 @@ export default function ProdutosPage() {
 
     const deleteProduct = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir este produto?')) return;
-
         try {
-            // Find the product to check if it has an image
             const product = products.find(p => p.id === id);
-
-            // Delete image from storage if exists
             if (product?.image_url) {
                 const urlParts = product.image_url.split('product-images/');
                 if (urlParts.length >= 2) {
-                    const filePath = urlParts[1];
-                    await supabase.storage.from('product-images').remove([filePath]);
+                    await supabase.storage.from('product-images').remove([urlParts[1]]);
                 }
             }
-
             await supabase.from('products').delete().eq('id', id);
             fetchData();
         } catch (error) {
@@ -434,10 +355,7 @@ export default function ProdutosPage() {
 
     const toggleAvailability = async (product: Product) => {
         try {
-            await supabase
-                .from('products')
-                .update({ available: !product.available })
-                .eq('id', product.id);
+            await supabase.from('products').update({ available: !product.available }).eq('id', product.id);
             fetchData();
         } catch (error) {
             console.error('Error toggling availability:', error);
@@ -446,49 +364,32 @@ export default function ProdutosPage() {
 
     return (
         <MainLayout>
-            <div className={styles.container}>
+            <div className="max-w-[1200px] mx-auto overscroll-contain">
                 {/* Header */}
-                <div className={styles.header}>
+                <div className="flex items-start justify-between mb-6 gap-5 max-md:flex-col">
                     <div>
-                        <h1 className={styles.title}>Produtos</h1>
-                        <p className={styles.subtitle}>Gerencie seu cardápio (arraste para reordenar)</p>
+                        <h1 className="text-[2rem] font-bold mb-2">Produtos</h1>
+                        <p className="text-text-secondary">Gerencie seu cardápio (arraste para reordenar)</p>
                     </div>
                     <Button leftIcon={<FiPlus />} onClick={() => openProductModal()} disabled={isAtLimit}>
                         Novo Produto
                     </Button>
                 </div>
 
-                <LimitWarning
-                    resource="produtos"
-                    current={products.length}
-                    limit={productsLimit}
-                    requiredPlan="Avançado"
-                />
+                <LimitWarning resource="produtos" current={products.length} limit={productsLimit} requiredPlan="Avançado" />
 
                 {/* Filters */}
-                <Card className={styles.filtersCard}>
-                    <div className={styles.filters}>
-                        <div className={styles.searchWrapper}>
-                            <Input
-                                placeholder="Buscar produto..."
-                                leftIcon={<FiSearch />}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+                <Card className="mb-6 px-5! py-4!">
+                    <div className="flex flex-col gap-4">
+                        <div className="max-w-[400px]">
+                            <Input placeholder="Buscar produto..." leftIcon={<FiSearch />} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
-                        <div className={styles.categoryFilter}>
-                            <button
-                                className={`${styles.categoryBtn} ${!selectedCategory ? styles.active : ''}`}
-                                onClick={() => setSelectedCategory(null)}
-                            >
+                        <div className="flex flex-wrap gap-2">
+                            <button className={cn('px-4 py-2 bg-bg-tertiary border border-border rounded-full text-text-secondary text-sm cursor-pointer transition-all duration-fast hover:border-border-light hover:text-text-primary', !selectedCategory && 'bg-primary border-primary text-white')} onClick={() => setSelectedCategory(null)}>
                                 Todos
                             </button>
                             {categories.map((category) => (
-                                <button
-                                    key={category.id}
-                                    className={`${styles.categoryBtn} ${selectedCategory === category.id ? styles.active : ''}`}
-                                    onClick={() => setSelectedCategory(category.id)}
-                                >
+                                <button key={category.id} className={cn('px-4 py-2 bg-bg-tertiary border border-border rounded-full text-text-secondary text-sm cursor-pointer transition-all duration-fast hover:border-border-light hover:text-text-primary', selectedCategory === category.id && 'bg-primary border-primary text-white')} onClick={() => setSelectedCategory(category.id)}>
                                     {category.icon} {category.name}
                                 </button>
                             ))}
@@ -498,162 +399,87 @@ export default function ProdutosPage() {
 
                 {/* Products Grid */}
                 {loading ? (
-                    <div className={styles.productsGrid}>
+                    <div className="grid grid-cols-3 gap-4 max-[1024px]:grid-cols-2 max-md:grid-cols-1 overscroll-y-none">
                         {[1, 2, 3, 4, 5, 6].map(i => (
-                            <div key={i} className="skeleton" style={{ height: 160, borderRadius: 12 }} />
+                            <div key={i} className="h-40 rounded-xl bg-bg-tertiary animate-pulse" />
                         ))}
                     </div>
                 ) : filteredProducts.length > 0 ? (
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragStart={handleDragStart}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <SortableContext
-                            items={filteredProducts.map(p => p.id)}
-                            strategy={rectSortingStrategy}
-                        >
-                            <div className={styles.productsGrid}>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                        <SortableContext items={filteredProducts.map(p => p.id)} strategy={rectSortingStrategy}>
+                            <div className="grid grid-cols-3 gap-4 max-[1024px]:grid-cols-2 max-md:grid-cols-1 overscroll-y-none">
                                 {filteredProducts.map((product) => (
-                                    <SortableProductCard
-                                        key={product.id}
-                                        product={product}
-                                        category={getCategoryById(product.category_id)}
-                                        formatCurrency={formatCurrency}
-                                        onEdit={() => openProductModal(product)}
-                                        onDelete={() => deleteProduct(product.id)}
-                                        onToggleAvailability={() => toggleAvailability(product)}
-                                    />
+                                    <SortableProductCard key={product.id} product={product} category={getCategoryById(product.category_id)} formatCurrency={formatCurrency} onEdit={() => openProductModal(product)} onDelete={() => deleteProduct(product.id)} onToggleAvailability={() => toggleAvailability(product)} />
                                 ))}
                             </div>
                         </SortableContext>
                     </DndContext>
                 ) : (
-                    <div className={styles.emptyState}>
-                        <span className={styles.emptyIcon}>🍔</span>
-                        <h3>Nenhum produto encontrado</h3>
-                        <p>Adicione produtos ao seu cardápio</p>
-                        <Button leftIcon={<FiPlus />} onClick={() => openProductModal()}>
-                            Novo Produto
-                        </Button>
+                    <div className="flex flex-col items-center justify-center py-15 px-5 text-center">
+                        <span className="text-6xl mb-4">🍔</span>
+                        <h3 className="text-xl mb-2">Nenhum produto encontrado</h3>
+                        <p className="text-text-secondary mb-5">Adicione produtos ao seu cardápio</p>
+                        <Button leftIcon={<FiPlus />} onClick={() => openProductModal()}>Novo Produto</Button>
                     </div>
                 )}
 
                 {/* Product Modal */}
                 {showProductModal && (
-                    <div className={styles.modalOverlay} onClick={closeProductModal}>
-                        <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-                            <h2 className={styles.modalTitle}>
-                                {editingProduct ? 'Editar Produto' : 'Novo Produto'}
-                            </h2>
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-modal p-6 animate-[fadeIn_0.15s_ease]" onClick={closeProductModal}>
+                        <div className="w-full max-w-[500px] bg-bg-card rounded-xl border border-border p-7 animate-[scaleIn_0.15s_ease]" onClick={(e) => e.stopPropagation()}>
+                            <h2 className="text-xl font-semibold mb-6">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h2>
 
-                            <div className={styles.modalForm}>
-                                <div className={styles.formGroup}>
-                                    <label>Foto do Produto</label>
-                                    <ImageUpload
-                                        value={productForm.image_url}
-                                        onChange={(url) => setProductForm({ ...productForm, image_url: url })}
-                                        folder={user?.id}
-                                        placeholder="Adicionar foto do produto"
-                                    />
+                            <div className="flex flex-col gap-4 mb-6">
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-sm font-medium text-text-secondary">Foto do Produto</label>
+                                    <ImageUpload value={productForm.image_url} onChange={(url) => setProductForm({ ...productForm, image_url: url })} folder={user?.id} placeholder="Adicionar foto do produto" />
                                 </div>
 
-                                <Input
-                                    label="Nome"
-                                    placeholder="Nome do produto"
-                                    value={productForm.name}
-                                    onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                                    required
-                                />
+                                <Input label="Nome" placeholder="Nome do produto" value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} required />
 
-                                <div className={styles.formRow}>
-                                    <div className={styles.selectWrapper}>
-                                        <label>Categoria</label>
-                                        <select
-                                            value={productForm.category_id}
-                                            onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })}
-                                        >
-                                            {categories.map((cat) => (
-                                                <option key={cat.id} value={cat.id}>
-                                                    {cat.icon} {cat.name}
-                                                </option>
-                                            ))}
+                                <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-sm font-medium text-text-secondary">Categoria</label>
+                                        <select className="h-12 px-4 bg-bg-tertiary border-2 border-border rounded-md text-text-primary text-[0.9375rem] focus:border-primary focus:outline-none" value={productForm.category_id} onChange={(e) => setProductForm({ ...productForm, category_id: e.target.value })}>
+                                            {categories.map((cat) => (<option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>))}
                                         </select>
                                     </div>
-
-                                    <Input
-                                        label="Preço"
-                                        type="number"
-                                        placeholder="0,00"
-                                        value={productForm.price}
-                                        onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                                        required
-                                    />
+                                    <Input label="Preço" type="number" placeholder="0,00" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} required />
                                 </div>
 
-                                <div className={styles.textareaWrapper}>
-                                    <label>Descrição (opcional)</label>
-                                    <textarea
-                                        placeholder="Descrição do produto"
-                                        value={productForm.description}
-                                        onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
-                                        rows={3}
-                                    />
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-sm font-medium text-text-secondary">Descrição (opcional)</label>
+                                    <textarea className="px-4 py-3 bg-bg-tertiary border-2 border-border rounded-md text-text-primary text-[0.9375rem] resize-y min-h-20 focus:border-primary focus:outline-none" placeholder="Descrição do produto" value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} rows={3} />
                                 </div>
 
                                 {addonGroups.length > 0 && (
-                                    <div className={styles.addonGroupsSection}>
-                                        <label>Grupos de Adicionais</label>
-                                        <p style={{ fontSize: '0.8rem', color: '#888', marginBottom: '0.5rem' }}>
-                                            Selecione quais adicionais este produto pode ter
-                                        </p>
-                                        <div className={styles.addonGroupsList}>
+                                    <div className="flex flex-col gap-1.5">
+                                        <label className="text-sm font-medium text-text-secondary">Grupos de Adicionais</label>
+                                        <p className="text-[0.8rem] text-text-muted mb-1">Selecione quais adicionais este produto pode ter</p>
+                                        <div className="flex flex-wrap gap-2 mt-1">
                                             {addonGroups.map((group) => (
-                                                <label
-                                                    key={group.id}
-                                                    className={`${styles.addonGroupOption} ${selectedAddonGroups.includes(group.id) ? styles.selected : ''}`}
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedAddonGroups.includes(group.id)}
-                                                        onChange={(e) => {
-                                                            if (e.target.checked) {
-                                                                setSelectedAddonGroups([...selectedAddonGroups, group.id]);
-                                                            } else {
-                                                                setSelectedAddonGroups(selectedAddonGroups.filter(id => id !== group.id));
-                                                            }
-                                                        }}
-                                                    />
+                                                <label key={group.id} className={cn('flex items-center gap-2 px-3.5 py-2 bg-bg-tertiary border-2 border-border rounded-md cursor-pointer transition-all duration-fast text-sm hover:border-primary', selectedAddonGroups.includes(group.id) && 'bg-primary/10 border-primary')}>
+                                                    <input type="checkbox" className="w-4 h-4 accent-primary" checked={selectedAddonGroups.includes(group.id)} onChange={(e) => {
+                                                        if (e.target.checked) setSelectedAddonGroups([...selectedAddonGroups, group.id]);
+                                                        else setSelectedAddonGroups(selectedAddonGroups.filter(id => id !== group.id));
+                                                    }} />
                                                     <span>{group.name}</span>
-                                                    {group.required && (
-                                                        <span style={{ fontSize: '0.7rem', color: '#f39c12', marginLeft: '0.5rem' }}>
-                                                            (Obrigatório)
-                                                        </span>
-                                                    )}
+                                                    {group.required && <span className="text-[0.7rem] text-warning ml-1">(Obrigatório)</span>}
                                                 </label>
                                             ))}
                                         </div>
                                     </div>
                                 )}
 
-                                <label className={styles.checkboxLabel}>
-                                    <input
-                                        type="checkbox"
-                                        checked={productForm.available}
-                                        onChange={(e) => setProductForm({ ...productForm, available: e.target.checked })}
-                                    />
+                                <label className="flex items-center gap-2.5 cursor-pointer">
+                                    <input type="checkbox" className="w-[18px] h-[18px] accent-primary" checked={productForm.available} onChange={(e) => setProductForm({ ...productForm, available: e.target.checked })} />
                                     Produto disponível
                                 </label>
                             </div>
 
-                            <div className={styles.modalActions}>
-                                <Button variant="ghost" onClick={closeProductModal}>
-                                    Cancelar
-                                </Button>
-                                <Button onClick={handleSaveProduct} isLoading={saving}>
-                                    {editingProduct ? 'Salvar' : 'Criar Produto'}
-                                </Button>
+                            <div className="flex justify-end gap-3">
+                                <Button variant="ghost" onClick={closeProductModal}>Cancelar</Button>
+                                <Button onClick={handleSaveProduct} isLoading={saving}>{editingProduct ? 'Salvar' : 'Criar Produto'}</Button>
                             </div>
                         </div>
                     </div>

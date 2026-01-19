@@ -7,7 +7,6 @@ import { FiMail, FiLock, FiUser, FiArrowRight } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import styles from './page.module.css';
 
 export default function RegistroPage() {
     const [name, setName] = useState('');
@@ -50,28 +49,36 @@ export default function RegistroPage() {
     };
 
     return (
-        <div className={styles.container}>
-            <div className={styles.backgroundEffects}>
-                <div className={styles.blob1} />
-                <div className={styles.blob2} />
-                <div className={styles.grid} />
+        <div className="min-h-screen flex relative overflow-hidden">
+            {/* Background Effects */}
+            <div className="absolute inset-0 z-0 overflow-hidden">
+                <div className="absolute -top-[200px] -left-[200px] w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(0,184,148,0.15)_0%,transparent_70%)] rounded-full blur-[60px] animate-[float_8s_ease-in-out_infinite]" />
+                <div className="absolute -bottom-[200px] -right-[200px] w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(var(--primary-rgb),0.1)_0%,transparent_70%)] rounded-full blur-[60px] animate-[float_10s_ease-in-out_infinite_reverse]" />
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-size-[50px_50px]" />
             </div>
 
-            <div className={styles.content}>
-                <div className={styles.formSection}>
-                    <div className={styles.formCard}>
-                        <div className={styles.logo}>
-                            <span className={styles.logoIcon}>🌭</span>
-                            <h1 className={styles.brandName}>Cola Aí</h1>
+            <div className="flex flex-1 z-1">
+                {/* Form Section */}
+                <div className="flex-1 flex items-center justify-center p-10 max-lg:p-6">
+                    <div className="w-full max-w-[440px] p-9 bg-bg-card rounded-xl border border-border shadow-xl max-[480px]:p-6">
+                        <div className="flex items-center justify-center gap-3 mb-6">
+                            <span className="text-[2.5rem] animate-bounce">🌭</span>
+                            <h1 className="text-[2rem] font-extrabold bg-linear-to-br from-primary to-accent bg-clip-text text-transparent">
+                                Cola Aí
+                            </h1>
                         </div>
 
-                        <div className={styles.formHeader}>
-                            <h2>Criar sua conta</h2>
-                            <p>Comece a gerenciar seu negócio hoje</p>
+                        <div className="text-center mb-7">
+                            <h2 className="text-2xl font-bold mb-2">Criar sua conta</h2>
+                            <p className="text-text-secondary">Comece a gerenciar seu negócio hoje</p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className={styles.form}>
-                            {error && <div className={styles.error}>{error}</div>}
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                            {error && (
+                                <div className="px-4 py-3 bg-error/10 border border-error/30 rounded-md text-error text-sm text-center">
+                                    {error}
+                                </div>
+                            )}
 
                             <Input
                                 label="Nome do Negócio"
@@ -124,46 +131,53 @@ export default function RegistroPage() {
                             </Button>
                         </form>
 
-                        <div className={styles.divider}>
-                            <span>ou</span>
+                        <div className="flex items-center gap-4 my-5">
+                            <div className="flex-1 h-px bg-border" />
+                            <span className="text-sm text-text-muted">ou</span>
+                            <div className="flex-1 h-px bg-border" />
                         </div>
 
-                        <p className={styles.loginLink}>
+                        <p className="text-center text-text-secondary">
                             Já tem uma conta?{' '}
-                            <Link href="/login">Faça login</Link>
+                            <Link href="/login" className="text-primary font-medium transition-opacity duration-fast hover:opacity-80">
+                                Faça login
+                            </Link>
                         </p>
                     </div>
                 </div>
 
-                <div className={styles.infoSection}>
-                    <h2>Tudo o que você precisa para gerenciar seu negócio</h2>
-                    <div className={styles.infoList}>
-                        <div className={styles.infoItem}>
-                            <span className={styles.infoIcon}>✅</span>
+                {/* Info Section */}
+                <div className="flex-1 flex flex-col justify-center p-15 bg-linear-to-br from-accent/5 to-transparent max-lg:hidden">
+                    <h2 className="text-[2rem] font-bold mb-10 max-w-[400px]">
+                        Tudo o que você precisa para gerenciar seu negócio
+                    </h2>
+                    <div className="flex flex-col gap-6">
+                        <div className="flex gap-4 p-5 bg-white/3 rounded-md border border-white/5 transition-all duration-normal hover:bg-white/6 hover:border-white/10 hover:translate-x-1">
+                            <span className="text-2xl">✅</span>
                             <div>
-                                <h3>Gestão Completa de Pedidos</h3>
-                                <p>Crie, acompanhe e gerencie todos os seus pedidos em um só lugar</p>
+                                <h3 className="text-base font-semibold mb-1">Gestão Completa de Pedidos</h3>
+                                <p className="text-sm text-text-secondary">Crie, acompanhe e gerencie todos os seus pedidos em um só lugar</p>
                             </div>
                         </div>
-                        <div className={styles.infoItem}>
-                            <span className={styles.infoIcon}>✅</span>
+                        <div className="flex gap-4 p-5 bg-white/3 rounded-md border border-white/5 transition-all duration-normal hover:bg-white/6 hover:border-white/10 hover:translate-x-1">
+                            <span className="text-2xl">✅</span>
                             <div>
-                                <h3>Fila de Preparo Inteligente</h3>
-                                <p>Organize a produção da cozinha com ordem de prioridade</p>
+                                <h3 className="text-base font-semibold mb-1">Fila de Preparo Inteligente</h3>
+                                <p className="text-sm text-text-secondary">Organize a produção da cozinha com ordem de prioridade</p>
                             </div>
                         </div>
-                        <div className={styles.infoItem}>
-                            <span className={styles.infoIcon}>✅</span>
+                        <div className="flex gap-4 p-5 bg-white/3 rounded-md border border-white/5 transition-all duration-normal hover:bg-white/6 hover:border-white/10 hover:translate-x-1">
+                            <span className="text-2xl">✅</span>
                             <div>
-                                <h3>Controle de Entregas</h3>
-                                <p>Acompanhe suas entregas em tempo real</p>
+                                <h3 className="text-base font-semibold mb-1">Controle de Entregas</h3>
+                                <p className="text-sm text-text-secondary">Acompanhe suas entregas em tempo real</p>
                             </div>
                         </div>
-                        <div className={styles.infoItem}>
-                            <span className={styles.infoIcon}>✅</span>
+                        <div className="flex gap-4 p-5 bg-white/3 rounded-md border border-white/5 transition-all duration-normal hover:bg-white/6 hover:border-white/10 hover:translate-x-1">
+                            <span className="text-2xl">✅</span>
                             <div>
-                                <h3>Personalização Total</h3>
-                                <p>Altere nome, logo e cores do seu app</p>
+                                <h3 className="text-base font-semibold mb-1">Personalização Total</h3>
+                                <p className="text-sm text-text-secondary">Altere nome, logo e cores do seu app</p>
                             </div>
                         </div>
                     </div>
