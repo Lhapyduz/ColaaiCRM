@@ -1,16 +1,37 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     FiPlus,
     FiEdit2,
     FiTrash2,
-    FiSearch
+    FiSearch,
+    FiMove
 } from 'react-icons/fi';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+    DragStartEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import ImageUpload from '@/components/ui/ImageUpload';
 import { LimitWarning } from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -31,6 +52,8 @@ interface Product {
     price: number;
     category_id: string;
     available: boolean;
+    display_order: number;
+    image_url: string | null;
 }
 
 interface AddonGroup {
@@ -38,6 +61,97 @@ interface AddonGroup {
     name: string;
     description: string | null;
     required: boolean;
+}
+
+// Sortable Product Card Component
+function SortableProductCard({
+    product,
+    category,
+    formatCurrency,
+    onEdit,
+    onDelete,
+    onToggleAvailability
+}: {
+    product: Product;
+    category: Category | undefined;
+    formatCurrency: (value: number) => string;
+    onEdit: () => void;
+    onDelete: () => void;
+    onToggleAvailability: () => void;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: product.id });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 1000 : 'auto',
+        touchAction: 'none', // Prevent browser native touch gestures
+    };
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <Card className={`${styles.productCard} ${!product.available ? styles.unavailable : ''} ${isDragging ? styles.dragging : ''}`}>
+                <div
+                    className={styles.dragHandle}
+                    {...attributes}
+                    {...listeners}
+                    title="Arraste para reordenar"
+                >
+                    <FiMove size={14} />
+                </div>
+                <div className={styles.productContent}>
+                    {product.image_url && (
+                        <div className={styles.productImageWrapper}>
+                            <img
+                                src={product.image_url}
+                                alt={product.name}
+                                className={styles.productImage}
+                            />
+                        </div>
+                    )}
+                    <div className={styles.productInfo}>
+                        <div className={styles.productHeader}>
+                            <span className={styles.productCategory}>
+                                {category?.icon} {category?.name}
+                            </span>
+                            <button
+                                className={`${styles.availabilityToggle} ${product.available ? styles.available : ''}`}
+                                onClick={onToggleAvailability}
+                            >
+                                {product.available ? 'Disponível' : 'Indisponível'}
+                            </button>
+                        </div>
+                        <h3 className={styles.productName}>{product.name}</h3>
+                        {product.description && (
+                            <p className={styles.productDescription}>{product.description}</p>
+                        )}
+                        <div className={styles.productFooter}>
+                            <span className={styles.productPrice}>{formatCurrency(product.price)}</span>
+                            <div className={styles.productActions}>
+                                <button className={styles.actionBtn} onClick={onEdit}>
+                                    <FiEdit2 />
+                                </button>
+                                <button
+                                    className={`${styles.actionBtn} ${styles.danger}`}
+                                    onClick={onDelete}
+                                >
+                                    <FiTrash2 />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Card>
+        </div>
+    );
 }
 
 export default function ProdutosPage() {
@@ -57,7 +171,8 @@ export default function ProdutosPage() {
         description: '',
         price: '',
         category_id: '',
-        available: true
+        available: true,
+        image_url: null as string | null
     });
     const [saving, setSaving] = useState(false);
 
@@ -65,8 +180,50 @@ export default function ProdutosPage() {
     const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([]);
     const [selectedAddonGroups, setSelectedAddonGroups] = useState<string[]>([]);
 
+    // Debounce timer ref for saving order
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // State to track dragging and block scroll/refresh
+    const [isDragging, setIsDragging] = useState(false);
+
     const productsLimit = getLimit('products');
     const isAtLimit = !isWithinLimit('products', products.length);
+
+    // DnD sensors - with delay to prevent pull-to-refresh on touch devices
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 200,
+                tolerance: 5,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    // Block body scroll/refresh while dragging
+    useEffect(() => {
+        if (isDragging) {
+            const preventScroll = (e: TouchEvent) => {
+                e.preventDefault();
+            };
+            document.body.style.overflow = 'hidden';
+            document.body.style.touchAction = 'none';
+            document.addEventListener('touchmove', preventScroll, { passive: false });
+
+            return () => {
+                document.body.style.overflow = '';
+                document.body.style.touchAction = '';
+                document.removeEventListener('touchmove', preventScroll);
+            };
+        }
+    }, [isDragging]);
 
     useEffect(() => {
         if (user) {
@@ -80,7 +237,7 @@ export default function ProdutosPage() {
         try {
             const [categoriesRes, productsRes, groupsRes] = await Promise.all([
                 supabase.from('categories').select('*').eq('user_id', user.id),
-                supabase.from('products').select('*').eq('user_id', user.id).order('name'),
+                supabase.from('products').select('*').eq('user_id', user.id).order('display_order', { ascending: true }),
                 supabase.from('addon_groups').select('id, name, description, required').eq('user_id', user.id).order('name')
             ]);
 
@@ -109,6 +266,48 @@ export default function ProdutosPage() {
         }).format(value);
     };
 
+    // Handle drag start - prevent scroll/refresh
+    const handleDragStart = useCallback((_event: DragStartEvent) => {
+        setIsDragging(true);
+    }, []);
+
+    // Handle drag end - instant local update + background save
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        setIsDragging(false);
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            setProducts((items) => {
+                const oldIndex = items.findIndex(item => item.id === active.id);
+                const newIndex = items.findIndex(item => item.id === over.id);
+                const newItems = arrayMove(items, oldIndex, newIndex);
+
+                // Clear any pending save
+                if (saveTimeoutRef.current) {
+                    clearTimeout(saveTimeoutRef.current);
+                }
+
+                // Background save to database
+                saveTimeoutRef.current = setTimeout(async () => {
+                    try {
+                        await Promise.all(
+                            newItems.map((item, index) =>
+                                supabase
+                                    .from('products')
+                                    .update({ display_order: index })
+                                    .eq('id', item.id)
+                            )
+                        );
+                    } catch (error) {
+                        console.error('Failed to save product order:', error);
+                    }
+                }, 500);
+
+                return newItems;
+            });
+        }
+    }, []);
+
     const openProductModal = async (product?: Product) => {
         // Block new products if at limit
         if (!product && isAtLimit) {
@@ -123,7 +322,8 @@ export default function ProdutosPage() {
                 description: product.description || '',
                 price: product.price.toString(),
                 category_id: product.category_id,
-                available: product.available
+                available: product.available,
+                image_url: product.image_url
             });
             // Load existing addon groups for this product
             const { data } = await supabase
@@ -138,7 +338,8 @@ export default function ProdutosPage() {
                 description: '',
                 price: '',
                 category_id: categories[0]?.id || '',
-                available: true
+                available: true,
+                image_url: null
             });
             setSelectedAddonGroups([]);
         }
@@ -163,7 +364,8 @@ export default function ProdutosPage() {
                 description: productForm.description || null,
                 price: parseFloat(productForm.price),
                 category_id: productForm.category_id,
-                available: productForm.available
+                available: productForm.available,
+                image_url: productForm.image_url
             };
 
             let productId: string;
@@ -175,7 +377,14 @@ export default function ProdutosPage() {
                     .eq('id', editingProduct.id);
                 productId = editingProduct.id;
             } else {
-                const { data } = await supabase.from('products').insert(productData).select().single();
+                // Set display_order for new product
+                const maxOrder = products.length > 0
+                    ? Math.max(...products.map(p => p.display_order || 0))
+                    : -1;
+                const { data } = await supabase.from('products').insert({
+                    ...productData,
+                    display_order: maxOrder + 1
+                }).select().single();
                 productId = data.id;
             }
 
@@ -204,6 +413,18 @@ export default function ProdutosPage() {
         if (!confirm('Tem certeza que deseja excluir este produto?')) return;
 
         try {
+            // Find the product to check if it has an image
+            const product = products.find(p => p.id === id);
+
+            // Delete image from storage if exists
+            if (product?.image_url) {
+                const urlParts = product.image_url.split('product-images/');
+                if (urlParts.length >= 2) {
+                    const filePath = urlParts[1];
+                    await supabase.storage.from('product-images').remove([filePath]);
+                }
+            }
+
             await supabase.from('products').delete().eq('id', id);
             fetchData();
         } catch (error) {
@@ -230,7 +451,7 @@ export default function ProdutosPage() {
                 <div className={styles.header}>
                     <div>
                         <h1 className={styles.title}>Produtos</h1>
-                        <p className={styles.subtitle}>Gerencie seu cardápio</p>
+                        <p className={styles.subtitle}>Gerencie seu cardápio (arraste para reordenar)</p>
                     </div>
                     <Button leftIcon={<FiPlus />} onClick={() => openProductModal()} disabled={isAtLimit}>
                         Novo Produto
@@ -283,47 +504,31 @@ export default function ProdutosPage() {
                         ))}
                     </div>
                 ) : filteredProducts.length > 0 ? (
-                    <div className={styles.productsGrid}>
-                        {filteredProducts.map((product) => {
-                            const category = getCategoryById(product.category_id);
-                            return (
-                                <Card key={product.id} className={`${styles.productCard} ${!product.available ? styles.unavailable : ''}`}>
-                                    <div className={styles.productHeader}>
-                                        <span className={styles.productCategory}>
-                                            {category?.icon} {category?.name}
-                                        </span>
-                                        <button
-                                            className={`${styles.availabilityToggle} ${product.available ? styles.available : ''}`}
-                                            onClick={() => toggleAvailability(product)}
-                                        >
-                                            {product.available ? 'Disponível' : 'Indisponível'}
-                                        </button>
-                                    </div>
-                                    <h3 className={styles.productName}>{product.name}</h3>
-                                    {product.description && (
-                                        <p className={styles.productDescription}>{product.description}</p>
-                                    )}
-                                    <div className={styles.productFooter}>
-                                        <span className={styles.productPrice}>{formatCurrency(product.price)}</span>
-                                        <div className={styles.productActions}>
-                                            <button
-                                                className={styles.actionBtn}
-                                                onClick={() => openProductModal(product)}
-                                            >
-                                                <FiEdit2 />
-                                            </button>
-                                            <button
-                                                className={`${styles.actionBtn} ${styles.danger}`}
-                                                onClick={() => deleteProduct(product.id)}
-                                            >
-                                                <FiTrash2 />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </Card>
-                            );
-                        })}
-                    </div>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext
+                            items={filteredProducts.map(p => p.id)}
+                            strategy={rectSortingStrategy}
+                        >
+                            <div className={styles.productsGrid}>
+                                {filteredProducts.map((product) => (
+                                    <SortableProductCard
+                                        key={product.id}
+                                        product={product}
+                                        category={getCategoryById(product.category_id)}
+                                        formatCurrency={formatCurrency}
+                                        onEdit={() => openProductModal(product)}
+                                        onDelete={() => deleteProduct(product.id)}
+                                        onToggleAvailability={() => toggleAvailability(product)}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
                 ) : (
                     <div className={styles.emptyState}>
                         <span className={styles.emptyIcon}>🍔</span>
@@ -344,6 +549,16 @@ export default function ProdutosPage() {
                             </h2>
 
                             <div className={styles.modalForm}>
+                                <div className={styles.formGroup}>
+                                    <label>Foto do Produto</label>
+                                    <ImageUpload
+                                        value={productForm.image_url}
+                                        onChange={(url) => setProductForm({ ...productForm, image_url: url })}
+                                        folder={user?.id}
+                                        placeholder="Adicionar foto do produto"
+                                    />
+                                </div>
+
                                 <Input
                                     label="Nome"
                                     placeholder="Nome do produto"

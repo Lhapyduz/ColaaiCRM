@@ -61,8 +61,16 @@ export default function AdicionaisPage() {
     const [groupRequired, setGroupRequired] = useState(false);
     const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
 
-    // Check access
-    if (!canAccess('addons')) {
+    const hasAccess = canAccess('addons');
+
+    useEffect(() => {
+        if (user && hasAccess) {
+            fetchData();
+        }
+    }, [user, hasAccess]);
+
+    // Check access after hooks
+    if (!hasAccess) {
         return (
             <MainLayout>
                 <UpgradePrompt
@@ -74,12 +82,6 @@ export default function AdicionaisPage() {
             </MainLayout>
         );
     }
-
-    useEffect(() => {
-        if (user) {
-            fetchData();
-        }
-    }, [user]);
 
     const fetchData = async () => {
         if (!user) return;

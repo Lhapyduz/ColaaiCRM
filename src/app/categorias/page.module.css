@@ -1,6 +1,8 @@
 .container {
     max-width: 1000px;
     margin: 0 auto;
+    /* Prevent rubber-banding / overscroll effects */
+    overscroll-behavior: contain;
 }
 
 .header {
@@ -26,6 +28,8 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
+    /* Prevent pull-to-refresh on touch devices */
+    overscroll-behavior-y: none;
 }
 
 .categoryCard {
@@ -33,6 +37,48 @@
     align-items: center;
     gap: 16px;
     padding: 20px !important;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    /* Prevent browser native touch gestures during drag */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.categoryCard.dragging {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--primary);
+}
+
+.dragHandle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--text-muted);
+    opacity: 0;
+    cursor: grab;
+    transition: opacity var(--transition-fast), color var(--transition-fast);
+    flex-shrink: 0;
+    border-radius: var(--radius-sm);
+    /* Prevent pull-to-refresh and native scroll gestures */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.categoryCard:hover .dragHandle {
+    opacity: 1;
+}
+
+.dragHandle:hover {
+    color: var(--primary);
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.dragHandle:active {
+    cursor: grabbing;
 }
 
 .categoryIcon {

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 
 export type PlanType = 'Basico' | 'Avançado' | 'Profissional';
-export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'trial';
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'trial' | 'pending_pix';
 
 export interface Subscription {
     id: string;
@@ -225,12 +225,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         ? Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
         : 0;
 
-    // Check if access should be blocked (trial expired OR subscription expired OR status is expired/cancelled)
+    // Check if access should be blocked (trial expired OR subscription expired OR status is expired/cancelled/pending_pix)
     const isBlocked: boolean =
         isTrialExpired ||
         isSubscriptionExpired ||
         subscription?.status === 'expired' ||
         subscription?.status === 'cancelled' ||
+        subscription?.status === 'pending_pix' ||  // Pix payment awaiting manual activation
         (!subscription && !loading); // No subscription at all (after loading)
 
     // Check if user can access a feature

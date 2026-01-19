@@ -46,19 +46,7 @@ export default function FluxoCaixaPage() {
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
 
-    // Check access
-    if (!canAccess('cashFlow')) {
-        return (
-            <MainLayout>
-                <UpgradePrompt
-                    feature="Fluxo de Caixa"
-                    requiredPlan="Avançado"
-                    currentPlan={plan}
-                    fullPage
-                />
-            </MainLayout>
-        );
-    }
+    const hasAccess = canAccess('cashFlow');
 
     useEffect(() => {
         // Set default date range
@@ -70,10 +58,24 @@ export default function FluxoCaixaPage() {
     }, []);
 
     useEffect(() => {
-        if (user && dateFrom && dateTo) {
+        if (user && dateFrom && dateTo && hasAccess) {
             fetchData();
         }
-    }, [user, dateFrom, dateTo]);
+    }, [user, dateFrom, dateTo, hasAccess]);
+
+    // Check access after hooks
+    if (!hasAccess) {
+        return (
+            <MainLayout>
+                <UpgradePrompt
+                    feature="Fluxo de Caixa"
+                    requiredPlan="Avançado"
+                    currentPlan={plan}
+                    fullPage
+                />
+            </MainLayout>
+        );
+    }
 
     const fetchData = async () => {
         if (!user) return;

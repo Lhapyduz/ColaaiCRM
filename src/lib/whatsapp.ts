@@ -126,3 +126,92 @@ export function shouldNotifyOnStatusChange(oldStatus: string, newStatus: string)
     const notifyStatuses = ['preparing', 'ready', 'delivering', 'delivered', 'cancelled'];
     return notifyStatuses.includes(newStatus);
 }
+
+// ==============================================================
+// PIX PAYMENT NOTIFICATIONS (CallMeBot API)
+// ==============================================================
+
+const ADMIN_PHONE = '+5541995618116'; // Admin WhatsApp number
+const CALLMEBOT_API = 'https://api.callmebot.com/whatsapp.php';
+
+interface WhatsAppNotificationResult {
+    success: boolean;
+    message: string;
+}
+
+/**
+ * Send a WhatsApp notification to the admin using CallMeBot API
+ * Requires CALLMEBOT_APIKEY environment variable to be set
+ * 
+ * SETUP:
+ * 1. Add +34 623 78 95 80 to your contacts
+ * 2. Send "I allow callmebot to send me messages" via WhatsApp
+ * 3. You'll receive an API key - add it to CALLMEBOT_APIKEY environment variable
+ */
+export async function sendAdminWhatsAppNotification(
+    message: string
+): Promise<WhatsAppNotificationResult> {
+    const apikey = process.env.CALLMEBOT_APIKEY;
+
+    if (!apikey) {
+        console.warn('[WhatsApp] CALLMEBOT_APIKEY not configured');
+        return {
+            success: false,
+            message: 'API key not configured'
+        };
+    }
+
+    try {
+        // URL encode the message
+        const encodedMessage = encodeURIComponent(message);
+        const url = `${CALLMEBOT_API}?phone=${ADMIN_PHONE}&text=${encodedMessage}&apikey=${apikey}`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+        });
+
+        if (response.ok) {
+            console.log('[WhatsApp] Admin notification sent successfully');
+            return {
+                success: true,
+                message: 'Notification sent'
+            };
+        } else {
+            const text = await response.text();
+            console.error('[WhatsApp] Failed to send notification:', text);
+            return {
+                success: false,
+                message: `Failed: ${text}`
+            };
+        }
+    } catch (error: any) {
+        console.error('[WhatsApp] Error sending notification:', error);
+        return {
+            success: false,
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Format a Pix payment notification message for admin
+ */
+export function formatPixPaymentMessage(data: {
+    planType: string;
+    amount: number;
+    userEmail?: string;
+    subscriptionId?: string;
+}): string {
+    const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+    return `💰 *NOVO PAGAMENTO PIX*
+
+📋 *Plano:* ${data.planType}
+💵 *Valor:* R$ ${data.amount.toFixed(2).replace('.', ',')}
+📧 *Cliente:* ${data.userEmail || 'N/A'}
+🔗 *Subscription:* ${data.subscriptionId || 'N/A'}
+⏰ *Data:* ${now}
+
+_Confirme o recebimento e ative a assinatura._`;
+}
+

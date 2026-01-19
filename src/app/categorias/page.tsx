@@ -1,7 +1,26 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FiPlus, FiEdit2, FiTrash2, FiMove } from 'react-icons/fi';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+    DragStartEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -18,9 +37,76 @@ interface Category {
     icon: string;
     color: string;
     productCount?: number;
+    display_order: number;
 }
 
 const iconOptions = ['🌭', '🍔', '🍟', '🥤', '🍕', '🌮', '🥪', '🍗', '🍦', '🧁', '🥗', '🍜'];
+
+// Sortable Category Card Component
+function SortableCategoryCard({
+    category,
+    onEdit,
+    onDelete
+}: {
+    category: Category;
+    onEdit: () => void;
+    onDelete: () => void;
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: category.id });
+
+    const style: React.CSSProperties = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 1000 : 'auto',
+        touchAction: 'none', // Prevent browser native touch gestures
+    };
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <Card className={`${styles.categoryCard} ${isDragging ? styles.dragging : ''}`}>
+                <div
+                    className={styles.dragHandle}
+                    {...attributes}
+                    {...listeners}
+                    title="Arraste para reordenar"
+                >
+                    <FiMove size={16} />
+                </div>
+                <div
+                    className={styles.categoryIcon}
+                    style={{ background: `${category.color}20` }}
+                >
+                    <span>{category.icon}</span>
+                </div>
+                <div className={styles.categoryInfo}>
+                    <h3 className={styles.categoryName}>{category.name}</h3>
+                    <span className={styles.productCount}>
+                        {category.productCount} produto{category.productCount !== 1 ? 's' : ''}
+                    </span>
+                </div>
+                <div className={styles.categoryActions}>
+                    <button className={styles.actionBtn} onClick={onEdit}>
+                        <FiEdit2 />
+                    </button>
+                    <button
+                        className={`${styles.actionBtn} ${styles.danger}`}
+                        onClick={onDelete}
+                    >
+                        <FiTrash2 />
+                    </button>
+                </div>
+            </Card>
+        </div>
+    );
+}
 
 export default function CategoriasPage() {
     const { user } = useAuth();
@@ -38,8 +124,50 @@ export default function CategoriasPage() {
     });
     const [saving, setSaving] = useState(false);
 
+    // Debounce timer ref for saving order
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // State to track dragging and block scroll/refresh
+    const [isDragging, setIsDragging] = useState(false);
+
     const categoriesLimit = getLimit('categories');
     const isAtLimit = !isWithinLimit('categories', categories.length);
+
+    // DnD sensors - with delay to prevent pull-to-refresh on touch devices
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 200,
+                tolerance: 5,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    // Block body scroll/refresh while dragging
+    useEffect(() => {
+        if (isDragging) {
+            const preventScroll = (e: TouchEvent) => {
+                e.preventDefault();
+            };
+            document.body.style.overflow = 'hidden';
+            document.body.style.touchAction = 'none';
+            document.addEventListener('touchmove', preventScroll, { passive: false });
+
+            return () => {
+                document.body.style.overflow = '';
+                document.body.style.touchAction = '';
+                document.removeEventListener('touchmove', preventScroll);
+            };
+        }
+    }, [isDragging]);
 
     useEffect(() => {
         if (user) {
@@ -55,7 +183,7 @@ export default function CategoriasPage() {
                 .from('categories')
                 .select('*')
                 .eq('user_id', user.id)
-                .order('name');
+                .order('display_order', { ascending: true });
 
             if (categoriesData) {
                 // Get product counts
@@ -76,6 +204,49 @@ export default function CategoriasPage() {
             setLoading(false);
         }
     };
+
+    // Handle drag start - prevent scroll/refresh
+    const handleDragStart = useCallback((_event: DragStartEvent) => {
+        setIsDragging(true);
+    }, []);
+
+    // Handle drag end - instant local update + background save
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        setIsDragging(false);
+        const { active, over } = event;
+
+        if (over && active.id !== over.id) {
+            setCategories((items) => {
+                const oldIndex = items.findIndex(item => item.id === active.id);
+                const newIndex = items.findIndex(item => item.id === over.id);
+                const newItems = arrayMove(items, oldIndex, newIndex);
+
+                // Clear any pending save
+                if (saveTimeoutRef.current) {
+                    clearTimeout(saveTimeoutRef.current);
+                }
+
+                // Background save to database
+                saveTimeoutRef.current = setTimeout(async () => {
+                    try {
+                        // Update display_order for all items
+                        await Promise.all(
+                            newItems.map((item, index) =>
+                                supabase
+                                    .from('categories')
+                                    .update({ display_order: index })
+                                    .eq('id', item.id)
+                            )
+                        );
+                    } catch (error) {
+                        console.error('Failed to save category order:', error);
+                    }
+                }, 500);
+
+                return newItems;
+            });
+        }
+    }, []);
 
     const openModal = (category?: Category) => {
         // Block new categories if at limit
@@ -122,7 +293,14 @@ export default function CategoriasPage() {
                     .update(categoryData)
                     .eq('id', editingCategory.id);
             } else {
-                await supabase.from('categories').insert(categoryData);
+                // Set display_order for new category
+                const maxOrder = categories.length > 0
+                    ? Math.max(...categories.map(c => c.display_order || 0))
+                    : -1;
+                await supabase.from('categories').insert({
+                    ...categoryData,
+                    display_order: maxOrder + 1
+                });
             }
 
             fetchCategories();
@@ -157,7 +335,7 @@ export default function CategoriasPage() {
                 <div className={styles.header}>
                     <div>
                         <h1 className={styles.title}>Categorias</h1>
-                        <p className={styles.subtitle}>Organize seus produtos em categorias</p>
+                        <p className={styles.subtitle}>Organize seus produtos em categorias (arraste para reordenar)</p>
                     </div>
                     <Button leftIcon={<FiPlus />} onClick={() => openModal()} disabled={isAtLimit}>
                         Nova Categoria
@@ -178,35 +356,28 @@ export default function CategoriasPage() {
                         ))}
                     </div>
                 ) : categories.length > 0 ? (
-                    <div className={styles.grid}>
-                        {categories.map((category) => (
-                            <Card key={category.id} className={styles.categoryCard}>
-                                <div
-                                    className={styles.categoryIcon}
-                                    style={{ background: `${category.color}20` }}
-                                >
-                                    <span>{category.icon}</span>
-                                </div>
-                                <div className={styles.categoryInfo}>
-                                    <h3 className={styles.categoryName}>{category.name}</h3>
-                                    <span className={styles.productCount}>
-                                        {category.productCount} produto{category.productCount !== 1 ? 's' : ''}
-                                    </span>
-                                </div>
-                                <div className={styles.categoryActions}>
-                                    <button className={styles.actionBtn} onClick={() => openModal(category)}>
-                                        <FiEdit2 />
-                                    </button>
-                                    <button
-                                        className={`${styles.actionBtn} ${styles.danger}`}
-                                        onClick={() => deleteCategory(category.id)}
-                                    >
-                                        <FiTrash2 />
-                                    </button>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                    >
+                        <SortableContext
+                            items={categories.map(c => c.id)}
+                            strategy={rectSortingStrategy}
+                        >
+                            <div className={styles.grid}>
+                                {categories.map((category) => (
+                                    <SortableCategoryCard
+                                        key={category.id}
+                                        category={category}
+                                        onEdit={() => openModal(category)}
+                                        onDelete={() => deleteCategory(category.id)}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
                 ) : (
                     <div className={styles.emptyState}>
                         <span className={styles.emptyIcon}>📁</span>

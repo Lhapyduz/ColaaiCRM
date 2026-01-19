@@ -41,7 +41,7 @@
 
 .planCard:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
 .planCard.featured {
@@ -125,7 +125,7 @@
     padding: 2rem;
     background: var(--card-bg);
     border-radius: 1rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
 .statusBadge {
@@ -150,4 +150,72 @@
 .statusCancelled {
     background: rgba(231, 76, 60, 0.15);
     color: #e74c3c;
+}
+
+/* Payment Method Toggle */
+.paymentToggle {
+    max-width: 600px;
+    margin: 0 auto 2rem;
+    text-align: center;
+}
+
+.paymentToggleLabel {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.paymentOptions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.paymentOption {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--card-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 0.75rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.paymentOption:hover {
+    border-color: var(--primary-color);
+    color: var(--text-primary);
+}
+
+.paymentOptionActive {
+    border-color: var(--primary-color);
+    background: rgba(255, 107, 53, 0.1);
+    color: var(--primary-color);
+}
+
+.paymentOption svg {
+    width: 16px;
+    height: 16px;
+}
+
+.pixNote {
+    margin-top: 0.75rem;
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+    padding: 0.5rem 1rem;
+    background: rgba(50, 188, 173, 0.1);
+    border-radius: 0.5rem;
+    display: inline-block;
+}
+
+/* Status Pending Pix */
+.statusPendingPix {
+    background: rgba(255, 193, 7, 0.15);
+    color: #f59e0b;
 }

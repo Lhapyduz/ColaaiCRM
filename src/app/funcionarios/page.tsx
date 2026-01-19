@@ -11,7 +11,8 @@ import {
     FiPhone,
     FiMail,
     FiToggleLeft,
-    FiToggleRight
+    FiToggleRight,
+    FiLock
 } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
@@ -32,6 +33,7 @@ interface Employee {
     role: 'admin' | 'manager' | 'cashier' | 'kitchen' | 'attendant' | 'delivery';
     pin_code: string | null;
     is_active: boolean;
+    is_fixed?: boolean;
     permissions: Record<string, boolean>;
     hourly_rate: number | null;
     created_at: string;
@@ -115,7 +117,9 @@ export default function FuncionariosPage() {
     };
 
     const handleAddClick = () => {
-        if (!isWithinLimit('employees', employees.length)) {
+        // Count only non-fixed employees for limit check
+        const regularEmployees = employees.filter(e => !e.is_fixed);
+        if (!isWithinLimit('employees', regularEmployees.length)) {
             setShowUpgradeModal(true);
             return;
         }
@@ -125,6 +129,19 @@ export default function FuncionariosPage() {
 
     const handleSave = async () => {
         if (!user) return;
+
+        // For fixed employees, only update the PIN
+        if (editingEmployee?.is_fixed) {
+            await supabase
+                .from('employees')
+                .update({ pin_code: form.pin_code || null })
+                .eq('id', editingEmployee.id);
+
+            setShowModal(false);
+            resetForm();
+            fetchEmployees();
+            return;
+        }
 
         const employeeData = {
             user_id: user.id,
@@ -156,9 +173,13 @@ export default function FuncionariosPage() {
         fetchEmployees();
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (employee: Employee) => {
+        if (employee.is_fixed) {
+            alert('Este funcionário é fixo e não pode ser removido.');
+            return;
+        }
         if (!confirm('Excluir este funcionário?')) return;
-        await supabase.from('employees').delete().eq('id', id);
+        await supabase.from('employees').delete().eq('id', employee.id);
         fetchEmployees();
     };
 
@@ -197,9 +218,14 @@ export default function FuncionariosPage() {
         setForm({ ...form, pin_code: pin });
     };
 
+    // Calculate stats excluding fixed employees for the count
+    const regularEmployees = employees.filter(e => !e.is_fixed);
+    const fixedEmployees = employees.filter(e => e.is_fixed);
+
     const stats = {
-        total: employees.length,
-        active: employees.filter(e => e.is_active).length,
+        total: regularEmployees.length,
+        active: regularEmployees.filter(e => e.is_active).length,
+        fixed: fixedEmployees.length,
         byRole: ROLES.map(r => ({
             ...r,
             count: employees.filter(e => e.role === r.value).length
@@ -213,7 +239,8 @@ export default function FuncionariosPage() {
                     <div>
                         <h1 className={styles.title}>Funcionários</h1>
                         <p className={styles.subtitle}>
-                            Gerencie sua equipe ({employees.length}/{getLimit('employees') === Infinity ? '∞' : getLimit('employees')})
+                            Gerencie sua equipe ({regularEmployees.length}/{getLimit('employees') === Infinity ? '∞' : getLimit('employees')})
+                            {fixedEmployees.length > 0 && <span style={{ opacity: 0.7, marginLeft: 8 }}>+ {fixedEmployees.length} fixo(s)</span>}
                         </p>
                     </div>
                     <Button leftIcon={<FiPlus />} onClick={handleAddClick}>
@@ -281,19 +308,29 @@ export default function FuncionariosPage() {
                                         <div className={styles.employeeRole} style={{ background: `${roleInfo.color}20`, color: roleInfo.color }}>
                                             <FiShield size={12} />
                                             {roleInfo.label}
+                                            {employee.is_fixed && (
+                                                <span className={styles.fixedBadge} title="Funcionário fixo - não conta no limite">
+                                                    <FiLock size={10} /> FIXO
+                                                </span>
+                                            )}
                                         </div>
                                         <div className={styles.employeeStatus}>
                                             <button
                                                 className={`${styles.toggleBtn} ${employee.is_active ? styles.active : ''}`}
                                                 onClick={() => handleToggleActive(employee)}
                                                 title={employee.is_active ? 'Desativar' : 'Ativar'}
+                                                disabled={employee.is_fixed}
                                             >
                                                 {employee.is_active ? <FiToggleRight size={24} /> : <FiToggleLeft size={24} />}
                                             </button>
                                         </div>
                                         <div className={styles.employeeActions}>
-                                            <button onClick={() => openEdit(employee)}><FiEdit2 /></button>
-                                            <button onClick={() => handleDelete(employee.id)}><FiTrash2 /></button>
+                                            <button onClick={() => openEdit(employee)} title={employee.is_fixed ? 'Alterar PIN' : 'Editar'}>
+                                                <FiEdit2 />
+                                            </button>
+                                            {!employee.is_fixed && (
+                                                <button onClick={() => handleDelete(employee)}><FiTrash2 /></button>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -306,55 +343,81 @@ export default function FuncionariosPage() {
                 {showModal && (
                     <div className={styles.modal}>
                         <div className={styles.modalContent}>
-                            <h2>{editingEmployee ? 'Editar Funcionário' : 'Novo Funcionário'}</h2>
+                            <h2>
+                                {editingEmployee?.is_fixed
+                                    ? 'Alterar PIN do ADM'
+                                    : (editingEmployee ? 'Editar Funcionário' : 'Novo Funcionário')
+                                }
+                            </h2>
 
-                            <div className={styles.formGroup}>
-                                <label>Nome Completo</label>
-                                <Input
-                                    value={form.name}
-                                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                    placeholder="Nome do funcionário"
-                                />
-                            </div>
-
-                            <div className={styles.formRow}>
-                                <div className={styles.formGroup}>
-                                    <label>Email</label>
-                                    <Input
-                                        type="email"
-                                        value={form.email}
-                                        onChange={(e) => setForm({ ...form, email: e.target.value })}
-                                        placeholder="email@exemplo.com"
-                                    />
+                            {editingEmployee?.is_fixed && (
+                                <div style={{
+                                    background: 'rgba(155, 89, 182, 0.1)',
+                                    border: '1px solid rgba(155, 89, 182, 0.3)',
+                                    borderRadius: 'var(--radius-md)',
+                                    padding: '12px 16px',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    fontSize: '0.875rem'
+                                }}>
+                                    <FiLock size={16} style={{ color: '#9b59b6' }} />
+                                    <span>Este é um funcionário fixo. Apenas o PIN pode ser alterado.</span>
                                 </div>
-                                <div className={styles.formGroup}>
-                                    <label>Telefone</label>
-                                    <Input
-                                        value={form.phone}
-                                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                                        placeholder="(00) 00000-0000"
-                                    />
-                                </div>
-                            </div>
+                            )}
 
-                            <div className={styles.formGroup}>
-                                <label>Função</label>
-                                <div className={styles.roleGrid}>
-                                    {ROLES.map(role => (
-                                        <button
-                                            key={role.value}
-                                            className={`${styles.roleBtn} ${form.role === role.value ? styles.selected : ''}`}
-                                            style={{ '--role-color': role.color } as React.CSSProperties}
-                                            onClick={() => setForm({ ...form, role: role.value as Employee['role'] })}
-                                        >
-                                            <span className={styles.roleIcon}>{role.icon}</span>
-                                            <span className={styles.roleLabel}>{role.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                            {!editingEmployee?.is_fixed && (
+                                <>
+                                    <div className={styles.formGroup}>
+                                        <label>Nome Completo</label>
+                                        <Input
+                                            value={form.name}
+                                            onChange={(e) => setForm({ ...form, name: e.target.value })}
+                                            placeholder="Nome do funcionário"
+                                        />
+                                    </div>
 
-                            <div className={styles.formRow}>
+                                    <div className={styles.formRow}>
+                                        <div className={styles.formGroup}>
+                                            <label>Email</label>
+                                            <Input
+                                                type="email"
+                                                value={form.email}
+                                                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                                                placeholder="email@exemplo.com"
+                                            />
+                                        </div>
+                                        <div className={styles.formGroup}>
+                                            <label>Telefone</label>
+                                            <Input
+                                                value={form.phone}
+                                                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                                                placeholder="(00) 00000-0000"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={styles.formGroup}>
+                                        <label>Função</label>
+                                        <div className={styles.roleGrid}>
+                                            {ROLES.map(role => (
+                                                <button
+                                                    key={role.value}
+                                                    className={`${styles.roleBtn} ${form.role === role.value ? styles.selected : ''}`}
+                                                    style={{ '--role-color': role.color } as React.CSSProperties}
+                                                    onClick={() => setForm({ ...form, role: role.value as Employee['role'] })}
+                                                >
+                                                    <span className={styles.roleIcon}>{role.icon}</span>
+                                                    <span className={styles.roleLabel}>{role.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            <div className={editingEmployee?.is_fixed ? styles.formGroup : styles.formRow}>
                                 <div className={styles.formGroup}>
                                     <label>PIN de Acesso</label>
                                     <div className={styles.pinInput}>
@@ -369,28 +432,32 @@ export default function FuncionariosPage() {
                                         </Button>
                                     </div>
                                 </div>
-                                <div className={styles.formGroup}>
-                                    <label>Valor por Hora (R$)</label>
-                                    <Input
-                                        type="number"
-                                        value={form.hourly_rate}
-                                        onChange={(e) => setForm({ ...form, hourly_rate: parseFloat(e.target.value) || 0 })}
-                                        min={0}
-                                        step={0.01}
-                                    />
-                                </div>
+                                {!editingEmployee?.is_fixed && (
+                                    <div className={styles.formGroup}>
+                                        <label>Valor por Hora (R$)</label>
+                                        <Input
+                                            type="number"
+                                            value={form.hourly_rate}
+                                            onChange={(e) => setForm({ ...form, hourly_rate: parseFloat(e.target.value) || 0 })}
+                                            min={0}
+                                            step={0.01}
+                                        />
+                                    </div>
+                                )}
                             </div>
 
-                            <div className={styles.permissionsPreview}>
-                                <h4><FiShield /> Permissões do cargo:</h4>
-                                <div className={styles.permissionsList}>
-                                    {Object.entries(DEFAULT_PERMISSIONS[form.role]).map(([perm, allowed]) => (
-                                        <span key={perm} className={allowed ? styles.allowed : styles.denied}>
-                                            {allowed ? '✓' : '✗'} {perm}
-                                        </span>
-                                    ))}
+                            {!editingEmployee?.is_fixed && (
+                                <div className={styles.permissionsPreview}>
+                                    <h4><FiShield /> Permissões do cargo:</h4>
+                                    <div className={styles.permissionsList}>
+                                        {Object.entries(DEFAULT_PERMISSIONS[form.role]).map(([perm, allowed]) => (
+                                            <span key={perm} className={allowed ? styles.allowed : styles.denied}>
+                                                {allowed ? '✓' : '✗'} {perm}
+                                            </span>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             <div className={styles.modalActions}>
                                 <Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button>

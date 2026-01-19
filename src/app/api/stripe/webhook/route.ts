@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import Stripe from 'stripe';
 
 // Map Stripe subscription status to Supabase status
-function mapStripeStatus(stripeStatus: string): string {
+function mapStripeStatus(stripeStatus: string, paymentMethod?: string): string {
     switch (stripeStatus) {
         case 'trialing':
             return 'trial';
@@ -17,6 +17,10 @@ function mapStripeStatus(stripeStatus: string): string {
         case 'past_due':
         case 'unpaid':
             return 'expired';
+        case 'incomplete':
+        case 'incomplete_expired':
+            // For Pix payments (send_invoice), incomplete means waiting for payment
+            return paymentMethod === 'pix' ? 'pending_pix' : 'expired';
         default:
             return stripeStatus;
     }
@@ -28,6 +32,53 @@ function getPlanTypeFromPriceId(priceId: string): string {
     if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PROFESSIONAL) return 'Avançado';
     if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE) return 'Profissional';
     return 'Basico'; // Default fallback
+}
+
+// Create fixed ADM employee if not exists
+async function createFixedAdmEmployee(userId: string): Promise<void> {
+    try {
+        // Check if fixed ADM already exists
+        const { data: existingAdm } = await supabaseAdmin
+            .from('employees')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('is_fixed', true)
+            .maybeSingle();
+
+        if (!existingAdm) {
+            console.log('[WEBHOOK] Creating fixed ADM employee for user:', userId);
+            const { error: admError } = await supabaseAdmin
+                .from('employees')
+                .insert({
+                    user_id: userId,
+                    name: 'ADM',
+                    role: 'admin',
+                    pin_code: '0001',
+                    is_active: true,
+                    is_fixed: true,
+                    permissions: {
+                        orders: true,
+                        products: true,
+                        categories: true,
+                        customers: true,
+                        reports: true,
+                        settings: true,
+                        employees: true,
+                        finance: true
+                    }
+                });
+
+            if (admError) {
+                console.error('[WEBHOOK] Error creating fixed ADM employee:', admError);
+            } else {
+                console.log('[WEBHOOK] Fixed ADM employee created successfully');
+            }
+        } else {
+            console.log('[WEBHOOK] Fixed ADM employee already exists for user:', userId);
+        }
+    } catch (err) {
+        console.error('[WEBHOOK] Exception creating fixed ADM:', err);
+    }
 }
 
 export async function POST(req: Request) {
@@ -181,6 +232,108 @@ export async function POST(req: Request) {
                             console.log('[WEBHOOK] Used trial recorded successfully');
                         }
                     }
+
+                    // Create fixed ADM employee if not exists
+                    await createFixedAdmEmployee(userId);
+                }
+
+                break;
+            }
+
+            case 'customer.subscription.created': {
+                // Handle subscription created (manual creation via Stripe Dashboard or API)
+                const sub = event.data.object as Stripe.Subscription;
+                const stripeCustomerId = sub.customer as string;
+                const priceId = sub.items.data[0].price.id;
+
+                console.log('[WEBHOOK] === customer.subscription.created ===');
+                console.log('[WEBHOOK] Subscription ID:', sub.id);
+                console.log('[WEBHOOK] Customer ID:', stripeCustomerId);
+                console.log('[WEBHOOK] Status:', sub.status);
+
+                // Get userId from subscription metadata or find by customer
+                let userId = sub.metadata?.userId;
+
+                if (!userId) {
+                    // Try to find user by customer metadata
+                    const stripeCustomer = await stripe.customers.retrieve(stripeCustomerId) as Stripe.Customer;
+                    userId = stripeCustomer.metadata?.userId;
+
+                    // If still no userId, try to find by customer email using RPC function
+                    if (!userId && stripeCustomer.email) {
+                        console.log('[WEBHOOK] Searching user by email:', stripeCustomer.email);
+                        try {
+                            const { data: foundUserId, error: rpcError } = await supabaseAdmin.rpc('get_user_id_by_email', {
+                                user_email: stripeCustomer.email
+                            });
+
+                            if (rpcError) {
+                                console.error('[WEBHOOK] RPC error:', rpcError);
+                            } else if (foundUserId) {
+                                console.log('[WEBHOOK] Found user by email:', foundUserId);
+                                userId = foundUserId;
+                            } else {
+                                console.log('[WEBHOOK] No user found with email:', stripeCustomer.email);
+                            }
+                        } catch (err) {
+                            console.error('[WEBHOOK] Error calling get_user_id_by_email:', err);
+                        }
+                    }
+                }
+
+                if (!userId) {
+                    // Try to find user in existing subscriptions by customer ID
+                    const { data: existingData } = await supabaseAdmin
+                        .from('subscriptions')
+                        .select('user_id')
+                        .eq('stripe_customer_id', stripeCustomerId)
+                        .maybeSingle();
+
+                    userId = existingData?.user_id;
+                }
+
+                if (!userId) {
+                    console.log('[WEBHOOK] No userId found for subscription, skipping...');
+                    break;
+                }
+
+                const planType = sub.metadata?.planType || getPlanTypeFromPriceId(priceId);
+                const paymentMethod = sub.metadata?.paymentMethod || ((sub as any).collection_method === 'send_invoice' ? 'pix' : 'card');
+
+                console.log('[WEBHOOK] User ID:', userId);
+                console.log('[WEBHOOK] Plan Type:', planType);
+                console.log('[WEBHOOK] Payment Method:', paymentMethod);
+
+                // Calculate dates
+                const trialEndsAt = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+                const periodStart = new Date((sub as any).current_period_start * 1000).toISOString();
+                const periodEnd = new Date((sub as any).current_period_end * 1000).toISOString();
+
+                // Upsert subscription
+                const { error: upsertError } = await supabaseAdmin
+                    .from('subscriptions')
+                    .upsert({
+                        user_id: userId,
+                        stripe_customer_id: stripeCustomerId,
+                        stripe_subscription_id: sub.id,
+                        stripe_price_id: priceId,
+                        plan_type: planType,
+                        status: mapStripeStatus(sub.status, paymentMethod),
+                        payment_method: paymentMethod,
+                        trial_ends_at: trialEndsAt,
+                        current_period_start: periodStart,
+                        current_period_end: periodEnd,
+                        stripe_current_period_end: periodEnd,
+                        billing_period: 'monthly'
+                    } as any, { onConflict: 'user_id' });
+
+                if (upsertError) {
+                    console.error('[WEBHOOK] Error upserting subscription:', upsertError);
+                } else {
+                    console.log('[WEBHOOK] Subscription synced to Supabase successfully');
+
+                    // Create fixed ADM employee if not exists
+                    await createFixedAdmEmployee(userId);
                 }
 
                 break;
@@ -205,6 +358,9 @@ export async function POST(req: Request) {
                     // Determine plan type from price ID using helper
                     const newPlanType = getPlanTypeFromPriceId(priceId);
 
+                    // Get payment method from metadata or collection_method
+                    const paymentMethod = sub.metadata?.paymentMethod || ((sub as any).collection_method === 'send_invoice' ? 'pix' : 'card');
+
                     // Get the exact next invoice date from Stripe
                     let nextInvoiceDate = new Date((sub as any).current_period_end * 1000).toISOString();
                     try {
@@ -226,7 +382,7 @@ export async function POST(req: Request) {
                         .from('subscriptions')
                         .update({
                             stripe_subscription_id: sub.id,
-                            status: mapStripeStatus(sub.status),
+                            status: mapStripeStatus(sub.status, paymentMethod),
                             plan_type: newPlanType,
                             trial_ends_at: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
                             current_period_start: new Date((sub as any).current_period_start * 1000).toISOString(),
@@ -293,10 +449,13 @@ export async function POST(req: Request) {
                         .single();
 
                     if (userData) {
+                        // Get payment method from subscription metadata or collection_method
+                        const paymentMethod = stripeSub.metadata?.paymentMethod || ((stripeSub as any).collection_method === 'send_invoice' ? 'pix' : 'card');
+
                         const { error } = await supabaseAdmin
                             .from('subscriptions')
                             .update({
-                                status: mapStripeStatus(stripeSub.status),
+                                status: mapStripeStatus(stripeSub.status, paymentMethod),
                                 plan_type: getPlanTypeFromPriceId(priceId),
                                 trial_ends_at: stripeSub.trial_end ? new Date(stripeSub.trial_end * 1000).toISOString() : null,
                                 current_period_start: new Date((stripeSub as any).current_period_start * 1000).toISOString(),

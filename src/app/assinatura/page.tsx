@@ -7,6 +7,8 @@ import Button from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
 import { useSubscription, PlanType } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
+import PixPaymentModal from '@/components/pix/PixPaymentModal';
+import { PLAN_PRICES, PlanPriceKey } from '@/lib/pix-config';
 import styles from './page.module.css';
 
 const PLANS = [
@@ -63,6 +65,8 @@ const PLANS = [
     }
 ];
 
+type PaymentMethod = 'card' | 'pix';
+
 const AssinaturaPage = () => {
     const { subscription, loading, refreshSubscription } = useSubscription();
     const { user } = useAuth();
@@ -70,6 +74,9 @@ const AssinaturaPage = () => {
     const [loadingCheckout, setLoadingCheckout] = useState<string | null>(null);
     const [loadingPortal, setLoadingPortal] = useState(false);
     const [syncing, setSyncing] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+    const [pixModalPlan, setPixModalPlan] = useState<{ type: PlanPriceKey; name: string } | null>(null);
+    const [pixLoading, setPixLoading] = useState(false);
 
     // Sync with Stripe on page load and on return from checkout or portal
     React.useEffect(() => {
@@ -176,6 +183,45 @@ const AssinaturaPage = () => {
         }
     };
 
+    const handlePixSubscribe = (planType: PlanPriceKey, planName: string) => {
+        if (!user) {
+            router.push('/login?redirect=/assinatura');
+            return;
+        }
+        setPixModalPlan({ type: planType, name: planName });
+    };
+
+    const handlePixPaymentConfirmed = async () => {
+        if (!pixModalPlan) return;
+
+        setPixLoading(true);
+        try {
+            const response = await fetch('/api/pix/create-subscription', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    planType: pixModalPlan.type,
+                    amount: PLAN_PRICES[pixModalPlan.type]
+                }),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Falha ao processar pagamento Pix');
+            }
+
+            const data = await response.json();
+            alert(data.message);
+            await refreshSubscription();
+            setPixModalPlan(null);
+        } catch (error: any) {
+            console.error('Pix payment error:', error);
+            alert(`Erro: ${error.message}`);
+        } finally {
+            setPixLoading(false);
+        }
+    };
+
     // Helper to get status label - includes plan name for trial status
     const getStatusLabel = (status: string, planType?: string) => {
         switch (status) {
@@ -233,6 +279,33 @@ const AssinaturaPage = () => {
                         </div>
                     </div>
                 )}
+                {/* Payment Method Toggle */}
+                <div className={styles.paymentToggle}>
+                    <span className={styles.paymentToggleLabel}>Forma de pagamento:</span>
+                    <div className={styles.paymentOptions}>
+                        <button
+                            className={`${styles.paymentOption} ${paymentMethod === 'card' ? styles.paymentOptionActive : ''}`}
+                            onClick={() => setPaymentMethod('card')}
+                        >
+                            <FiCreditCard />
+                            Cartão de Crédito
+                        </button>
+                        <button
+                            className={`${styles.paymentOption} ${paymentMethod === 'pix' ? styles.paymentOptionActive : ''}`}
+                            onClick={() => setPaymentMethod('pix')}
+                        >
+                            <svg viewBox="0 0 512 512" fill="currentColor" width="16" height="16">
+                                <path d="M242.4 292.5C247.8 287.1 257.1 287.1 262.5 292.5L339.5 369.5C353.7 383.7 372.6 391.5 392.6 391.5H407.7L310.6 488.6C280.3 518.9 231.1 518.9 200.8 488.6L103.3 391.1H117.4C137.5 391.1 156.3 383.3 170.5 369.1L242.4 292.5zM262.5 218.9C257.1 224.4 247.9 224.5 242.4 218.9L170.5 142C156.3 127.8 137.4 119.1 117.4 119.1H103.3L200.8 22.51C231.1-7.86 280.3-7.86 310.6 22.51L407.8 119.1H392.7C372.6 119.1 353.8 127.8 339.6 142L262.5 218.9z" />
+                            </svg>
+                            PIX
+                        </button>
+                    </div>
+                    {paymentMethod === 'pix' && (
+                        <p className={styles.pixNote}>
+                            Pagamento via PIX direto. Assinatura ativada em até 24h após confirmação.
+                        </p>
+                    )}
+                </div>
 
                 <div className={styles.plansGrid}>
                     {PLANS.map((plan) => {
@@ -271,6 +344,14 @@ const AssinaturaPage = () => {
 
                                 {isCurrentPlan ? (
                                     <div className={styles.currentPlan}>Seu Plano Atual</div>
+                                ) : paymentMethod === 'pix' ? (
+                                    <Button
+                                        variant={plan.recommended ? 'primary' : 'outline'}
+                                        onClick={() => handlePixSubscribe(plan.id as PlanPriceKey, plan.name)}
+                                        disabled={!!loadingCheckout}
+                                    >
+                                        {subscription ? 'Mudar Plano' : 'Pagar com PIX'}
+                                    </Button>
                                 ) : (
                                     <Button
                                         variant={plan.recommended ? 'primary' : 'outline'}
@@ -286,7 +367,20 @@ const AssinaturaPage = () => {
                     })}
                 </div>
             </div>
-        </MainLayout>
+
+            {/* Pix Payment Modal */}
+            {
+                pixModalPlan && (
+                    <PixPaymentModal
+                        planType={pixModalPlan.type}
+                        planName={pixModalPlan.name}
+                        onClose={() => setPixModalPlan(null)}
+                        onPaymentConfirmed={handlePixPaymentConfirmed}
+                        isLoading={pixLoading}
+                    />
+                )
+            }
+        </MainLayout >
     );
 }
 

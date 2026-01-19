@@ -68,8 +68,16 @@ export default function ContasPage() {
         notes: ''
     });
 
-    // Check access
-    if (!canAccess('bills')) {
+    const hasAccess = canAccess('bills');
+
+    useEffect(() => {
+        if (user && hasAccess) {
+            fetchData();
+        }
+    }, [user, hasAccess]);
+
+    // Check access after hooks
+    if (!hasAccess) {
         return (
             <MainLayout>
                 <UpgradePrompt
@@ -81,12 +89,6 @@ export default function ContasPage() {
             </MainLayout>
         );
     }
-
-    useEffect(() => {
-        if (user) {
-            fetchData();
-        }
-    }, [user]);
 
     const fetchData = async () => {
         setLoading(true);

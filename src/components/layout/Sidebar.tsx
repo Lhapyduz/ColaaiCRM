@@ -1,8 +1,28 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+    DragStartEvent,
+    DragOverlay,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
     FiHome,
     FiShoppingBag,
@@ -25,7 +45,7 @@ import {
     FiFileText,
     FiTrendingUp,
     FiUsers,
-    FiCreditCard
+    FiCreditCard,
 } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,7 +53,13 @@ import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
 import PinPadModal from '@/components/auth/PinPadModal';
 import styles from './Sidebar.module.css';
 
-const menuItems = [
+interface MenuItem {
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+}
+
+const MENU_ITEMS: MenuItem[] = [
     { href: '/dashboard', icon: FiHome, label: 'Dashboard' },
     { href: '/produtos', icon: FiShoppingBag, label: 'Produtos' },
     { href: '/adicionais', icon: FiTag, label: 'Adicionais' },
@@ -53,23 +79,207 @@ const menuItems = [
     { href: '/assinatura', icon: FiCreditCard, label: 'Assinatura' },
 ];
 
+// Sortable nav item component
+interface SortableNavItemProps {
+    item: MenuItem;
+    isActive: boolean;
+    collapsed: boolean;
+    onMobileClose: () => void;
+}
+
+function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableNavItemProps) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: item.href });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    const Icon = item.icon;
+
+    return (
+        <Link
+            ref={setNodeRef}
+            style={style}
+            {...attributes}
+            {...listeners}
+            href={item.href}
+            className={`${styles.navItem} ${isActive ? styles.active : ''} ${isDragging ? styles.dragging : ''}`}
+            onClick={(e) => {
+                // Prevent navigation if dragging
+                if (isDragging) {
+                    e.preventDefault();
+                    return;
+                }
+                onMobileClose();
+            }}
+        >
+            <Icon className={styles.navIcon} />
+            {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
+            {isActive && <div className={styles.activeIndicator} />}
+        </Link>
+    );
+}
+
+// Overlay item (shown while dragging)
+interface OverlayItemProps {
+    item: MenuItem;
+    collapsed: boolean;
+}
+
+function OverlayItem({ item, collapsed }: OverlayItemProps) {
+    const Icon = item.icon;
+    return (
+        <div className={`${styles.navItem} ${styles.dragOverlay}`}>
+            <Icon className={styles.navIcon} />
+            {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
+        </div>
+    );
+}
+
 export default function Sidebar() {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [showPinPad, setShowPinPad] = useState(false);
+    const [activeId, setActiveId] = useState<string | null>(null);
+    const [isMounted, setIsMounted] = useState(false);
+    const [orderedItems, setOrderedItems] = useState<MenuItem[]>(MENU_ITEMS);
+    const [previousOrder, setPreviousOrder] = useState<MenuItem[]>(MENU_ITEMS);
     const pathname = usePathname();
-    const { userSettings, signOut } = useAuth();
+    const { userSettings, signOut, updateSettings } = useAuth();
     const { setShowHelp } = useKeyboardShortcuts();
 
     // Employee Context
-    // We import dynamically or use optional chaining if context might be missing during dev
-    // But since we added it to layout, it should be fine.
     const { activeEmployee, logoutEmployee, loginWithPin, hasPermission, isLocked, lockScreen, unlockScreen, hasAdmin } = require('@/contexts/EmployeeContext').useEmployee();
 
     const appName = userSettings?.app_name || 'Cola Aí';
 
+    // Hydration safety - only enable DnD after mount
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    // Apply saved order from userSettings
+    useEffect(() => {
+        if (userSettings?.sidebar_order && userSettings.sidebar_order.length > 0) {
+            const savedOrder = userSettings.sidebar_order;
+            const reordered = savedOrder
+                .map((href: string) => MENU_ITEMS.find(item => item.href === href))
+                .filter((item): item is MenuItem => item !== undefined);
+
+            // Add any new items that aren't in the saved order
+            const missingItems = MENU_ITEMS.filter(
+                item => !savedOrder.includes(item.href)
+            );
+
+            setOrderedItems([...reordered, ...missingItems]);
+        }
+    }, [userSettings?.sidebar_order]);
+
+    // Configure sensors for drag and drop
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5, // 5px threshold to start dragging
+            },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 250, // 250ms delay for touch
+                tolerance: 5,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
+    // Filter out hidden items
+    const visibleMenuItems = useMemo(() => {
+        const hiddenItems = userSettings?.hidden_sidebar_items || [];
+        return orderedItems.filter(item => !hiddenItems.includes(item.href));
+    }, [userSettings?.hidden_sidebar_items, orderedItems]);
+
+    // Filter menu items based on permissions
+    const filteredMenuItems = visibleMenuItems.filter(item => {
+        const path = item.href.replace('/', '');
+
+        // Always show Dashboard
+        if (path === 'dashboard') return true;
+
+        // If owner (no active employee), show everything
+        if (!activeEmployee) return true;
+
+        // Permission mapping
+        const permissionMap: Record<string, string> = {
+            'produtos': 'products',
+            'adicionais': 'products',
+            'categorias': 'categories',
+            'pedidos': 'orders',
+            'cozinha': 'orders',
+            'entregas': 'orders',
+            'estoque': 'products',
+            'cupons': 'settings',
+            'fidelidade': 'customers',
+            'caixa': 'finance',
+            'contas': 'finance',
+            'fluxo-caixa': 'finance',
+            'funcionarios': 'employees',
+            'relatorios': 'reports',
+            'historico': 'reports',
+            'configuracoes': 'settings'
+        };
+
+        const requiredPerm = permissionMap[path];
+        if (!requiredPerm) return true;
+
+        return hasPermission(requiredPerm);
+    });
+
+    const handleDragStart = (event: DragStartEvent) => {
+        setActiveId(event.active.id as string);
+        setPreviousOrder([...orderedItems]);
+    };
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveId(null);
+
+        if (over && active.id !== over.id) {
+            // Optimistic update - update UI immediately
+            const oldIndex = orderedItems.findIndex(item => item.href === active.id);
+            const newIndex = orderedItems.findIndex(item => item.href === over.id);
+
+            const newOrder = arrayMove(orderedItems, oldIndex, newIndex);
+            setOrderedItems(newOrder);
+
+            // Save to Supabase
+            try {
+                const newOrderHrefs = newOrder.map(item => item.href);
+                const { error } = await updateSettings({ sidebar_order: newOrderHrefs });
+
+                if (error) {
+                    console.error('Error saving sidebar order:', error);
+                    // Rollback on error
+                    setOrderedItems(previousOrder);
+                }
+            } catch (error) {
+                console.error('Error saving sidebar order:', error);
+                // Rollback on error
+                setOrderedItems(previousOrder);
+            }
+        }
+    };
+
     const handleEmployeeLogout = () => {
-        logoutEmployee(); // Now sets isLocked = true
+        logoutEmployee();
     };
 
     const handleLockScreen = () => {
@@ -85,44 +295,7 @@ export default function Sidebar() {
         return false;
     };
 
-    // Filter menu items based on permissions
-    const filteredMenuItems = menuItems.filter(item => {
-        // Map menu paths to permission keys
-        // If no mapping defined, assume public or handle specifically
-        // Simple mapping based on path
-        const path = item.href.replace('/', '');
-
-        // Always show Dashboard
-        if (path === 'dashboard') return true;
-
-        // If owner (no active employee), show everything
-        if (!activeEmployee) return true;
-
-        // Permission mapping
-        const permissionMap: Record<string, string> = {
-            'produtos': 'products',
-            'adicionais': 'products',
-            'categorias': 'categories',
-            'pedidos': 'orders',
-            'cozinha': 'orders', // Kitchen needs orders permission usually
-            'entregas': 'orders', // Delivery is subset of orders usually
-            'estoque': 'products',
-            'cupons': 'settings', // Or specific coupons permission
-            'fidelidade': 'customers',
-            'caixa': 'finance', // Or specific
-            'contas': 'finance',
-            'fluxo-caixa': 'finance',
-            'funcionarios': 'employees',
-            'relatorios': 'reports',
-            'historico': 'reports',
-            'configuracoes': 'settings' // Handled in footer, but good to map
-        };
-
-        const requiredPerm = permissionMap[path];
-        if (!requiredPerm) return true; // Default allow if unknown
-
-        return hasPermission(requiredPerm);
-    });
+    const activeItem = activeId ? orderedItems.find(item => item.href === activeId) : null;
 
     return (
         <>
@@ -142,14 +315,11 @@ export default function Sidebar() {
                 />
             )}
 
-            {/* Pin Pad Modal */}
-            {/* We import PinPadModal dynamically to avoid SSR issues if any, but standard import is fine */}
-            {/* Assuming PinPadModal is imported above, let's add the import */}
             <aside className={`
-        ${styles.sidebar}
-        ${collapsed ? styles.collapsed : ''}
-        ${mobileOpen ? styles.mobileOpen : ''}
-      `}>
+                ${styles.sidebar}
+                ${collapsed ? styles.collapsed : ''}
+                ${mobileOpen ? styles.mobileOpen : ''}
+            `}>
                 {/* Header */}
                 <div className={styles.header}>
                     <Link href="/dashboard" className={styles.brand}>
@@ -175,31 +345,60 @@ export default function Sidebar() {
                     </Link>
                 </div>
 
-                {/* Navigation */}
+                {/* Navigation with Drag and Drop */}
                 <nav className={styles.nav}>
-                    {filteredMenuItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = pathname === item.href;
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                className={`${styles.navItem} ${isActive ? styles.active : ''}`}
-                                onClick={() => setMobileOpen(false)}
+                    {isMounted ? (
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <SortableContext
+                                items={filteredMenuItems.map(item => item.href)}
+                                strategy={verticalListSortingStrategy}
                             >
-                                <Icon className={styles.navIcon} />
-                                {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
-                                {isActive && <div className={styles.activeIndicator} />}
-                            </Link>
-                        );
-                    })}
+                                {filteredMenuItems.map((item) => (
+                                    <SortableNavItem
+                                        key={item.href}
+                                        item={item}
+                                        isActive={pathname === item.href}
+                                        collapsed={collapsed}
+                                        onMobileClose={() => setMobileOpen(false)}
+                                    />
+                                ))}
+                            </SortableContext>
+                            <DragOverlay>
+                                {activeItem ? (
+                                    <OverlayItem item={activeItem} collapsed={collapsed} />
+                                ) : null}
+                            </DragOverlay>
+                        </DndContext>
+                    ) : (
+                        // SSR fallback - render without drag and drop
+                        filteredMenuItems.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = pathname === item.href;
+
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={`${styles.navItem} ${isActive ? styles.active : ''}`}
+                                    onClick={() => setMobileOpen(false)}
+                                >
+                                    <Icon className={styles.navIcon} />
+                                    {!collapsed && <span className={styles.navLabel}>{item.label}</span>}
+                                    {isActive && <div className={styles.activeIndicator} />}
+                                </Link>
+                            );
+                        })
+                    )}
                 </nav>
 
                 {/* Footer */}
                 <div className={styles.footer}>
                     {((!activeEmployee && !hasPermission('settings')) === false) && hasPermission('settings') && (
-                        /* Logic simplified: Show settings if Owner OR Employee has permission */
-                        /* Re-simplifying: if ((!activeEmployee) || (activeEmployee && hasPermission('settings'))) */
                         <Link
                             href="/configuracoes"
                             className={`${styles.navItem} ${pathname === '/configuracoes' ? styles.active : ''}`}

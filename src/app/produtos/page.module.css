@@ -1,6 +1,8 @@
 .container {
     max-width: 1200px;
     margin: 0 auto;
+    /* Prevent rubber-banding / overscroll effects */
+    overscroll-behavior: contain;
 }
 
 /* Header */
@@ -71,16 +73,91 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
+    /* Prevent pull-to-refresh on touch devices */
+    overscroll-behavior-y: none;
 }
 
 .productCard {
     padding: 16px !important;
     display: flex;
     flex-direction: column;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    /* Prevent browser native touch gestures during drag */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.productCard.dragging {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--primary);
 }
 
 .productCard.unavailable {
     opacity: 0.6;
+}
+
+.dragHandle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--text-muted);
+    opacity: 0;
+    cursor: grab;
+    transition: opacity var(--transition-fast), color var(--transition-fast);
+    border-radius: var(--radius-sm);
+    z-index: 10;
+    /* Prevent pull-to-refresh and native scroll gestures */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.productCard:hover .dragHandle {
+    opacity: 1;
+}
+
+.dragHandle:hover {
+    color: var(--primary);
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.dragHandle:active {
+    cursor: grabbing;
+}
+
+/* Product Content Layout */
+.productContent {
+    display: flex;
+    gap: 16px;
+}
+
+.productImageWrapper {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-tertiary);
+}
+
+.productImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.productInfo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .productHeader {

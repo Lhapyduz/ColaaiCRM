@@ -44,9 +44,18 @@ export default function HistoricoPage() {
     const [filterEntity, setFilterEntity] = useState<EntityType | ''>('');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+    const [cleaning, setCleaning] = useState(false);
 
-    // Check access
-    if (!canAccess('actionHistory')) {
+    const hasAccess = canAccess('actionHistory');
+
+    useEffect(() => {
+        if (user && hasAccess) {
+            fetchLogs();
+        }
+    }, [user, page, filterAction, filterEntity, dateFrom, dateTo, hasAccess]);
+
+    // Check access after hooks
+    if (!hasAccess) {
         return (
             <MainLayout>
                 <UpgradePrompt
@@ -58,12 +67,6 @@ export default function HistoricoPage() {
             </MainLayout>
         );
     }
-
-    useEffect(() => {
-        if (user) {
-            fetchLogs();
-        }
-    }, [user, page, filterAction, filterEntity, dateFrom, dateTo]);
 
     const fetchLogs = async () => {
         if (!user) return;
@@ -107,8 +110,6 @@ export default function HistoricoPage() {
         setDateTo('');
         setPage(1);
     };
-
-    const [cleaning, setCleaning] = useState(false);
 
     // Delete logs older than 7 days
     const cleanupOldLogs = async () => {

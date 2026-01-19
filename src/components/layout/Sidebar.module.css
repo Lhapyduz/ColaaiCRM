@@ -62,6 +62,7 @@
     flex-direction: column;
     gap: 4px;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .navItem {
@@ -248,4 +249,47 @@
 
 .collapsed .kbd {
     display: none;
+}
+
+/* Drag and Drop */
+.navItem.dragging {
+    opacity: 0.5;
+    background: var(--bg-tertiary);
+}
+
+.dragOverlay {
+    opacity: 0.95;
+    background: var(--bg-card);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--primary);
+    cursor: grabbing;
+}
+
+/* Ensure touch actions don't interfere with drag */
+.nav {
+    touch-action: pan-y;
+}
+
+.navItem {
+    touch-action: none;
+}
+
+/* Brand info container */
+.brandInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.employeeBadge {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.employeeControls {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }

@@ -17,6 +17,9 @@ interface UserSettings {
     pix_key: string | null;
     pix_key_type: 'cpf' | 'cnpj' | 'email' | 'phone' | 'random' | null;
     merchant_city: string | null;
+    sidebar_order: string[] | null;
+    hidden_sidebar_items: string[] | null;
+    access_token: string | null;
 }
 
 interface AuthContextType {
