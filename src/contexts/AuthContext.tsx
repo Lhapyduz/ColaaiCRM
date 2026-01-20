@@ -20,6 +20,8 @@ interface UserSettings {
     sidebar_order: string[] | null;
     hidden_sidebar_items: string[] | null;
     access_token: string | null;
+    delivery_fee_type: 'fixed' | 'neighborhood' | null;
+    delivery_fee_value: number | null;
 }
 
 interface AuthContextType {

@@ -104,7 +104,7 @@ export default function PublicViewPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <audio ref={audioRef} src="/notification.mp3" preload="auto" />
+            <audio ref={audioRef} src={`https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/sons/${pagina === 'cozinha' ? 'Cozinha' : 'Entrega'}.mp3`} preload="auto" />
             {/* Header */}
             <div className="sticky top-0 z-20 bg-bg-card border-b border-border p-4 flex items-center justify-between">
                 <div><h1 className="text-xl font-bold">{isKitchen ? '👨‍🍳 Cozinha' : '🚚 Entregas'}</h1><span className="text-sm text-text-muted">Olá, {employee.name}</span></div>

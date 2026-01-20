@@ -207,7 +207,7 @@ export default function CozinhaPage() {
     return (
         <MainLayout>
             <div className="max-w-[1400px] mx-auto">
-                <audio ref={audioRef} src="/notification.mp3" preload="auto" />
+                <audio ref={audioRef} src="https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/sons/Cozinha.mp3" preload="auto" />
 
                 {/* Header */}
                 <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">

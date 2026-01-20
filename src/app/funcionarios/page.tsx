@@ -124,7 +124,7 @@ export default function FuncionariosPage() {
                                 {!editingEmployee?.is_fixed && <div><label className="block text-sm text-text-secondary mb-2">Valor por Hora (R$)</label><Input type="number" value={form.hourly_rate} onChange={(e) => setForm({ ...form, hourly_rate: parseFloat(e.target.value) || 0 })} min={0} step={0.01} /></div>}
                             </div>
                             {!editingEmployee?.is_fixed && (
-                                <div className="bg-bg-tertiary rounded-md p-4 mb-4"><h4 className="flex items-center gap-2 text-sm font-medium mb-2"><FiShield /> Permissões do cargo:</h4><div className="flex flex-wrap gap-2">{Object.entries(DEFAULT_PERMISSIONS[form.role]).map(([perm, allowed]) => (<span key={perm} className={cn('px-2 py-1 rounded-sm text-xs', allowed ? 'bg-[#27ae60]/10 text-[#27ae60]' : 'bg-[#e74c3c]/10 text-[#e74c3c]')}>{allowed ? '✓' : '✗'} {perm}</span>))}</div></div>
+                                <div className="bg-bg-tertiary rounded-md p-4 mb-4"><h4 className="flex items-center gap-2 text-sm font-medium mb-2"><FiShield /> Permissões do cargo:</h4><div className="flex flex-wrap gap-2">{Object.entries(DEFAULT_PERMISSIONS[form.role]).map(([perm, allowed]) => (<span key={perm} className={cn('px-2 py-1 rounded-sm text-xs', allowed ? 'bg-[#27ae60]/10 text-[#27ae60]' : 'bg-error/10 text-error')}>{allowed ? '✓' : '✗'} {perm}</span>))}</div></div>
                             )}
                             <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-border"><Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button><Button onClick={handleSave}>{editingEmployee ? 'Salvar' : 'Adicionar'}</Button></div>
                         </div>

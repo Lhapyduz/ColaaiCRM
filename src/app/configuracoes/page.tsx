@@ -51,6 +51,7 @@ export default function ConfiguracoesPage() {
     const [copied, setCopied] = useState(false);
     const [hiddenSidebarItems, setHiddenSidebarItems] = useState<string[]>(userSettings?.hidden_sidebar_items || []);
     const [copiedLink, setCopiedLink] = useState<string | null>(null);
+    const [deliveryFee, setDeliveryFee] = useState<number>(userSettings?.delivery_fee_value ?? 5);
 
     // Menu items with feature mapping for plan-based hiding
     const SIDEBAR_MENU_ITEMS = [
@@ -95,6 +96,7 @@ export default function ConfiguracoesPage() {
             setPixKeyType(userSettings.pix_key_type || 'cpf');
             setMerchantCity(userSettings.merchant_city || '');
             setHiddenSidebarItems(userSettings.hidden_sidebar_items || []);
+            setDeliveryFee(userSettings.delivery_fee_value ?? 5);
         }
     }, [userSettings]);
 
@@ -147,7 +149,8 @@ export default function ConfiguracoesPage() {
                 public_slug: publicSlug || null,
                 pix_key: pixKey || null,
                 pix_key_type: pixKeyType || null,
-                merchant_city: merchantCity || null
+                merchant_city: merchantCity || null,
+                delivery_fee_value: deliveryFee
             });
 
             if (!error) {
@@ -538,6 +541,27 @@ export default function ConfiguracoesPage() {
                                         </div>
                                     </div>
                                 )}
+                                <div className={styles.formGroup}>
+                                    <label>
+                                        <FiDollarSign style={{ marginRight: '8px', color: 'var(--primary)' }} />
+                                        Taxa de Entrega
+                                    </label>
+                                    <div className={styles.deliveryFeeInput}>
+                                        <span className={styles.currencyPrefix}>R$</span>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={deliveryFee}
+                                            onChange={(e) => setDeliveryFee(parseFloat(e.target.value) || 0)}
+                                            placeholder="5.00"
+                                            style={{ paddingLeft: '40px' }}
+                                        />
+                                    </div>
+                                    <span className={styles.hint}>
+                                        Valor cobrado para entregas. Este valor será adicionado ao total do pedido.
+                                    </span>
+                                </div>
 
                                 <div className={styles.saveSection}>
                                     <Button

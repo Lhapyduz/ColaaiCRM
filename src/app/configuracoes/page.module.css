@@ -366,6 +366,21 @@
     justify-content: center;
 }
 
+/* Delivery Fee Input */
+.deliveryFeeInput {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.deliveryFeeInput .currencyPrefix {
+    position: absolute;
+    left: 14px;
+    font-weight: 600;
+    color: var(--primary);
+    z-index: 1;
+}
+
 /* PIX Key Types */
 .pixKeyTypes {
     display: flex;

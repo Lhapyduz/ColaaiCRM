@@ -109,7 +109,7 @@ export default function EstoquePage() {
                         <div className="flex flex-col"><span className="text-2xl font-bold">{ingredients.length}</span><span className="text-sm text-text-secondary">Ingredientes</span></div>
                     </Card>
                     <Card className="flex items-center gap-4 p-5!">
-                        <div className="w-[50px] h-[50px] rounded-xl flex items-center justify-center text-2xl bg-[#fdcb6e]/15 text-[#fdcb6e]"><FiAlertTriangle /></div>
+                        <div className="w-[50px] h-[50px] rounded-xl flex items-center justify-center text-2xl bg-warning/15 text-warning"><FiAlertTriangle /></div>
                         <div className="flex flex-col"><span className="text-2xl font-bold">{lowStockIngredients.length}</span><span className="text-sm text-text-secondary">Estoque Baixo</span></div>
                     </Card>
                     <Card className="flex items-center gap-4 p-5!">
@@ -120,9 +120,9 @@ export default function EstoquePage() {
 
                 {/* Low Stock Alert */}
                 {lowStockIngredients.length > 0 && (
-                    <Card className="flex items-center gap-4 px-5! py-4! bg-[#fdcb6e]/10! border-[#fdcb6e]/30! mb-6">
-                        <FiAlertTriangle className="text-2xl text-[#fdcb6e] shrink-0" />
-                        <div><h3 className="text-base font-semibold text-[#fdcb6e] mb-1">Estoque Baixo!</h3><p className="text-sm text-text-secondary">{lowStockIngredients.map(i => i.name).join(', ')} {lowStockIngredients.length === 1 ? 'está' : 'estão'} com estoque baixo</p></div>
+                    <Card className="flex items-center gap-4 px-5! py-4! bg-warning/10! border-warning/30! mb-6">
+                        <FiAlertTriangle className="text-2xl text-warning shrink-0" />
+                        <div><h3 className="text-base font-semibold text-warning mb-1">Estoque Baixo!</h3><p className="text-sm text-text-secondary">{lowStockIngredients.map(i => i.name).join(', ')} {lowStockIngredients.length === 1 ? 'está' : 'estão'} com estoque baixo</p></div>
                     </Card>
                 )}
 
@@ -131,14 +131,14 @@ export default function EstoquePage() {
 
                 {/* Ingredients List */}
                 <div className="flex flex-col gap-3">
-                    {loading ? [1, 2, 3].map(i => <div key={i} className="h-[80px] rounded-[10px] bg-bg-tertiary animate-pulse" />) : filteredIngredients.length > 0 ? filteredIngredients.map((ingredient) => {
+                    {loading ? [1, 2, 3].map(i => <div key={i} className="h-sidebar-collapsed rounded-md bg-bg-tertiary animate-pulse" />) : filteredIngredients.length > 0 ? filteredIngredients.map((ingredient) => {
                         const isLowStock = ingredient.current_stock <= ingredient.min_stock && ingredient.min_stock > 0;
                         return (
-                            <Card key={ingredient.id} className={cn('flex items-center justify-between px-5! py-4! transition-all duration-fast max-md:flex-col max-md:items-stretch max-md:gap-4', isLowStock && 'border-[#fdcb6e]/50 bg-[#fdcb6e]/5')}>
+                            <Card key={ingredient.id} className={cn('flex items-center justify-between px-5! py-4! transition-all duration-fast max-md:flex-col max-md:items-stretch max-md:gap-4', isLowStock && 'border-warning/50 bg-warning/5')}>
                                 <div className="flex-1">
                                     <h3 className="text-[1.1rem] font-semibold mb-1.5">{ingredient.name}</h3>
                                     <div className="flex flex-wrap gap-4">
-                                        <span className={cn('text-base font-semibold', isLowStock ? 'text-[#fdcb6e]' : 'text-primary')}>{ingredient.current_stock} {ingredient.unit}</span>
+                                        <span className={cn('text-base font-semibold', isLowStock ? 'text-warning' : 'text-primary')}>{ingredient.current_stock} {ingredient.unit}</span>
                                         {ingredient.min_stock > 0 && <span className="text-sm text-text-secondary">Mínimo: {ingredient.min_stock} {ingredient.unit}</span>}
                                         {ingredient.cost_per_unit > 0 && <span className="text-sm text-text-secondary">{formatCurrency(ingredient.cost_per_unit)}/{ingredient.unit}</span>}
                                     </div>

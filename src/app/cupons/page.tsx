@@ -104,7 +104,7 @@ export default function CuponsPage() {
 
                 {/* Coupons List */}
                 <div className="flex flex-col gap-3">
-                    {loading ? [1, 2, 3].map(i => <div key={i} className="h-[100px] rounded-[10px] bg-bg-tertiary animate-pulse" />) : filteredCoupons.length > 0 ? filteredCoupons.map((coupon) => (
+                    {loading ? [1, 2, 3].map(i => <div key={i} className="h-[100px] rounded-md bg-bg-tertiary animate-pulse" />) : filteredCoupons.length > 0 ? filteredCoupons.map((coupon) => (
                         <Card key={coupon.id} className={cn('p-5! transition-all duration-fast', (!coupon.active || isExpired(coupon) || isLimitReached(coupon)) && 'opacity-60')}>
                             <div className="flex items-start justify-between gap-4 max-md:flex-col">
                                 <div className="flex items-center gap-4">

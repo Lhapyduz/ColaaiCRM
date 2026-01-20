@@ -321,7 +321,7 @@ export default function PedidosPage() {
                     {loading ? (
                         <div className="flex flex-col gap-3">
                             {[1, 2, 3, 4, 5].map(i => (
-                                <div key={i} className="h-20 rounded-[10px] bg-bg-tertiary animate-pulse" />
+                                <div key={i} className="h-20 rounded-md bg-bg-tertiary animate-pulse" />
                             ))}
                         </div>
                     ) : filteredOrders.length > 0 ? (

@@ -36,6 +36,8 @@ export type Database = {
                     logo_url: string | null;
                     primary_color: string;
                     secondary_color: string;
+                    delivery_fee_type: 'fixed' | 'neighborhood';
+                    delivery_fee_value: number;
                     created_at: string;
                 };
                 Insert: {
@@ -45,6 +47,8 @@ export type Database = {
                     logo_url?: string | null;
                     primary_color?: string;
                     secondary_color?: string;
+                    delivery_fee_type?: 'fixed' | 'neighborhood';
+                    delivery_fee_value?: number;
                     created_at?: string;
                 };
                 Update: {
@@ -54,6 +58,8 @@ export type Database = {
                     logo_url?: string | null;
                     primary_color?: string;
                     secondary_color?: string;
+                    delivery_fee_type?: 'fixed' | 'neighborhood';
+                    delivery_fee_value?: number;
                     created_at?: string;
                 };
             };

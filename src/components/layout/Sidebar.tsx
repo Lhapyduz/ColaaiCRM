@@ -7,7 +7,7 @@ import {
     DndContext,
     closestCenter,
     KeyboardSensor,
-    PointerSensor,
+    MouseSensor,
     TouchSensor,
     useSensor,
     useSensors,
@@ -191,15 +191,15 @@ export default function Sidebar() {
 
     // Configure sensors for drag and drop
     const sensors = useSensors(
-        useSensor(PointerSensor, {
+        useSensor(MouseSensor, {
             activationConstraint: {
                 distance: 5,
             },
         }),
         useSensor(TouchSensor, {
             activationConstraint: {
-                delay: 250,
-                tolerance: 5,
+                delay: 1000,
+                tolerance: 8,
             },
         }),
         useSensor(KeyboardSensor, {

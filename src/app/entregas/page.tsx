@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { FiCheck, FiPhone, FiMapPin, FiClock } from 'react-icons/fi';
+import React, { useState, useEffect, useRef } from 'react';
+import { FiCheck, FiPhone, FiMapPin, FiClock, FiVolume2, FiVolumeX } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -19,6 +19,7 @@ interface Order {
     customer_address: string | null;
     status: string;
     total: number;
+    is_delivery: boolean;
     created_at: string;
 }
 
@@ -28,14 +29,44 @@ export default function EntregasPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
-        if (user && canAccess('deliveries')) fetchOrders();
-    }, [user, activeTab, canAccess]);
+        if (user && canAccess('deliveries')) {
+            fetchOrders();
+
+            // Real-time subscription for delivery orders
+            const subscription = supabase
+                .channel('delivery_orders')
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `user_id=eq.${user.id}`
+                }, (payload) => {
+                    console.log('Order change for delivery:', payload);
+                    // Check if order status changed to 'ready' (delivery ready)
+                    if (payload.new && (payload.new as Order).status === 'ready' && (payload.new as Order).is_delivery && soundEnabled) {
+                        playNotificationSound();
+                    }
+                    fetchOrders();
+                })
+                .subscribe();
+
+            return () => {
+                subscription.unsubscribe();
+            };
+        }
+    }, [user, soundEnabled, activeTab, canAccess]);
 
     if (!canAccess('deliveries')) {
         return (<MainLayout><UpgradePrompt feature="Gestão de Entregas" requiredPlan="Avançado" currentPlan={plan} fullPage /></MainLayout>);
     }
+
+    const playNotificationSound = () => {
+        if (audioRef.current) audioRef.current.play().catch(() => { });
+    };
 
     const fetchOrders = async () => {
         if (!user) return;
@@ -70,9 +101,16 @@ export default function EntregasPage() {
     return (
         <MainLayout>
             <div className="max-w-[1200px] mx-auto">
-                <div className="mb-6">
-                    <h1 className="text-[2rem] font-bold mb-2">Entregas</h1>
-                    <p className="text-text-secondary">Gerencie suas entregas</p>
+                <audio ref={audioRef} src="https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/sons/Entrega.mp3" preload="auto" />
+
+                <div className="flex items-start justify-between mb-6 gap-5 max-md:flex-col">
+                    <div>
+                        <h1 className="text-[2rem] font-bold mb-2">Entregas</h1>
+                        <p className="text-text-secondary">Gerencie suas entregas</p>
+                    </div>
+                    <Button variant={soundEnabled ? 'secondary' : 'ghost'} leftIcon={soundEnabled ? <FiVolume2 /> : <FiVolumeX />} onClick={() => setSoundEnabled(!soundEnabled)}>
+                        {soundEnabled ? 'Som Ativo' : 'Som Mudo'}
+                    </Button>
                 </div>
 
                 {/* Tabs */}
