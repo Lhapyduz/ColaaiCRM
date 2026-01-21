@@ -1,6 +1,7 @@
 'use client';
 
 import React, { forwardRef } from 'react';
+import { formatCurrency } from '@/hooks/useFormatters';
 import styles from './OrderReceipt.module.css';
 
 interface OrderItem {
@@ -39,13 +40,6 @@ interface OrderReceiptProps {
 
 const OrderReceipt = forwardRef<HTMLDivElement, OrderReceiptProps>(
     ({ order, appName = 'Cola Aí', showHeader = true }, ref) => {
-        const formatCurrency = (value: number) => {
-            return new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-            }).format(value);
-        };
-
         const formatDate = (date: string) => {
             return new Intl.DateTimeFormat('pt-BR', {
                 day: '2-digit',

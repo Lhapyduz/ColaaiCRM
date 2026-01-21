@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import {
     FiShoppingBag,
@@ -18,9 +18,12 @@ import { GiCookingPot } from 'react-icons/gi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import { StatusBadge, type OrderStatus } from '@/components/ui/StatusBadge';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency, formatRelativeTime } from '@/hooks/useFormatters';
 import { predictRemainingToday, getConfidenceLabel } from '@/lib/salesPrediction';
 import { cn } from '@/lib/utils';
 
@@ -72,14 +75,9 @@ export default function DashboardPage() {
     const [prediction, setPrediction] = useState<Prediction | null>(null);
 
     const appName = userSettings?.app_name || 'Cola Aí';
+    const toast = useToast();
 
-    useEffect(() => {
-        if (user) {
-            fetchDashboardData();
-        }
-    }, [user]);
-
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = useCallback(async () => {
         if (!user) return;
 
         try {
@@ -174,42 +172,39 @@ export default function DashboardPage() {
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
+            toast.error('Erro ao carregar dados do dashboard');
         } finally {
             setLoading(false);
         }
-    };
+    }, [user, toast]);
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value);
-    };
+    useEffect(() => {
+        if (user) {
+            fetchDashboardData();
 
-    const getStatusLabel = (status: string) => {
-        const labels: Record<string, string> = {
-            pending: 'Aguardando',
-            preparing: 'Preparando',
-            ready: 'Pronto',
-            delivering: 'Entregando',
-            delivered: 'Entregue',
-            cancelled: 'Cancelado'
-        };
-        return labels[status] || status;
-    };
+            // Subscribe to real-time updates for orders
+            const subscription = supabase
+                .channel('dashboard-realtime')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'orders',
+                        filter: `user_id=eq.${user.id}`
+                    },
+                    () => {
+                        fetchDashboardData();
+                    }
+                )
+                .subscribe();
 
-    const getTimeAgo = (date: string) => {
-        const now = new Date();
-        const past = new Date(date);
-        const diffMs = now.getTime() - past.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
+            return () => {
+                subscription.unsubscribe();
+            };
+        }
+    }, [user, fetchDashboardData]);
 
-        if (diffMins < 1) return 'Agora';
-        if (diffMins < 60) return `${diffMins} min`;
-        const diffHours = Math.floor(diffMins / 60);
-        if (diffHours < 24) return `${diffHours}h`;
-        return `${Math.floor(diffHours / 24)}d`;
-    };
 
     const revenueChange = useMemo(() => {
         if (stats.yesterdayRevenue === 0) return stats.totalRevenue > 0 ? 100 : 0;
@@ -387,22 +382,16 @@ export default function DashboardPage() {
                                             <span className="text-text-primary">{order.customer_name}</span>
                                         </div>
                                         <div className="flex items-center gap-4 max-[480px]:flex-col max-[480px]:items-end max-[480px]:gap-1">
-                                            <span className={cn(
-                                                'px-2.5 py-1 rounded-full text-xs font-medium uppercase bg-white/5',
-                                                order.status === 'pending' && 'text-warning',
-                                                order.status === 'preparing' && 'text-info',
-                                                order.status === 'ready' && 'text-accent',
-                                                order.status === 'delivering' && 'text-primary',
-                                                order.status === 'delivered' && 'text-accent',
-                                                order.status === 'cancelled' && 'text-error'
-                                            )}>
-                                                {getStatusLabel(order.status)}
-                                            </span>
+                                            <StatusBadge
+                                                status={order.status as OrderStatus}
+                                                size="sm"
+                                                showIcon
+                                            />
                                             <span className="font-semibold text-accent">
                                                 {formatCurrency(order.total)}
                                             </span>
                                             <span className="flex items-center gap-1 text-sm text-text-muted">
-                                                <FiClock /> {getTimeAgo(order.created_at)}
+                                                <FiClock /> {formatRelativeTime(order.created_at)}
                                             </span>
                                         </div>
                                     </Link>

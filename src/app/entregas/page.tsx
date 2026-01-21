@@ -1,14 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FiCheck, FiPhone, FiMapPin, FiClock, FiVolume2, FiVolumeX } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency, formatRelativeTime, formatDateTime } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface Order {
@@ -31,6 +34,7 @@ export default function EntregasPage() {
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
     const [soundEnabled, setSoundEnabled] = useState(true);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const toast = useToast();
 
     useEffect(() => {
         if (user && canAccess('deliveries')) {
@@ -81,18 +85,15 @@ export default function EntregasPage() {
     };
 
     const updateOrderStatus = async (orderId: string, newStatus: string) => {
-        try { await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId); fetchOrders(); }
-        catch (error) { console.error('Error updating order:', error); }
-    };
-
-    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-
-    const getTimeAgo = (date: string) => {
-        const diffMins = Math.floor((new Date().getTime() - new Date(date).getTime()) / 60000);
-        if (diffMins < 60) return `${diffMins} min`;
-        const hours = Math.floor(diffMins / 60);
-        if (hours < 24) return `${hours}h`;
-        return `${Math.floor(hours / 24)}d`;
+        try {
+            await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId);
+            toast.success(newStatus === 'delivering' ? 'Saiu para entrega!' : 'Entrega finalizada!');
+            fetchOrders();
+        }
+        catch (error) {
+            console.error('Error updating order:', error);
+            toast.error('Erro ao atualizar entrega');
+        }
     };
 
     const readyOrders = orders.filter(o => o.status === 'ready');
@@ -142,7 +143,7 @@ export default function EntregasPage() {
                                         <Card key={order.id} className="p-4!">
                                             <div className="flex justify-between items-center mb-2">
                                                 <span className="text-lg font-bold text-primary">#{order.order_number}</span>
-                                                <span className="flex items-center gap-1 text-[0.8125rem] text-text-muted"><FiClock /> {getTimeAgo(order.created_at)}</span>
+                                                <span className="flex items-center gap-1 text-[0.8125rem] text-text-muted"><FiClock /> {formatRelativeTime(order.created_at)}</span>
                                             </div>
                                             <div className="font-medium mb-2">{order.customer_name}</div>
                                             {order.customer_phone && <div className="flex items-center gap-2 text-sm text-text-secondary mb-1"><FiPhone /> {order.customer_phone}</div>}
@@ -167,7 +168,7 @@ export default function EntregasPage() {
                                         <Card key={order.id} className="p-4! border-primary">
                                             <div className="flex justify-between items-center mb-2">
                                                 <span className="text-lg font-bold text-primary">#{order.order_number}</span>
-                                                <span className="flex items-center gap-1 text-[0.8125rem] text-text-muted"><FiClock /> {getTimeAgo(order.created_at)}</span>
+                                                <span className="flex items-center gap-1 text-[0.8125rem] text-text-muted"><FiClock /> {formatRelativeTime(order.created_at)}</span>
                                             </div>
                                             <div className="font-medium mb-2">{order.customer_name}</div>
                                             {order.customer_address && <div className="flex items-center gap-2 text-sm text-text-secondary mb-1"><FiMapPin /> {order.customer_address}</div>}
@@ -198,8 +199,8 @@ export default function EntregasPage() {
                                     </div>
                                     <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
                                         <span className="text-lg font-bold text-accent">{formatCurrency(order.total)}</span>
-                                        <span className="text-sm text-text-secondary">{new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(order.created_at))}</span>
-                                        <span className="px-2.5 py-1 bg-accent/10 text-accent text-xs font-medium rounded-full">✓ Entregue</span>
+                                        <span className="text-sm text-text-secondary">{formatDateTime(order.created_at)}</span>
+                                        <StatusBadge status="delivered" size="sm" />
                                     </div>
                                 </Card>
                             ))}

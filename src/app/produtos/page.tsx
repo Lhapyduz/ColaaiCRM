@@ -33,9 +33,11 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import ImageUpload from '@/components/ui/ImageUpload';
 import { LimitWarning } from '@/components/ui/UpgradePrompt';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface Category {
@@ -190,6 +192,7 @@ export default function ProdutosPage() {
 
     const productsLimit = getLimit('products');
     const isAtLimit = !isWithinLimit('products', products.length);
+    const toast = useToast();
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -228,6 +231,7 @@ export default function ProdutosPage() {
             if (groupsRes.data) setAddonGroups(groupsRes.data);
         } catch (error) {
             console.error('Error fetching data:', error);
+            toast.error('Erro ao carregar produtos');
         } finally {
             setLoading(false);
         }
@@ -240,10 +244,6 @@ export default function ProdutosPage() {
     });
 
     const getCategoryById = (id: string) => categories.find(c => c.id === id);
-
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    };
 
     const handleDragStart = useCallback((_event: DragStartEvent) => setIsDragging(true), []);
 
@@ -327,10 +327,12 @@ export default function ProdutosPage() {
             if (selectedAddonGroups.length > 0) {
                 await supabase.from('product_addon_groups').insert(selectedAddonGroups.map(groupId => ({ product_id: productId, group_id: groupId })));
             }
+            toast.success(editingProduct ? 'Produto atualizado!' : 'Produto criado!');
             fetchData();
             closeProductModal();
         } catch (error) {
             console.error('Error saving product:', error);
+            toast.error('Erro ao salvar produto');
         } finally {
             setSaving(false);
         }
@@ -347,9 +349,11 @@ export default function ProdutosPage() {
                 }
             }
             await supabase.from('products').delete().eq('id', id);
+            toast.success('Produto excluído!');
             fetchData();
         } catch (error) {
             console.error('Error deleting product:', error);
+            toast.error('Erro ao excluir produto');
         }
     };
 

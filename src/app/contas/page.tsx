@@ -7,9 +7,11 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency, formatDate } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface Bill {
@@ -50,6 +52,7 @@ export default function ContasPage() {
     const [newCategory, setNewCategory] = useState({ name: '', type: 'both' as 'payable' | 'receivable' | 'both', icon: '📁', color: '#6366f1' });
 
     const hasAccess = canAccess('bills');
+    const toast = useToast();
 
     useEffect(() => { if (user && hasAccess) fetchData(); }, [user, hasAccess]);
 
@@ -89,16 +92,18 @@ export default function ContasPage() {
         const billData = { user_id: user.id, type: form.type, description: form.description, category: form.category, amount: form.amount, due_date: form.due_date, supplier_customer: form.supplier_customer || null, notes: form.notes || null, status: 'pending' };
         if (editingBill) await supabase.from('bills').update(billData).eq('id', editingBill.id);
         else await supabase.from('bills').insert(billData);
+        toast.success(editingBill ? 'Conta atualizada!' : 'Conta adicionada!');
         setShowModal(false); resetForm(); fetchBills();
     };
 
     const handleMarkPaid = async (bill: Bill) => {
         await supabase.from('bills').update({ status: 'paid', payment_date: new Date().toISOString().split('T')[0] }).eq('id', bill.id);
         await supabase.from('cash_flow').insert({ user_id: user!.id, type: bill.type === 'payable' ? 'expense' : 'income', category: bill.category, description: bill.description, amount: bill.amount, transaction_date: new Date().toISOString().split('T')[0], reference_type: 'bill', reference_id: bill.id });
+        toast.success('Conta marcada como paga!');
         fetchBills();
     };
 
-    const handleDelete = async (id: string) => { if (!confirm('Excluir esta conta?')) return; await supabase.from('bills').delete().eq('id', id); fetchBills(); };
+    const handleDelete = async (id: string) => { if (!confirm('Excluir esta conta?')) return; await supabase.from('bills').delete().eq('id', id); toast.success('Conta excluída!'); fetchBills(); };
 
     const handleSaveCategory = async () => {
         if (!user || !newCategory.name.trim()) return;
@@ -117,8 +122,7 @@ export default function ContasPage() {
     const resetForm = () => { setForm({ type: 'payable', description: '', category: '', amount: 0, due_date: '', supplier_customer: '', notes: '' }); setEditingBill(null); };
     const openEdit = (bill: Bill) => { setEditingBill(bill); setForm({ type: bill.type, description: bill.description, category: bill.category, amount: bill.amount, due_date: bill.due_date, supplier_customer: bill.supplier_customer || '', notes: bill.notes || '' }); setShowModal(true); };
 
-    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    const formatDate = (date: string) => new Date(date + 'T12:00:00').toLocaleDateString('pt-BR');
+    const formatDateForBill = (date: string) => new Date(date + 'T12:00:00').toLocaleDateString('pt-BR');
 
     const getStatusBadge = (status: string) => {
         const badges: Record<string, { label: string; icon: React.ReactNode; class: string }> = {
@@ -194,7 +198,7 @@ export default function ContasPage() {
                                         </div>
                                         <div className="flex flex-col gap-0.5"><span className="font-medium">{bill.description}</span><span className="text-xs text-text-muted">{bill.category}</span>{bill.supplier_customer && <span className="text-xs text-text-secondary">{bill.supplier_customer}</span>}</div>
                                         <div className="text-right"><span className={bill.type === 'payable' ? 'font-semibold text-error' : 'font-semibold text-accent'}>{bill.type === 'payable' ? '-' : '+'}{formatCurrency(bill.amount)}</span></div>
-                                        <div className="flex flex-col items-center max-[1024px]:hidden"><span className="text-[0.6875rem] text-text-muted uppercase">Vencimento</span><span className="text-sm font-medium">{formatDate(bill.due_date)}</span></div>
+                                        <div className="flex flex-col items-center max-[1024px]:hidden"><span className="text-[0.6875rem] text-text-muted uppercase">Vencimento</span><span className="text-sm font-medium">{formatDateForBill(bill.due_date)}</span></div>
                                         <div className={cn('flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-sm justify-center max-[1024px]:hidden', statusBadge.class)}>{statusBadge.icon} {statusBadge.label}</div>
                                         <div className="flex gap-2 justify-end">
                                             {bill.status === 'pending' && <button className="p-2 bg-transparent border border-accent rounded-sm text-accent cursor-pointer transition-all duration-fast hover:bg-accent/10" onClick={() => handleMarkPaid(bill)} title="Marcar como pago"><FiCheck /></button>}

@@ -7,9 +7,11 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface Customer { id: string; phone: string; name: string; email: string | null; total_points: number; total_spent: number; total_orders: number; coupons_used: number; total_discount_savings: number; tier: 'bronze' | 'silver' | 'gold' | 'platinum'; created_at: string; }
@@ -31,6 +33,7 @@ export default function FidelidadePage() {
     const [showRewardModal, setShowRewardModal] = useState(false);
     const [editingReward, setEditingReward] = useState<LoyaltyReward | null>(null);
     const [rewardForm, setRewardForm] = useState({ name: '', description: '', points_cost: 100, reward_type: 'discount_percent' as LoyaltyReward['reward_type'], reward_value: 10, min_order_value: 0 });
+    const toast = useToast();
 
     useEffect(() => { if (user && canAccess('loyalty')) fetchData(); }, [user, canAccess]);
 
@@ -45,15 +48,14 @@ export default function FidelidadePage() {
     const toggleLoyalty = async () => { if (!appSettings || !user) return; const newValue = !appSettings.loyalty_enabled; await supabase.from('app_settings').update({ loyalty_enabled: newValue, updated_at: new Date().toISOString() }).eq('id', appSettings.id); setAppSettings({ ...appSettings, loyalty_enabled: newValue }); };
     const toggleCoupons = async () => { if (!appSettings || !user) return; const newValue = !appSettings.coupons_enabled; await supabase.from('app_settings').update({ coupons_enabled: newValue, updated_at: new Date().toISOString() }).eq('id', appSettings.id); setAppSettings({ ...appSettings, coupons_enabled: newValue }); };
 
-    const handleSaveReward = async () => { if (!user) return; const rewardData = { user_id: user.id, name: rewardForm.name, description: rewardForm.description || null, points_cost: rewardForm.points_cost, reward_type: rewardForm.reward_type, reward_value: rewardForm.reward_value, min_order_value: rewardForm.min_order_value, is_active: true }; if (editingReward) await supabase.from('loyalty_rewards').update(rewardData).eq('id', editingReward.id); else await supabase.from('loyalty_rewards').insert(rewardData); setShowRewardModal(false); setEditingReward(null); resetRewardForm(); fetchRewards(); };
-    const handleDeleteReward = async (id: string) => { if (!confirm('Excluir esta recompensa?')) return; await supabase.from('loyalty_rewards').delete().eq('id', id); fetchRewards(); };
-    const handleSaveSettings = async () => { if (!user || !settings) return; await supabase.from('loyalty_settings').update({ ...settings, updated_at: new Date().toISOString() }).eq('id', settings.id); alert('Configurações salvas!'); };
+    const handleSaveReward = async () => { if (!user) return; const rewardData = { user_id: user.id, name: rewardForm.name, description: rewardForm.description || null, points_cost: rewardForm.points_cost, reward_type: rewardForm.reward_type, reward_value: rewardForm.reward_value, min_order_value: rewardForm.min_order_value, is_active: true }; if (editingReward) await supabase.from('loyalty_rewards').update(rewardData).eq('id', editingReward.id); else await supabase.from('loyalty_rewards').insert(rewardData); toast.success(editingReward ? 'Recompensa atualizada!' : 'Recompensa criada!'); setShowRewardModal(false); setEditingReward(null); resetRewardForm(); fetchRewards(); };
+    const handleDeleteReward = async (id: string) => { if (!confirm('Excluir esta recompensa?')) return; await supabase.from('loyalty_rewards').delete().eq('id', id); toast.success('Recompensa excluída!'); fetchRewards(); };
+    const handleSaveSettings = async () => { if (!user || !settings) return; await supabase.from('loyalty_settings').update({ ...settings, updated_at: new Date().toISOString() }).eq('id', settings.id); toast.success('Configurações salvas!'); };
     const resetRewardForm = () => setRewardForm({ name: '', description: '', points_cost: 100, reward_type: 'discount_percent', reward_value: 10, min_order_value: 0 });
     const openEditReward = (reward: LoyaltyReward) => { setEditingReward(reward); setRewardForm({ name: reward.name, description: reward.description || '', points_cost: reward.points_cost, reward_type: reward.reward_type, reward_value: reward.reward_value || 0, min_order_value: reward.min_order_value }); setShowRewardModal(true); };
 
     const getTierIcon = (tier: string) => tier === 'platinum' ? '💎' : tier === 'gold' ? '🥇' : tier === 'silver' ? '🥈' : '🥉';
     const getTierColor = (tier: string) => tier === 'platinum' ? '#a855f7' : tier === 'gold' ? '#f59e0b' : tier === 'silver' ? '#94a3b8' : '#d97706';
-    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
     const filteredCustomers = customers.filter(c => { const searchLower = searchTerm.toLowerCase(); const searchDigits = searchTerm.replace(/\D/g, ''); return c.name.toLowerCase().includes(searchLower) || c.phone.includes(searchDigits) || c.phone.includes(searchTerm); });
     const stats = { totalCustomers: customers.length, totalPoints: customers.reduce((sum, c) => sum + (c.total_points || 0), 0), avgPoints: customers.length ? Math.round(customers.reduce((sum, c) => sum + (c.total_points || 0), 0) / customers.length) : 0, totalSavings: customers.reduce((sum, c) => sum + (c.total_discount_savings || 0), 0) };
 

@@ -6,6 +6,8 @@ import { KeyboardShortcutsProvider } from "@/contexts/KeyboardShortcutsContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { EmployeeProvider } from "@/contexts/EmployeeContext";
 import { RouteGuard } from "@/components/RouteGuard";
+import { ToastProvider } from "@/components/ui/Toast";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
 const inter = Inter({
@@ -27,19 +29,23 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
       <body>
-        <AuthProvider>
-          <SubscriptionProvider>
-            <OfflineProvider>
-              <EmployeeProvider>
-                <RouteGuard>
-                  <KeyboardShortcutsProvider>
-                    {children}
-                  </KeyboardShortcutsProvider>
-                </RouteGuard>
-              </EmployeeProvider>
-            </OfflineProvider>
-          </SubscriptionProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <SubscriptionProvider>
+              <OfflineProvider>
+                <EmployeeProvider>
+                  <ToastProvider>
+                    <RouteGuard>
+                      <KeyboardShortcutsProvider>
+                        {children}
+                      </KeyboardShortcutsProvider>
+                    </RouteGuard>
+                  </ToastProvider>
+                </EmployeeProvider>
+              </OfflineProvider>
+            </SubscriptionProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

@@ -6,9 +6,11 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface CashFlowEntry {
@@ -40,6 +42,7 @@ export default function FluxoCaixaPage() {
     const [dateTo, setDateTo] = useState('');
 
     const hasAccess = canAccess('cashFlow');
+    const toast = useToast();
 
     useEffect(() => {
         const now = new Date();
@@ -85,8 +88,7 @@ export default function FluxoCaixaPage() {
         setDateTo(now.toISOString().split('T')[0]);
     };
 
-    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    const formatDate = (date: string) => new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+    const formatDateShort = (date: string) => new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
 
     const income = entries.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
     const expense = entries.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
@@ -149,7 +151,7 @@ export default function FluxoCaixaPage() {
                             <div className="flex flex-col">
                                 {dailySummaries.map(day => (
                                     <div key={day.date} className="flex items-center justify-between py-3 border-b border-border last:border-b-0">
-                                        <span className="font-medium min-w-[100px]">{formatDate(day.date)}</span>
+                                        <span className="font-medium min-w-[100px]">{formatDateShort(day.date)}</span>
                                         <div className="flex gap-4"><span className="text-sm text-[#27ae60]">+{formatCurrency(day.income)}</span><span className="text-sm text-error">-{formatCurrency(day.expense)}</span></div>
                                         <span className={cn('font-semibold min-w-[100px] text-right', day.balance >= 0 ? 'text-[#27ae60]' : 'text-error')}>{day.balance >= 0 ? '+' : ''}{formatCurrency(day.balance)}</span>
                                     </div>

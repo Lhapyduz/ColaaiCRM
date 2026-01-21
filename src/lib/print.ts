@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import React from 'react';
 import OrderReceipt from '@/components/print/OrderReceipt';
 import KitchenReceipt from '@/components/print/KitchenReceipt';
+import { formatCurrency } from '@/hooks/useFormatters';
 
 interface OrderItem {
     id: string;
@@ -143,10 +144,6 @@ function printWithNewWindow(html: string, title: string): Promise<void> {
  * Generate customer receipt HTML
  */
 function generateCustomerReceiptHTML(order: OrderData, appName: string): string {
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    };
-
     const formatDate = (date: string) => {
         return new Intl.DateTimeFormat('pt-BR', {
             day: '2-digit', month: '2-digit', year: 'numeric',

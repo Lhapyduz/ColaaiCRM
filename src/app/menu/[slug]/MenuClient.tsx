@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { FiShoppingBag, FiMinus, FiPlus, FiX, FiMessageCircle, FiUser, FiPhone, FiTag, FiCheck, FiGift } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface Category { id: string; name: string; icon: string; color: string; }
@@ -63,7 +64,7 @@ export default function MenuClient({ slug }: { slug: string }) {
         } catch { setNotFound(true); } finally { setLoading(false); }
     };
 
-    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
     const loadProductAddons = async (productId: string): Promise<AddonGroup[]> => {
         if (!settings) return [];
         const { data: groupLinks } = await supabase.from('product_addon_groups').select(`group_id,addon_groups(id,name,required,max_selection,addon_group_items(product_addons(id,name,price,available)))`).eq('product_id', productId);

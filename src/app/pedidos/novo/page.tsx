@@ -18,9 +18,11 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { logOrderCreated } from '@/lib/actionLogger';
+import { formatCurrency } from '@/hooks/useFormatters';
 import styles from './page.module.css';
 
 interface Category {
@@ -114,6 +116,7 @@ export default function NovoPedidoPage() {
     const [productAddonGroups, setProductAddonGroups] = useState<AddonGroup[]>([]);
     const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
     const [loadingAddons, setLoadingAddons] = useState(false);
+    const toast = useToast();
 
     useEffect(() => {
         if (user) {
@@ -386,12 +389,7 @@ export default function NovoPedidoPage() {
         return () => clearTimeout(timer);
     }, [customerPhone]);
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value);
-    };
+
 
     const handleSubmit = async () => {
         if (!user || !customerName || cart.length === 0) return;
@@ -627,11 +625,12 @@ export default function NovoPedidoPage() {
                 }
             }
 
+            toast.success(`Pedido #${orderNumber} criado com sucesso!`);
             router.push('/pedidos');
         } catch (error) {
             console.error('Error creating order:', error);
             const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-            alert(`Erro ao criar pedido: ${errorMessage}`);
+            toast.error(`Erro ao criar pedido: ${errorMessage}`);
         } finally {
             setSubmitting(false);
         }

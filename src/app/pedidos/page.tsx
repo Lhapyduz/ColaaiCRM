@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import {
     FiPlus,
@@ -16,8 +16,11 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { StatusBadge, PaymentMethodBadge, getStatusLabel, type OrderStatus, type PaymentMethod } from '@/components/ui/StatusBadge';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency, formatDateTime } from '@/hooks/useFormatters';
 import { openWhatsAppNotification, shouldNotifyOnStatusChange, OrderDetails } from '@/lib/whatsapp';
 import { logOrderStatusChange, logPaymentReceived } from '@/lib/actionLogger';
 import { cn } from '@/lib/utils';
@@ -56,19 +59,9 @@ export default function PedidosPage() {
     const [showDropdown, setShowDropdown] = useState<string | null>(null);
     const [showWhatsAppModal, setShowWhatsAppModal] = useState<Order | null>(null);
 
-    useEffect(() => {
-        if (user) {
-            fetchOrders();
-        }
-    }, [user, statusFilter]);
+    const toast = useToast();
 
-    const ordersMap = useMemo(() => {
-        const map = new Map<string, Order>();
-        orders.forEach(o => map.set(o.id, o));
-        return map;
-    }, [orders]);
-
-    const fetchOrders = async () => {
+    const fetchOrders = useCallback(async () => {
         if (!user) return;
 
         try {
@@ -88,10 +81,51 @@ export default function PedidosPage() {
             setOrders(data || []);
         } catch (error) {
             console.error('Error fetching orders:', error);
+            toast.error('Erro ao carregar pedidos');
         } finally {
             setLoading(false);
         }
-    };
+    }, [user, statusFilter, toast]);
+
+    // Fetch orders and setup real-time subscription
+    useEffect(() => {
+        if (user) {
+            fetchOrders();
+
+            // Subscribe to real-time updates
+            const subscription = supabase
+                .channel('orders-realtime')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'orders',
+                        filter: `user_id=eq.${user.id}`
+                    },
+                    (payload) => {
+                        if (payload.eventType === 'INSERT') {
+                            // Play notification sound for new orders
+                            const audio = new Audio('/notification.mp3');
+                            audio.play().catch(() => { });
+                            toast.info('Novo pedido recebido!');
+                        }
+                        fetchOrders();
+                    }
+                )
+                .subscribe();
+
+            return () => {
+                subscription.unsubscribe();
+            };
+        }
+    }, [user, statusFilter, fetchOrders, toast]);
+
+    const ordersMap = useMemo(() => {
+        const map = new Map<string, Order>();
+        orders.forEach(o => map.set(o.id, o));
+        return map;
+    }, [orders]);
 
     const sendWhatsAppNotification = (order: Order, newStatus: string) => {
         if (!order.customer_phone || !userSettings?.whatsapp_number) return;
@@ -135,9 +169,11 @@ export default function PedidosPage() {
                 sendWhatsAppNotification(order, newStatus);
             }
 
+            toast.success(`Status atualizado para ${getStatusLabel(newStatus)}`);
             fetchOrders();
         } catch (error) {
             console.error('Error updating order:', error);
+            toast.error('Erro ao atualizar status do pedido');
         }
         setShowDropdown(null);
         setShowWhatsAppModal(null);
@@ -211,9 +247,11 @@ export default function PedidosPage() {
                 }
             }
 
+            toast.success('Pagamento confirmado!');
             fetchOrders();
         } catch (error) {
             console.error('Error updating payment status:', error);
+            toast.error('Erro ao atualizar status de pagamento');
         }
     };
 
@@ -223,49 +261,12 @@ export default function PedidosPage() {
         try {
             await supabase.from('order_items').delete().eq('order_id', orderId);
             await supabase.from('orders').delete().eq('id', orderId);
+            toast.success('Pedido excluído');
             fetchOrders();
         } catch (error) {
             console.error('Error deleting order:', error);
+            toast.error('Erro ao excluir pedido');
         }
-    };
-
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value);
-    };
-
-    const formatDate = (date: string) => {
-        return new Intl.DateTimeFormat('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'America/Sao_Paulo'
-        }).format(new Date(date));
-    };
-
-    const getStatusLabel = (status: string) => {
-        const labels: Record<string, string> = {
-            pending: 'Aguardando',
-            preparing: 'Preparando',
-            ready: 'Pronto',
-            delivering: 'Entregando',
-            delivered: 'Entregue',
-            cancelled: 'Cancelado'
-        };
-        return labels[status] || status;
-    };
-
-    const getPaymentLabel = (method: string) => {
-        const labels: Record<string, string> = {
-            money: 'Dinheiro',
-            credit: 'Crédito',
-            debit: 'Débito',
-            pix: 'PIX'
-        };
-        return labels[method] || method;
     };
 
     const filteredOrders = orders.filter(order =>
@@ -344,17 +345,12 @@ export default function PedidosPage() {
                                             )}
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <span className={cn(
-                                                'px-3 py-1.5 rounded-full text-xs font-semibold uppercase bg-bg-tertiary',
-                                                order.status === 'pending' && 'text-warning',
-                                                order.status === 'preparing' && 'text-info',
-                                                order.status === 'ready' && 'text-accent',
-                                                order.status === 'delivering' && 'text-primary',
-                                                order.status === 'delivered' && 'text-accent',
-                                                order.status === 'cancelled' && 'text-error'
-                                            )}>
-                                                {getStatusLabel(order.status)}
-                                            </span>
+                                            <StatusBadge
+                                                status={order.status as OrderStatus}
+                                                size="md"
+                                                showIcon
+                                                pulse={order.status === 'pending'}
+                                            />
                                             <div className="relative">
                                                 <button
                                                     className="w-8 h-8 flex items-center justify-center bg-transparent border-none rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:bg-bg-tertiary hover:text-text-primary"
@@ -406,13 +402,15 @@ export default function PedidosPage() {
                                             <div className="flex flex-col items-end gap-1 max-md:items-start">
                                                 <span className="text-xs text-text-muted uppercase">Pagamento</span>
                                                 <span className="flex items-center gap-2 text-sm">
-                                                    {getPaymentLabel(order.payment_method)}
-                                                    <span className={cn(
-                                                        'px-2 py-0.5 rounded-full text-[0.7rem]',
-                                                        order.payment_status === 'paid' ? 'bg-accent/20 text-accent' : 'bg-warning/20 text-warning'
-                                                    )}>
-                                                        {order.payment_status === 'paid' ? '✓ Pago' : 'Pendente'}
-                                                    </span>
+                                                    <PaymentMethodBadge
+                                                        method={order.payment_method as PaymentMethod}
+                                                        size="xs"
+                                                    />
+                                                    <StatusBadge
+                                                        status={order.payment_status === 'paid' ? 'paid' : 'pending'}
+                                                        size="xs"
+                                                        showIcon={false}
+                                                    />
                                                     {order.payment_status === 'pending' && (
                                                         <button
                                                             className="px-2.5 py-1 ml-1.5 bg-accent border-none rounded-full text-white text-[0.7rem] font-medium cursor-pointer transition-all duration-fast hover:opacity-90 hover:-translate-y-px"
@@ -435,7 +433,7 @@ export default function PedidosPage() {
 
                                     <div className="flex items-center justify-between max-md:flex-col max-md:gap-3 max-md:items-stretch">
                                         <span className="flex items-center gap-1.5 text-sm text-text-muted">
-                                            <FiClock /> {formatDate(order.created_at)}
+                                            <FiClock /> {formatDateTime(order.created_at)}
                                         </span>
 
                                         <div className="flex gap-2 max-md:justify-end">

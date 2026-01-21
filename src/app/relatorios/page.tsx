@@ -37,9 +37,11 @@ import {
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency, formatCurrencyShort } from '@/hooks/useFormatters';
 import styles from './page.module.css';
 
 type PeriodType = 'today' | 'week' | 'month' | '30days' | 'custom';
@@ -112,6 +114,7 @@ const PAYMENT_COLORS: Record<string, string> = {
 export default function RelatoriosPage() {
     const { user } = useAuth();
     const { canAccess } = useSubscription();
+    const toast = useToast();
     const [period, setPeriod] = useState<PeriodType>('month');
     const [comparison, setComparison] = useState<ComparisonType>('previous');
     const [customStartDate, setCustomStartDate] = useState('');
@@ -414,24 +417,13 @@ export default function RelatoriosPage() {
             });
         } catch (error) {
             console.error('Error fetching report data:', error);
+            toast.error('Erro ao carregar dados do relatório');
         } finally {
             setLoading(false);
         }
     };
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value);
-    };
 
-    const formatCurrencyShort = (value: number) => {
-        if (value >= 1000) {
-            return `R$ ${(value / 1000).toFixed(1)}k`;
-        }
-        return formatCurrency(value);
-    };
 
     const getPercentChange = (current: number, previous: number) => {
         if (previous === 0) return current > 0 ? 100 : 0;

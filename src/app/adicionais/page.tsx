@@ -7,9 +7,11 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface Addon {
@@ -53,6 +55,7 @@ export default function AdicionaisPage() {
     const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
 
     const hasAccess = canAccess('addons');
+    const toast = useToast();
 
     useEffect(() => { if (user && hasAccess) fetchData(); }, [user, hasAccess]);
 
@@ -83,14 +86,15 @@ export default function AdicionaisPage() {
             const addonData = { user_id: user.id, name: addonName, price: parseFloat(addonPrice) || 0 };
             if (editingAddon) await supabase.from('product_addons').update(addonData).eq('id', editingAddon.id);
             else await supabase.from('product_addons').insert(addonData);
+            toast.success(editingAddon ? 'Adicional atualizado!' : 'Adicional criado!');
             setShowAddonModal(false); fetchData();
-        } catch (error) { console.error('Error saving addon:', error); }
+        } catch (error) { console.error('Error saving addon:', error); toast.error('Erro ao salvar adicional'); }
     };
 
     const handleDeleteAddon = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir este adicional?')) return;
-        try { await supabase.from('product_addons').delete().eq('id', id); fetchData(); }
-        catch (error) { console.error('Error deleting addon:', error); }
+        try { await supabase.from('product_addons').delete().eq('id', id); toast.success('Adicional excluído!'); fetchData(); }
+        catch (error) { console.error('Error deleting addon:', error); toast.error('Erro ao excluir adicional'); }
     };
 
     const toggleAddonAvailability = async (addon: Addon) => {
@@ -116,11 +120,11 @@ export default function AdicionaisPage() {
 
     const handleDeleteGroup = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir este grupo?')) return;
-        try { await supabase.from('addon_groups').delete().eq('id', id); fetchData(); }
-        catch (error) { console.error('Error deleting group:', error); }
+        try { await supabase.from('addon_groups').delete().eq('id', id); toast.success('Grupo excluído!'); fetchData(); }
+        catch (error) { console.error('Error deleting group:', error); toast.error('Erro ao excluir grupo'); }
     };
 
-    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
 
     const filteredAddons = addons.filter(a => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
     const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(searchTerm.toLowerCase()));

@@ -5,8 +5,10 @@ import { FiCreditCard, FiSmartphone } from 'react-icons/fi';
 import { BsCash } from 'react-icons/bs';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency, formatDate } from '@/hooks/useFormatters';
 
 interface DaySummary {
     totalOrders: number;
@@ -24,6 +26,7 @@ export default function CaixaPage() {
     });
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const toast = useToast();
 
     useEffect(() => { if (user) fetchSummary(); }, [user, selectedDate]);
 
@@ -44,13 +47,11 @@ export default function CaixaPage() {
                 };
                 setSummary({ totalOrders: orders.length, totalRevenue: paidOrders.reduce((sum, o) => sum + o.total, 0), paidOrders: paidOrders.length, pendingPayments: pendingOrders.reduce((sum, o) => sum + o.total, 0), byMethod });
             }
-        } catch (error) { console.error('Error fetching summary:', error); }
+        } catch (error) { console.error('Error fetching summary:', error); toast.error('Erro ao carregar dados'); }
         finally { setLoading(false); }
     };
 
-    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-
-    const formatDate = (dateStr: string) => {
+    const formatDateLong = (dateStr: string) => {
         const date = new Date(dateStr + 'T12:00:00');
         return new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }).format(date);
     };
@@ -73,7 +74,7 @@ export default function CaixaPage() {
                     />
                 </div>
 
-                <div className="text-lg text-text-secondary mb-6 capitalize">{isToday ? 'Hoje' : formatDate(selectedDate)}</div>
+                <div className="text-lg text-text-secondary mb-6 capitalize">{isToday ? 'Hoje' : formatDateLong(selectedDate)}</div>
 
                 {loading ? (
                     <div className="flex flex-col gap-6">

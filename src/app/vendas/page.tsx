@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FiCheck, FiX, FiChevronDown, FiChevronUp, FiShoppingBag, FiTruck, FiBarChart2, FiUsers, FiGift, FiTag, FiPackage, FiCreditCard, FiSmartphone, FiSettings, FiStar, FiZap, FiShield, FiHeadphones } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
+import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 type BillingPeriod = 'monthly' | 'annual';
@@ -71,7 +72,6 @@ export default function VendasPage() {
 
     const prices = { basic: { monthly: 49, annual: 490 }, professional: { monthly: 79, annual: 790 }, enterprise: { monthly: 149, annual: 1490 } };
     const getMonthlyPrice = (plan: 'basic' | 'professional' | 'enterprise') => billingPeriod === 'annual' ? (prices[plan].annual / 12).toFixed(2).replace('.', ',') : prices[plan].monthly.toString();
-    const formatCurrency = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const renderFeatureValue = (value: boolean | string) => typeof value === 'boolean' ? (value ? <FiCheck className="text-success" /> : <FiX className="text-error" />) : <span className="text-sm text-text-muted">{value}</span>;
 
     const jsonLd = { "@context": "https://schema.org", "@graph": [{ "@type": "Organization", "@id": "https://colaai.com.br/#organization", "name": "Cola Aí", "url": "https://colaai.com.br", "logo": { "@type": "ImageObject", "url": "https://colaai.com.br/logo.png" } }, { "@type": "WebSite", "@id": "https://colaai.com.br/#website", "url": "https://colaai.com.br", "name": "Cola Aí", "publisher": { "@id": "https://colaai.com.br/#organization" } }, { "@type": "SoftwareApplication", "name": "Cola Aí", "applicationCategory": "BusinessApplication", "operatingSystem": "Web", "offers": { "@type": "AggregateOffer", "priceCurrency": "BRL", "lowPrice": "49", "highPrice": "149", "offerCount": "3" }, "aggregateRating": { "@type": "AggregateRating", "ratingValue": "5", "ratingCount": "3", "bestRating": "5", "worstRating": "1" } }, { "@type": "FAQPage", "mainEntity": faqs.map(faq => ({ "@type": "Question", "name": faq.question, "acceptedAnswer": { "@type": "Answer", "text": faq.answer } })) }] };

@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FiClock, FiCheck, FiVolume2, FiVolumeX, FiPrinter } from 'react-icons/fi';
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { formatRelativeTime } from '@/hooks/useFormatters';
 import { printKitchenTicket } from '@/lib/print';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +56,7 @@ export default function CozinhaPage() {
     const [loading, setLoading] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const toast = useToast();
 
     useEffect(() => {
         if (user && canAccess('kitchen')) {
@@ -128,9 +131,11 @@ export default function CozinhaPage() {
         try {
             const { error } = await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId);
             if (error) throw error;
+            toast.success(newStatus === 'preparing' ? 'Preparo iniciado!' : 'Pedido marcado como pronto!');
             fetchOrders();
         } catch (error) {
             console.error('Error updating order:', error);
+            toast.error('Erro ao atualizar pedido');
         }
     };
 

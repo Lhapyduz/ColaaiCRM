@@ -7,9 +7,11 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency, formatDate } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface Coupon {
@@ -46,6 +48,7 @@ export default function CuponsPage() {
     const [formUsageLimit, setFormUsageLimit] = useState('');
     const [formValidUntil, setFormValidUntil] = useState('');
     const [formFirstOrderOnly, setFormFirstOrderOnly] = useState(false);
+    const toast = useToast();
 
     useEffect(() => { if (user && canAccess('coupons')) fetchCoupons(); }, [user, canAccess]);
 
@@ -69,15 +72,15 @@ export default function CuponsPage() {
             const couponData = { user_id: user.id, code: formCode.toUpperCase(), description: formDescription || null, discount_type: formDiscountType, discount_value: parseFloat(formDiscountValue), min_order_value: parseFloat(formMinOrderValue) || 0, max_discount: formMaxDiscount ? parseFloat(formMaxDiscount) : null, usage_limit: formUsageLimit ? parseInt(formUsageLimit) : null, valid_until: formValidUntil ? new Date(formValidUntil).toISOString() : null, first_order_only: formFirstOrderOnly };
             if (editingCoupon) await supabase.from('coupons').update(couponData).eq('id', editingCoupon.id);
             else await supabase.from('coupons').insert(couponData);
+            toast.success(editingCoupon ? 'Cupom atualizado!' : 'Cupom criado!');
             setShowModal(false); fetchCoupons();
-        } catch (error) { console.error('Error saving coupon:', error); }
+        } catch (error) { console.error('Error saving coupon:', error); toast.error('Erro ao salvar cupom'); }
     };
 
-    const handleDeleteCoupon = async (id: string) => { if (!confirm('Tem certeza que deseja excluir este cupom?')) return; try { await supabase.from('coupons').delete().eq('id', id); fetchCoupons(); } catch (error) { console.error('Error deleting coupon:', error); } };
-    const toggleCouponActive = async (coupon: Coupon) => { try { await supabase.from('coupons').update({ active: !coupon.active }).eq('id', coupon.id); fetchCoupons(); } catch (error) { console.error('Error toggling coupon:', error); } };
-    const copyCode = (code: string, id: string) => { navigator.clipboard.writeText(code); setCopiedId(id); setTimeout(() => setCopiedId(null), 2000); };
-    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    const formatDate = (date: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(date));
+    const handleDeleteCoupon = async (id: string) => { if (!confirm('Tem certeza que deseja excluir este cupom?')) return; try { await supabase.from('coupons').delete().eq('id', id); toast.success('Cupom excluído!'); fetchCoupons(); } catch (error) { console.error('Error deleting coupon:', error); toast.error('Erro ao excluir cupom'); } };
+    const toggleCouponActive = async (coupon: Coupon) => { try { await supabase.from('coupons').update({ active: !coupon.active }).eq('id', coupon.id); toast.success(coupon.active ? 'Cupom desativado!' : 'Cupom ativado!'); fetchCoupons(); } catch (error) { console.error('Error toggling coupon:', error); } };
+    const copyCode = (code: string, id: string) => { navigator.clipboard.writeText(code); setCopiedId(id); toast.success('Código copiado!'); setTimeout(() => setCopiedId(null), 2000); };
+    const formatDateShort = (date: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(date));
     const isExpired = (coupon: Coupon) => coupon.valid_until ? new Date(coupon.valid_until) < new Date() : false;
     const isLimitReached = (coupon: Coupon) => coupon.usage_limit ? coupon.usage_count >= coupon.usage_limit : false;
     const getDiscountLabel = (coupon: Coupon) => coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : formatCurrency(coupon.discount_value);
@@ -128,7 +131,7 @@ export default function CuponsPage() {
                                 <div className="flex flex-wrap gap-2">
                                     {coupon.min_order_value > 0 && <span className="px-2.5 py-1 bg-bg-tertiary rounded-full text-xs text-text-secondary">Mín: {formatCurrency(coupon.min_order_value)}</span>}
                                     {coupon.usage_limit && <span className="px-2.5 py-1 bg-bg-tertiary rounded-full text-xs text-text-secondary">{coupon.usage_count}/{coupon.usage_limit} usos</span>}
-                                    {coupon.valid_until && <span className={cn('px-2.5 py-1 bg-bg-tertiary rounded-full text-xs text-text-secondary', isExpired(coupon) && 'text-error')}>Até {formatDate(coupon.valid_until)}</span>}
+                                    {coupon.valid_until && <span className={cn('px-2.5 py-1 bg-bg-tertiary rounded-full text-xs text-text-secondary', isExpired(coupon) && 'text-error')}>Até {formatDateShort(coupon.valid_until)}</span>}
                                     {coupon.first_order_only && <span className="px-2.5 py-1 bg-bg-tertiary rounded-full text-xs text-text-secondary">Primeira compra</span>}
                                 </div>
                             </div>

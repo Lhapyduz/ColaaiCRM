@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiCopy, FiCheck, FiRefreshCw } from 'react-icons/fi';
 import { generatePixQRCode, generatePixCode, PixPayload } from '@/lib/pix';
+import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface PixQRCodeProps {
@@ -77,12 +78,7 @@ export default function PixQRCode({
         }
     };
 
-    const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value);
-    };
+
 
     if (error) {
         return (

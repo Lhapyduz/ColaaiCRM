@@ -8,9 +8,11 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import PixQRCode from '@/components/pix/PixQRCode';
+import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { printOrder, printCustomerReceipt, printKitchenTicket } from '@/lib/print';
+import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface OrderItem { id: string; product_name: string; quantity: number; unit_price: number; total: number; notes: string | null; }
@@ -25,6 +27,7 @@ export default function OrderDetailsPage() {
     const [showPrintMenu, setShowPrintMenu] = useState(false);
     const [printing, setPrinting] = useState(false);
     const appName = userSettings?.app_name || 'Cola Aí';
+    const toast = useToast();
 
     useEffect(() => { if (user && params.id) fetchOrderDetails(); }, [user, params.id]);
 
@@ -38,8 +41,7 @@ export default function OrderDetailsPage() {
         } catch (e) { console.error(e); alert('Erro ao carregar detalhes do pedido'); router.push('/pedidos'); } finally { setLoading(false); }
     };
 
-    const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-    const formatDate = (date: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).format(new Date(date));
+    const formatDateFull = (date: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).format(new Date(date));
 
     const updatePaymentStatus = async () => {
         if (!order || !user) return;
@@ -57,7 +59,8 @@ export default function OrderDetailsPage() {
                 }
             }
             setOrder({ ...order, payment_status: 'paid' });
-        } catch (e) { console.error(e); alert('Erro ao atualizar status do pagamento'); }
+            toast.success('Pagamento confirmado!');
+        } catch (e) { console.error(e); toast.error('Erro ao atualizar status do pagamento'); }
     };
 
     const getStatusLabel = (status: string) => ({ pending: 'Aguardando', preparing: 'Preparando', ready: 'Pronto', delivering: 'Entregando', delivered: 'Entregue', cancelled: 'Cancelado' }[status] || status);
@@ -76,7 +79,7 @@ export default function OrderDetailsPage() {
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
                     <button className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-tertiary text-text-secondary hover:bg-primary hover:text-white transition-all" onClick={() => router.back()}><FiArrowLeft size={20} /></button>
-                    <div className="flex-1"><h1 className="text-2xl font-bold">Pedido #{order.order_number}</h1><p className="text-text-secondary flex items-center gap-1"><FiClock size={14} /> {formatDate(order.created_at)}</p></div>
+                    <div className="flex-1"><h1 className="text-2xl font-bold">Pedido #{order.order_number}</h1><p className="text-text-secondary flex items-center gap-1"><FiClock size={14} /> {formatDateFull(order.created_at)}</p></div>
                     <div className="relative">
                         <Button variant="secondary" leftIcon={<FiPrinter />} rightIcon={<FiChevronDown />} onClick={() => setShowPrintMenu(!showPrintMenu)} disabled={printing}>{printing ? 'Imprimindo...' : 'Imprimir'}</Button>
                         {showPrintMenu && (
