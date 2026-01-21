@@ -112,7 +112,7 @@ function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableN
             {...listeners}
             href={item.href}
             className={cn(
-                'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem] touch-none',
+                'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                 'hover:bg-bg-tertiary hover:text-text-primary',
                 isActive && 'bg-primary/10 text-primary',
                 isDragging && 'opacity-50 bg-bg-tertiary',

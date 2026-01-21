@@ -271,9 +271,7 @@
     touch-action: pan-y;
 }
 
-.navItem {
-    touch-action: none;
-}
+/* Touch-handling is managed via dnd-kit's TouchSensor delay */
 
 /* Brand info container */
 .brandInfo {
