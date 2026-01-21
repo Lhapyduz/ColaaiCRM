@@ -156,7 +156,7 @@ export default function AdicionaisPage() {
 
                 {/* Content */}
                 {loading ? (
-                    <div className="flex flex-col gap-3">{[1, 2, 3].map(i => <div key={i} className="h-[70px] rounded-[10px] bg-bg-tertiary animate-pulse" />)}</div>
+                    <div className="flex flex-col gap-3">{[1, 2, 3].map(i => <div key={i} className="h-header rounded-md bg-bg-tertiary animate-pulse" />)}</div>
                 ) : activeTab === 'addons' ? (
                     <div className="flex flex-col gap-3">
                         {filteredAddons.length > 0 ? filteredAddons.map((addon) => (

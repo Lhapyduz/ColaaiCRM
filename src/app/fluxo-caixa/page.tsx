@@ -133,11 +133,11 @@ export default function FluxoCaixaPage() {
                         <div className="flex flex-col"><span className="text-[0.8125rem] text-text-muted mb-1">Entradas</span><span className="text-2xl font-bold text-[#27ae60]">{formatCurrency(totals.income)}</span></div>
                     </Card>
                     <Card className="flex items-center gap-4 p-6!">
-                        <div className="w-12 h-12 flex items-center justify-center rounded-md text-2xl bg-[#e74c3c]/10 text-[#e74c3c]"><FiTrendingDown /></div>
-                        <div className="flex flex-col"><span className="text-[0.8125rem] text-text-muted mb-1">Saídas</span><span className="text-2xl font-bold text-[#e74c3c]">{formatCurrency(totals.expense)}</span></div>
+                        <div className="w-12 h-12 flex items-center justify-center rounded-md text-2xl bg-error/10 text-error"><FiTrendingDown /></div>
+                        <div className="flex flex-col"><span className="text-[0.8125rem] text-text-muted mb-1">Saídas</span><span className="text-2xl font-bold text-error">{formatCurrency(totals.expense)}</span></div>
                     </Card>
                     <Card className="flex items-center gap-4 p-6!">
-                        <div className="flex flex-col"><span className="text-[0.8125rem] text-text-muted mb-1">Saldo do Período</span><span className={cn('text-2xl font-bold', totals.balance >= 0 ? 'text-[#27ae60]' : 'text-[#e74c3c]')}>{totals.balance >= 0 ? '+' : ''}{formatCurrency(totals.balance)}</span></div>
+                        <div className="flex flex-col"><span className="text-[0.8125rem] text-text-muted mb-1">Saldo do Período</span><span className={cn('text-2xl font-bold', totals.balance >= 0 ? 'text-[#27ae60]' : 'text-error')}>{totals.balance >= 0 ? '+' : ''}{formatCurrency(totals.balance)}</span></div>
                     </Card>
                 </div>
 
@@ -150,8 +150,8 @@ export default function FluxoCaixaPage() {
                                 {dailySummaries.map(day => (
                                     <div key={day.date} className="flex items-center justify-between py-3 border-b border-border last:border-b-0">
                                         <span className="font-medium min-w-[100px]">{formatDate(day.date)}</span>
-                                        <div className="flex gap-4"><span className="text-sm text-[#27ae60]">+{formatCurrency(day.income)}</span><span className="text-sm text-[#e74c3c]">-{formatCurrency(day.expense)}</span></div>
-                                        <span className={cn('font-semibold min-w-[100px] text-right', day.balance >= 0 ? 'text-[#27ae60]' : 'text-[#e74c3c]')}>{day.balance >= 0 ? '+' : ''}{formatCurrency(day.balance)}</span>
+                                        <div className="flex gap-4"><span className="text-sm text-[#27ae60]">+{formatCurrency(day.income)}</span><span className="text-sm text-error">-{formatCurrency(day.expense)}</span></div>
+                                        <span className={cn('font-semibold min-w-[100px] text-right', day.balance >= 0 ? 'text-[#27ae60]' : 'text-error')}>{day.balance >= 0 ? '+' : ''}{formatCurrency(day.balance)}</span>
                                     </div>
                                 ))}
                             </div>
@@ -180,12 +180,12 @@ export default function FluxoCaixaPage() {
                         <div className="flex flex-col">
                             {entries.map(entry => (
                                 <div key={entry.id} className="grid grid-cols-[40px_1fr_120px_120px] items-center gap-4 py-3 border-b border-border last:border-b-0 max-md:grid-cols-[40px_1fr_80px]">
-                                    <div className={cn('w-9 h-9 flex items-center justify-center rounded-full text-base', entry.type === 'income' ? 'bg-[#27ae60]/10 text-[#27ae60]' : 'bg-[#e74c3c]/10 text-[#e74c3c]')}>
+                                    <div className={cn('w-9 h-9 flex items-center justify-center rounded-full text-base', entry.type === 'income' ? 'bg-[#27ae60]/10 text-[#27ae60]' : 'bg-error/10 text-error')}>
                                         {entry.type === 'income' ? <FiTrendingUp /> : <FiTrendingDown />}
                                     </div>
                                     <div className="flex flex-col gap-0.5"><span className="font-medium">{entry.description}</span><span className="text-xs text-text-muted">{entry.category}</span></div>
                                     <div className="flex flex-col items-end max-md:hidden"><span className="text-[0.8125rem]">{new Date(entry.transaction_date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>{entry.payment_method && <span className="text-xs text-text-muted">{entry.payment_method}</span>}</div>
-                                    <span className={cn('font-semibold text-right', entry.type === 'income' ? 'text-[#27ae60]' : 'text-[#e74c3c]')}>{entry.type === 'income' ? '+' : '-'}{formatCurrency(entry.amount)}</span>
+                                    <span className={cn('font-semibold text-right', entry.type === 'income' ? 'text-[#27ae60]' : 'text-error')}>{entry.type === 'income' ? '+' : '-'}{formatCurrency(entry.amount)}</span>
                                 </div>
                             ))}
                         </div>
