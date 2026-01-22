@@ -49,12 +49,13 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     const { user, loading: authLoading } = useAuth();
     const { activeEmployee, hasPermission, isLocked, loading: employeeLoading } = useEmployee();
     const { isBlocked, loading: subscriptionLoading } = useSubscription();
-    const [authorized, setAuthorized] = useState(false);
-    const [checking, setChecking] = useState(true);
+    const [authorized, setAuthorized] = useState(true); // Default to true to prevent flash
+    const [isInitialCheck, setIsInitialCheck] = useState(true); // Only show loading on initial load
 
     const isPathAllowedWhenExpired = ALLOWED_WHEN_EXPIRED.some(route => pathname.startsWith(route));
 
     useEffect(() => {
+        // Don't check if still loading auth/employee
         if (authLoading || employeeLoading) return;
 
         if (!user) {
@@ -63,7 +64,7 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
         }
 
         if (isLocked) {
-            setChecking(false);
+            setIsInitialCheck(false);
             setAuthorized(false);
             return;
         }
@@ -72,13 +73,13 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
 
         if (!permission) {
             setAuthorized(true);
-            setChecking(false);
+            setIsInitialCheck(false);
             return;
         }
 
         if (!activeEmployee) {
             setAuthorized(true);
-            setChecking(false);
+            setIsInitialCheck(false);
             return;
         }
 
@@ -86,19 +87,20 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
         if (roleSpecific) {
             if (roleSpecific.includes(activeEmployee.role)) {
                 setAuthorized(true);
-                setChecking(false);
+                setIsInitialCheck(false);
                 return;
             }
         }
 
         const canAccess = hasPermission(permission);
         setAuthorized(canAccess);
-        setChecking(false);
+        setIsInitialCheck(false);
 
     }, [user, authLoading, employeeLoading, activeEmployee, isLocked, pathname, requiredPermission, hasPermission, router]);
 
-    // Still loading
-    if (authLoading || employeeLoading || subscriptionLoading || checking) {
+    // Only show loading on initial page load, not on subsequent navigations
+    // This prevents the "flash" when clicking sidebar items
+    if (isInitialCheck && (authLoading || employeeLoading || subscriptionLoading)) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-text-secondary">
                 <div className="w-10 h-10 border-[3px] border-border border-t-primary rounded-full animate-spin" />

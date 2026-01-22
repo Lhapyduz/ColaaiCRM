@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -97,10 +97,11 @@ function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableN
         isDragging,
     } = useSortable({ id: item.href });
 
-    const style = {
+    // Only apply transform/transition during active drag to prevent flash on reorder
+    const style = isDragging || transform ? {
         transform: CSS.Transform.toString(transform),
         transition,
-    };
+    } : undefined;
 
     const Icon = item.icon;
 
@@ -112,7 +113,7 @@ function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableN
             {...listeners}
             href={item.href}
             className={cn(
-                'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-colors duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                 'hover:bg-bg-tertiary hover:text-text-primary',
                 isActive && 'bg-primary/10 text-primary',
                 isDragging && 'opacity-50 bg-bg-tertiary',
@@ -157,8 +158,9 @@ export default function Sidebar() {
     const [showPinPad, setShowPinPad] = useState(false);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isMounted, setIsMounted] = useState(false);
-    const [orderedItems, setOrderedItems] = useState<MenuItem[]>(MENU_ITEMS);
-    const [previousOrder, setPreviousOrder] = useState<MenuItem[]>(MENU_ITEMS);
+    // Temporary local override during drag operations - cleared after context syncs
+    const [localOrderOverride, setLocalOrderOverride] = useState<MenuItem[] | null>(null);
+    const navRef = useRef<HTMLElement>(null);
     const pathname = usePathname();
     const { userSettings, signOut, updateSettings } = useAuth();
     const { setShowHelp } = useKeyboardShortcuts();
@@ -168,26 +170,70 @@ export default function Sidebar() {
 
     const appName = userSettings?.app_name || 'Cola Aí';
 
-    // Hydration safety - only enable DnD after mount
-    useEffect(() => {
-        setIsMounted(true);
-    }, []);
-
-    // Apply saved order from userSettings
-    useEffect(() => {
+    // Derive ordered items from userSettings (source of truth)
+    const contextOrderedItems = useMemo(() => {
         if (userSettings?.sidebar_order && userSettings.sidebar_order.length > 0) {
             const savedOrder = userSettings.sidebar_order;
             const reordered = savedOrder
                 .map((href: string) => MENU_ITEMS.find(item => item.href === href))
                 .filter((item): item is MenuItem => item !== undefined);
 
+            // Add any new menu items that weren't in the saved order
             const missingItems = MENU_ITEMS.filter(
                 item => !savedOrder.includes(item.href)
             );
 
-            setOrderedItems([...reordered, ...missingItems]);
+            return [...reordered, ...missingItems];
         }
+        return MENU_ITEMS;
     }, [userSettings?.sidebar_order]);
+
+    // Use local override during drag, otherwise use context-derived order
+    const orderedItems = localOrderOverride ?? contextOrderedItems;
+
+    // Clear local override only when context has synced with our changes
+    useEffect(() => {
+        if (!localOrderOverride) return;
+
+        // Only clear the override if context now matches our saved order
+        const contextOrder = userSettings?.sidebar_order;
+        if (contextOrder && contextOrder.length > 0) {
+            const overrideHrefs = localOrderOverride.map(item => item.href);
+            const contextHrefs = contextOrder as string[];
+
+            // Check if orders match (context has synced with our save)
+            const ordersMatch = overrideHrefs.length === contextHrefs.length &&
+                overrideHrefs.every((href, index) => href === contextHrefs[index]);
+
+            if (ordersMatch) {
+                setLocalOrderOverride(null);
+            }
+        }
+    }, [userSettings?.sidebar_order, localOrderOverride]);
+
+    // Hydration safety - only enable DnD after mount
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+    // Preserve sidebar scroll position across navigations
+    useEffect(() => {
+        const nav = navRef.current;
+        if (!nav) return;
+
+        // Restore scroll position on mount/navigation
+        const savedScroll = sessionStorage.getItem('sidebar-scroll');
+        if (savedScroll) {
+            nav.scrollTop = parseInt(savedScroll, 10);
+        }
+
+        // Save scroll position before navigation
+        const handleScroll = () => {
+            sessionStorage.setItem('sidebar-scroll', String(nav.scrollTop));
+        };
+
+        nav.addEventListener('scroll', handleScroll);
+        return () => nav.removeEventListener('scroll', handleScroll);
+    }, [pathname]);
 
     // Configure sensors for drag and drop
     const sensors = useSensors(
@@ -247,7 +293,6 @@ export default function Sidebar() {
 
     const handleDragStart = (event: DragStartEvent) => {
         setActiveId(event.active.id as string);
-        setPreviousOrder([...orderedItems]);
     };
 
     const handleDragEnd = async (event: DragEndEvent) => {
@@ -255,11 +300,14 @@ export default function Sidebar() {
         setActiveId(null);
 
         if (over && active.id !== over.id) {
-            const oldIndex = orderedItems.findIndex(item => item.href === active.id);
-            const newIndex = orderedItems.findIndex(item => item.href === over.id);
+            const currentOrder = localOrderOverride ?? contextOrderedItems;
+            const oldIndex = currentOrder.findIndex(item => item.href === active.id);
+            const newIndex = currentOrder.findIndex(item => item.href === over.id);
 
-            const newOrder = arrayMove(orderedItems, oldIndex, newIndex);
-            setOrderedItems(newOrder);
+            const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
+
+            // Set local override immediately for smooth UX
+            setLocalOrderOverride(newOrder);
 
             try {
                 const newOrderHrefs = newOrder.map(item => item.href);
@@ -267,11 +315,14 @@ export default function Sidebar() {
 
                 if (error) {
                     console.error('Error saving sidebar order:', error);
-                    setOrderedItems(previousOrder);
+                    // Rollback: clear override to revert to context
+                    setLocalOrderOverride(null);
                 }
+                // On success, the useEffect will clear override when context syncs
             } catch (error) {
                 console.error('Error saving sidebar order:', error);
-                setOrderedItems(previousOrder);
+                // Rollback: clear override to revert to context
+                setLocalOrderOverride(null);
             }
         }
     };
@@ -301,6 +352,7 @@ export default function Sidebar() {
             <button
                 className="hidden max-md:flex fixed top-4 left-4 w-11 h-11 bg-bg-card border border-border rounded-md text-text-primary text-xl items-center justify-center cursor-pointer z-sticky"
                 onClick={() => setMobileOpen(!mobileOpen)}
+                aria-label={mobileOpen ? 'Fechar menu' : 'Abrir menu'}
             >
                 <FiMenu />
             </button>
@@ -325,7 +377,8 @@ export default function Sidebar() {
                         {userSettings?.logo_url ? (
                             <img
                                 src={userSettings.logo_url}
-                                alt={appName}
+                                alt=""
+                                aria-hidden="true"
                                 className="w-10 h-10 rounded-md object-cover"
                             />
                         ) : (
@@ -347,7 +400,10 @@ export default function Sidebar() {
                 </div>
 
                 {/* Navigation with Drag and Drop */}
-                <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto overscroll-contain touch-pan-y">
+                <nav
+                    ref={navRef}
+                    className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto overscroll-contain touch-pan-y"
+                >
                     {isMounted ? (
                         <DndContext
                             sensors={sensors}
@@ -481,7 +537,7 @@ export default function Sidebar() {
                         {!collapsed && (
                             <span className="flex items-center justify-between gap-2 flex-1 whitespace-nowrap overflow-hidden">
                                 Atalhos
-                                <kbd className="font-mono text-[0.6875rem] px-1.5 py-0.5 bg-bg-tertiary border border-border rounded text-text-muted ml-auto">Ctrl+/</kbd>
+                                <kbd className="font-mono text-[0.6875rem] px-1.5 py-0.5 bg-bg-tertiary border border-border rounded text-text-secondary ml-auto">Ctrl+/</kbd>
                             </span>
                         )}
                     </button>
@@ -491,6 +547,7 @@ export default function Sidebar() {
                 <button
                     className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-bg-secondary border border-border rounded-full flex items-center justify-center text-text-secondary cursor-pointer transition-all duration-fast z-10 hover:bg-bg-tertiary hover:text-text-primary max-md:hidden"
                     onClick={() => setCollapsed(!collapsed)}
+                    aria-label={collapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
                 >
                     {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
                 </button>
