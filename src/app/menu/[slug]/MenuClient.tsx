@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { FiShoppingBag, FiMinus, FiPlus, FiX, FiMessageCircle, FiUser, FiPhone, FiTag, FiCheck, FiGift } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
+import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
 
 interface Category { id: string; name: string; icon: string; color: string; }
@@ -17,11 +18,30 @@ interface Customer { id: string; phone: string; name: string; total_points: numb
 interface LoyaltySettings { points_per_real: number; is_active: boolean; }
 interface AppSettings { loyalty_enabled: boolean; coupons_enabled: boolean; }
 
-export default function MenuClient({ slug }: { slug: string }) {
-    const [settings, setSettings] = useState<UserSettings | null>(null);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
+interface MenuClientProps {
+    slug: string;
+    initialSettings?: UserSettings | null;
+    initialCategories?: Category[];
+    initialProducts?: Product[];
+    initialAppSettings?: AppSettings | null;
+    initialLoyaltySettings?: LoyaltySettings | null;
+}
+
+export default function MenuClient({
+    slug,
+    initialSettings = null,
+    initialCategories = [],
+    initialProducts = [],
+    initialAppSettings = null,
+    initialLoyaltySettings = null
+}: MenuClientProps) {
+    // Use initial data from SSR if available, otherwise start with empty/loading state
+    const hasInitialData = initialSettings !== null;
+
+    const [settings, setSettings] = useState<UserSettings | null>(initialSettings);
+    const [categories, setCategories] = useState<Category[]>(initialCategories);
+    const [products, setProducts] = useState<Product[]>(initialProducts);
+    const [loading, setLoading] = useState(!hasInitialData);
     const [notFound, setNotFound] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [cart, setCart] = useState<CartItem[]>([]);
@@ -39,13 +59,34 @@ export default function MenuClient({ slug }: { slug: string }) {
     const [couponCode, setCouponCode] = useState('');
     const [couponError, setCouponError] = useState('');
     const [couponLoading, setCouponLoading] = useState(false);
-    const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
-    const [couponsEnabled, setCouponsEnabled] = useState(false);
+    const [loyaltyEnabled, setLoyaltyEnabled] = useState(initialAppSettings?.loyalty_enabled ?? false);
+    const [couponsEnabled, setCouponsEnabled] = useState(initialAppSettings?.coupons_enabled ?? false);
     const [customerData, setCustomerData] = useState<Customer | null>(null);
-    const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(null);
+    const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(initialLoyaltySettings);
 
-    useEffect(() => { fetchMenuData(); }, [slug]);
-    useEffect(() => { if (settings) { document.documentElement.style.setProperty('--menu-primary', settings.primary_color); document.documentElement.style.setProperty('--menu-secondary', settings.secondary_color); } }, [settings]);
+    // Debounce phone for customer lookup
+    const debouncedPhone = useDebounce(customerPhone, 500);
+
+    // Only fetch data client-side if SSR data wasn't provided
+    useEffect(() => {
+        if (!hasInitialData) {
+            fetchMenuData();
+        }
+    }, [slug, hasInitialData]);
+
+    useEffect(() => {
+        if (settings) {
+            document.documentElement.style.setProperty('--menu-primary', settings.primary_color);
+            document.documentElement.style.setProperty('--menu-secondary', settings.secondary_color);
+        }
+    }, [settings]);
+
+    // Debounced customer lookup
+    useEffect(() => {
+        if (debouncedPhone && debouncedPhone.length >= 10 && settings) {
+            lookupCustomer(debouncedPhone);
+        }
+    }, [debouncedPhone, settings]);
 
     const fetchMenuData = async () => {
         try {
