@@ -108,10 +108,80 @@ export default function MenuClient({
 
     const loadProductAddons = async (productId: string): Promise<AddonGroup[]> => {
         if (!settings) return [];
-        const { data: groupLinks } = await supabase.from('product_addon_groups').select(`group_id,addon_groups(id,name,required,max_selection,addon_group_items(product_addons(id,name,price,available)))`).eq('product_id', productId);
-        if (!groupLinks) return [];
-        return groupLinks.filter((link: any) => link.addon_groups).map((link: any) => ({ id: link.addon_groups.id, name: link.addon_groups.name, required: link.addon_groups.required, max_selection: link.addon_groups.max_selection, addons: (link.addon_groups.addon_group_items || []).filter((item: any) => item.product_addons?.available).map((item: any) => ({ id: item.product_addons.id, name: item.product_addons.name, price: item.product_addons.price })) })).filter((g: AddonGroup) => g.addons.length > 0);
+
+        try {
+            const { data: groupLinks, error } = await supabase
+                .from('product_addon_groups')
+                .select(`
+                    group_id,
+                    addon_groups(
+                        id,
+                        name,
+                        required,
+                        max_selection,
+                        addon_group_items(
+                            product_addons(id,name,price,available)
+                        )
+                    )
+                `)
+                .eq('product_id', productId);
+
+            // Handle error or empty response
+            if (error || !groupLinks || !Array.isArray(groupLinks)) {
+                console.warn('Failed to load addons:', error);
+                return [];
+            }
+
+            // Process each group link with proper null checks
+            const processedGroups: AddonGroup[] = [];
+
+            for (const link of groupLinks) {
+                // Skip if addon_groups is null/undefined
+                if (!link?.addon_groups) continue;
+
+                // Cast to any because Supabase types for nested joins can be incorrect
+                const group = link.addon_groups as any;
+
+                // Skip if required properties are missing
+                if (!group.id || !group.name) continue;
+
+                // Safely process addon items
+                const addonItems = group.addon_group_items;
+                const addons: Addon[] = [];
+
+                if (Array.isArray(addonItems)) {
+                    for (const item of addonItems) {
+                        const addon = item?.product_addons;
+                        // Only add if addon exists, is available, and has required fields
+                        if (addon && addon.available && addon.id && addon.name != null) {
+                            addons.push({
+                                id: addon.id,
+                                name: addon.name,
+                                price: addon.price ?? 0
+                            });
+                        }
+                    }
+                }
+
+                // Only add groups that have at least one addon
+                if (addons.length > 0) {
+                    processedGroups.push({
+                        id: group.id,
+                        name: group.name,
+                        required: group.required ?? false,
+                        max_selection: group.max_selection ?? 1,
+                        addons
+                    });
+                }
+            }
+
+            return processedGroups;
+        } catch (err) {
+            console.error('Error loading product addons:', err);
+            return [];
+        }
     };
+
     const handleAddToCart = async (product: Product) => { setLoadingAddons(true); const addonGroups = await loadProductAddons(product.id); setLoadingAddons(false); if (addonGroups.length > 0) { setPendingProduct(product); setProductAddonGroups(addonGroups); setSelectedAddons([]); setShowAddonModal(true); } else { addToCart(product, []); } };
     const toggleAddon = (addon: Addon) => { setSelectedAddons(prev => { const exists = prev.find(a => a.id === addon.id); return exists ? prev.filter(a => a.id !== addon.id) : [...prev, { id: addon.id, name: addon.name, price: addon.price }]; }); };
     const confirmAddToCart = () => { if (pendingProduct) { addToCart(pendingProduct, selectedAddons); setShowAddonModal(false); setPendingProduct(null); setProductAddonGroups([]); setSelectedAddons([]); } };
