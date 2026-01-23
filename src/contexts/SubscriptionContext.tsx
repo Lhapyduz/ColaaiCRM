@@ -25,19 +25,22 @@ export interface Subscription {
 // Plan features and limits configuration
 const PLAN_LIMITS = {
     Basico: {
-        products: 30,
+        products: 25,
         categories: 5,
         employees: 1,
+        addons: 5,
     },
     Avançado: {
         products: 100,
         categories: 15,
         employees: 5,
+        addons: Infinity,
     },
     Profissional: {
         products: Infinity,
         categories: Infinity,
         employees: Infinity,
+        addons: Infinity,
     }
 };
 
@@ -52,14 +55,14 @@ const PLAN_FEATURES = {
         inventory: false,
         loyalty: false,
         coupons: false,
-        reports: 'basic',
+        reports: false,         // Relatórios desabilitados no plano Básico
         exportPdf: false,
         salesPrediction: false,
         digitalMenu: false,
         customization: 'basic',
         bills: false,           // Contas a Pagar/Receber
         cashFlow: false,        // Fluxo de Caixa
-        addons: false,          // Adicionais de produtos
+        addons: true,           // Adicionais habilitados (com limite de 5)
         actionHistory: false,   // Histórico de ações
     },
     Avançado: {

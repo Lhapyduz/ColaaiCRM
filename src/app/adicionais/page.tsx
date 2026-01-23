@@ -6,7 +6,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import UpgradePrompt from '@/components/ui/UpgradePrompt';
+import UpgradePrompt, { LimitWarning } from '@/components/ui/UpgradePrompt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -33,7 +33,7 @@ interface AddonGroup {
 
 export default function AdicionaisPage() {
     const { user } = useAuth();
-    const { canAccess, plan } = useSubscription();
+    const { canAccess, plan, getLimit, isWithinLimit } = useSubscription();
     const [addons, setAddons] = useState<Addon[]>([]);
     const [groups, setGroups] = useState<AddonGroup[]>([]);
     const [loading, setLoading] = useState(true);
@@ -57,11 +57,7 @@ export default function AdicionaisPage() {
     const hasAccess = canAccess('addons');
     const toast = useToast();
 
-    useEffect(() => { if (user && hasAccess) fetchData(); }, [user, hasAccess]);
-
-    if (!hasAccess) {
-        return (<MainLayout><UpgradePrompt feature="Adicionais de Produtos" requiredPlan="Avançado" currentPlan={plan} fullPage /></MainLayout>);
-    }
+    useEffect(() => { if (user) fetchData(); }, [user]);
 
     const fetchData = async () => {
         if (!user) return;
@@ -77,7 +73,13 @@ export default function AdicionaisPage() {
         finally { setLoading(false); }
     };
 
-    const openAddAddonModal = () => { setEditingAddon(null); setAddonName(''); setAddonPrice(''); setShowAddonModal(true); };
+    const addonsLimit = getLimit('addons');
+    const isAtLimit = !isWithinLimit('addons', addons.length);
+
+    const openAddAddonModal = () => {
+        if (isAtLimit) { alert(`Limite de ${addonsLimit} adicionais atingido! Faça upgrade do seu plano para adicionar mais.`); return; }
+        setEditingAddon(null); setAddonName(''); setAddonPrice(''); setShowAddonModal(true);
+    };
     const openEditAddonModal = (addon: Addon) => { setEditingAddon(addon); setAddonName(addon.name); setAddonPrice(addon.price.toString()); setShowAddonModal(true); };
 
     const handleSaveAddon = async () => {
@@ -133,15 +135,21 @@ export default function AdicionaisPage() {
         <MainLayout>
             <div className="max-w-[1200px] mx-auto">
                 {/* Header */}
-                <div className="flex items-start justify-between mb-6 gap-5 max-md:flex-col">
+                <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
                     <div>
                         <h1 className="text-[2rem] font-bold mb-2">Adicionais</h1>
                         <p className="text-text-secondary">Gerencie extras e complementos para seus produtos</p>
                     </div>
-                    <Button leftIcon={<FiPlus />} onClick={activeTab === 'addons' ? openAddAddonModal : openAddGroupModal}>
+                    <Button
+                        leftIcon={<FiPlus />}
+                        onClick={activeTab === 'addons' ? openAddAddonModal : openAddGroupModal}
+                        disabled={activeTab === 'addons' && isAtLimit}
+                    >
                         {activeTab === 'addons' ? 'Novo Adicional' : 'Novo Grupo'}
                     </Button>
                 </div>
+
+                <LimitWarning resource="adicionais" current={addons.length} limit={addonsLimit} requiredPlan="Avançado" />
 
                 {/* Tabs */}
                 <div className="flex gap-2 mb-6 max-md:w-full">

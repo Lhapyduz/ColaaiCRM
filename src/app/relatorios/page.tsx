@@ -37,6 +37,7 @@ import {
 import MainLayout from '@/components/layout/MainLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
@@ -113,7 +114,7 @@ const PAYMENT_COLORS: Record<string, string> = {
 
 export default function RelatoriosPage() {
     const { user } = useAuth();
-    const { canAccess } = useSubscription();
+    const { canAccess, plan } = useSubscription();
     const toast = useToast();
     const [period, setPeriod] = useState<PeriodType>('month');
     const [comparison, setComparison] = useState<ComparisonType>('previous');
@@ -556,6 +557,20 @@ export default function RelatoriosPage() {
         }
         return null;
     };
+
+    // Check if user has access to reports
+    if (!canAccess('reports')) {
+        return (
+            <MainLayout>
+                <UpgradePrompt
+                    feature="Relatórios"
+                    requiredPlan="Avançado"
+                    currentPlan={plan}
+                    fullPage
+                />
+            </MainLayout>
+        );
+    }
 
     return (
         <MainLayout>
