@@ -3,6 +3,8 @@
 import React, { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext';
+import { cn } from '@/lib/utils';
 import RouteGuard from '@/components/auth/RouteGuard';
 import Sidebar from './Sidebar';
 
@@ -10,9 +12,30 @@ interface MainLayoutProps {
     children: ReactNode;
 }
 
+function MainLayoutContent({ children }: MainLayoutProps) {
+    const { collapsed, isHydrated } = useSidebar();
+    const pathname = usePathname();
+
+    return (
+        <div className="flex min-h-screen">
+            <Sidebar />
+            <main className={cn(
+                "flex-1 p-6 bg-bg-primary will-change-[margin-left]",
+                // Only enable transitions after hydration to prevent FOUC
+                isHydrated ? "transition-[margin-left] duration-normal" : "",
+                "max-md:ml-0 max-md:pt-20 max-md:px-4 max-md:pb-4",
+                collapsed ? "ml-sidebar-collapsed" : "ml-sidebar"
+            )}>
+                <RouteGuard pathname={pathname}>
+                    {children}
+                </RouteGuard>
+            </main>
+        </div>
+    );
+}
+
 export default function MainLayout({ children }: MainLayoutProps) {
     const { loading } = useAuth();
-    const pathname = usePathname();
 
     if (loading) {
         return (
@@ -26,13 +49,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
     }
 
     return (
-        <div className="flex min-h-screen">
-            <Sidebar />
-            <main className="flex-1 ml-sidebar p-6 transition-[margin-left] duration-normal bg-bg-primary max-md:ml-0 max-md:pt-20 max-md:px-4 max-md:pb-4">
-                <RouteGuard pathname={pathname}>
-                    {children}
-                </RouteGuard>
-            </main>
-        </div>
+        <SidebarProvider>
+            <MainLayoutContent>{children}</MainLayoutContent>
+        </SidebarProvider>
     );
 }
+

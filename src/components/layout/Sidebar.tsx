@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -50,6 +50,7 @@ import {
 import { GiCookingPot } from 'react-icons/gi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
+import { useSidebar } from '@/contexts/SidebarContext';
 import PinPadModal from '@/components/auth/PinPadModal';
 import { cn } from '@/lib/utils';
 
@@ -112,6 +113,7 @@ function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableN
             {...attributes}
             {...listeners}
             href={item.href}
+            scroll={false}
             className={cn(
                 'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-colors duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                 'hover:bg-bg-tertiary hover:text-text-primary',
@@ -153,7 +155,7 @@ function OverlayItem({ item, collapsed }: OverlayItemProps) {
 }
 
 export default function Sidebar() {
-    const [collapsed, setCollapsed] = useState(false);
+    const { collapsed, isHydrated, toggleCollapsed } = useSidebar();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [showPinPad, setShowPinPad] = useState(false);
     const [activeId, setActiveId] = useState<string | null>(null);
@@ -215,25 +217,39 @@ export default function Sidebar() {
     useEffect(() => {
         setIsMounted(true);
     }, []);
-    // Preserve sidebar scroll position across navigations
-    useEffect(() => {
+
+    // Restore scroll position synchronously before paint using useLayoutEffect
+    useLayoutEffect(() => {
         const nav = navRef.current;
         if (!nav) return;
 
-        // Restore scroll position on mount/navigation
+        // Restore scroll position immediately (before browser paints)
         const savedScroll = sessionStorage.getItem('sidebar-scroll');
         if (savedScroll) {
             nav.scrollTop = parseInt(savedScroll, 10);
         }
+    }, [pathname]);
 
-        // Save scroll position before navigation
+    // Save scroll position on scroll (separate effect to avoid re-running restore)
+    useEffect(() => {
+        const nav = navRef.current;
+        if (!nav) return;
+
+        // Save scroll position on scroll (debounced)
+        let scrollTimeout: NodeJS.Timeout;
         const handleScroll = () => {
-            sessionStorage.setItem('sidebar-scroll', String(nav.scrollTop));
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                sessionStorage.setItem('sidebar-scroll', String(nav.scrollTop));
+            }, 50);
         };
 
-        nav.addEventListener('scroll', handleScroll);
-        return () => nav.removeEventListener('scroll', handleScroll);
-    }, [pathname]);
+        nav.addEventListener('scroll', handleScroll, { passive: true });
+        return () => {
+            nav.removeEventListener('scroll', handleScroll);
+            clearTimeout(scrollTimeout);
+        };
+    }, []);
 
     // Configure sensors for drag and drop
     const sensors = useSensors(
@@ -365,12 +381,16 @@ export default function Sidebar() {
                 />
             )}
 
-            <aside className={cn(
-                'fixed top-0 left-0 h-screen w-sidebar bg-bg-secondary border-r border-border flex flex-col z-sticky transition-[width] duration-normal',
-                collapsed && 'w-sidebar-collapsed',
-                'max-md:-translate-x-full max-md:w-sidebar',
-                mobileOpen && 'max-md:translate-x-0'
-            )}>
+            <aside
+                className={cn(
+                    'fixed top-0 left-0 h-screen bg-bg-secondary border-r border-border flex flex-col z-sticky will-change-[width]',
+                    // Only enable transitions after hydration to prevent FOUC
+                    isHydrated ? 'transition-[width] duration-normal' : '',
+                    collapsed ? 'w-sidebar-collapsed' : 'w-sidebar',
+                    'max-md:-translate-x-full max-md:w-sidebar max-md:transition-transform',
+                    mobileOpen && 'max-md:translate-x-0'
+                )}
+            >
                 {/* Header */}
                 <div className="p-5 border-b border-border">
                     <Link href="/dashboard" className="flex items-center gap-3 no-underline">
@@ -402,7 +422,8 @@ export default function Sidebar() {
                 {/* Navigation with Drag and Drop */}
                 <nav
                     ref={navRef}
-                    className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto overscroll-contain touch-pan-y"
+                    className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto overscroll-contain touch-pan-y scroll-smooth scrollbar-stable"
+                    style={{ scrollbarGutter: 'stable' }}
                 >
                     {isMounted ? (
                         <DndContext
@@ -440,6 +461,7 @@ export default function Sidebar() {
                                 <Link
                                     key={item.href}
                                     href={item.href}
+                                    scroll={false}
                                     className={cn(
                                         'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                                         'hover:bg-bg-tertiary hover:text-text-primary',
@@ -464,6 +486,7 @@ export default function Sidebar() {
                     {((!activeEmployee && !hasPermission('settings')) === false) && hasPermission('settings') && (
                         <Link
                             href="/configuracoes"
+                            scroll={false}
                             className={cn(
                                 'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                                 'hover:bg-bg-tertiary hover:text-text-primary',
@@ -546,7 +569,7 @@ export default function Sidebar() {
                 {/* Collapse Toggle */}
                 <button
                     className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-bg-secondary border border-border rounded-full flex items-center justify-center text-text-secondary cursor-pointer transition-all duration-fast z-10 hover:bg-bg-tertiary hover:text-text-primary max-md:hidden"
-                    onClick={() => setCollapsed(!collapsed)}
+                    onClick={toggleCollapsed}
                     aria-label={collapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
                 >
                     {collapsed ? <FiChevronRight /> : <FiChevronLeft />}
