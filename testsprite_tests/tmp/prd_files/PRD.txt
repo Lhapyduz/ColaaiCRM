@@ -1,0 +1,60 @@
+Prompt para Desenvolvimento de App - "Cola Aí" (Estilo Vibe Coding)
+Você agirá como um desenvolvedor expert Full Stack (Senior) especializado em Next.js, Supabase e Tailwind CSS. Sua tarefa é construir uma aplicação web completa de Delivery e Gestão de Pedidos para lanchonetes, chamada "Cola Aí".
+
+1. Visão Geral do Projeto
+O "Cola Aí" é uma plataforma SaaS que permite a donos de lanchonetes gerenciar seus pedidos, cardápio, entregas e fluxo de caixa. Ao mesmo tempo, oferece uma interface pública para clientes finais fazerem pedidos (cardápio digital).
+
+2. Tech Stack Obrigatória
+Frontend Framework: Next.js 15+ (App Router)
+Linguagem: TypeScript
+Estilização: Tailwind CSS v4 (Design moderno, mobile-first)
+Backend/Database: Supabase (PostgreSQL, Auth, Storage, Realtime)
+Gerenciamento de Estado: React Server Componentes + Hooks (Zustand se necessário)
+Ícones: React Icons / Material Symbols
+Pagamentos: Stripe (opcional/futuro) e Integração WhatsApp
+3. Estrutura do Banco de Dados (Supabase)
+O banco de dados deve seguir este esquema relacional robusto. Use Row Level Security (RLS) para garantir que cada usuário (dono de lanchonete) veja apenas seus dados.
+
+Tabelas Principais:
+user_settings: Configurações da loja (logo, cores primária/secundária, nome).
+categories: Categorias do cardápio (Lanches, Bebidas, Sobremesas).
+products: Itens do cardápio com preço, descrição, imagem e disponibilidade.
+orders: Pedidos com status (pendente, preparando, pronto, entregando, entregue), dados do cliente e totais.
+order_items: Itens individuais de cada pedido.
+Obs: Implementar policies RLS para todas as operações (SELECT, INSERT, UPDATE, DELETE) baseadas no auth.uid().
+
+4. Funcionalidades Detalhadas
+A. Área Pública (O Cliente)
+Cardápio Digital: Página acessível via slug/link onde o cliente vê os produtos.
+Carrinho de Compras: Adicionar itens, somar totais e taxas de entrega.
+Checkout via WhatsApp: Ao finalizar, gerar uma mensagem formatada com o pedido e abrir o WhatsApp do estabelecimento.
+Acompanhamento: (Opcional) Tela de status do pedido em tempo real.
+B. Área Administrativa (O Dono)
+Dashboard: Visão geral de vendas hoje, pedidos pendentes e faturamento.
+Tech: Use recharts para gráficos de faturamento mensal e pedidos por dia.
+Gestão de Pedidos (Kanban/Lista): Mover pedidos entre status (Pendente -> Preparo -> Entrega).
+Tech: Use @dnd-kit/core para criar um Kanban de arrastar e soltar pedidos.
+Cardápio: CRUD completo de Categorias e Produtos.
+Tech: Implemente upload de imagens com recorte usando react-easy-crop e browser-image-compression.
+QR Codes: Gerador de QR Code para mesas ou balcão.
+Tech: Use qrcode.react.
+Cozinha (KDS): Tela simplificada apenas para ver o que precisa ser preparado.
+Configurações: Personalizar a aparência do cardápio (cores, logo).
+C. Módulos Adicionais (Diferenciais)
+Entregas: Gestão de taxas por bairro.
+Fidelidade/Cupons: Sistema básico de pontos ou descontos.
+Fluxo de Caixa: Entradas e saídas.
+5. Diretrizes de UI/UX (Vibe Coding)
+Estética: "Premium Clean". Use sombras suaves, bordas arredondadas e espaços em branco generosos.
+Cores: O usuário pode definir a cor primária (ex: Laranja #ff6b35), e o app deve se adaptar a isso (botões, detalhes).
+Animações: Use micro-interações (hover, click) para dar vida à interface.
+Responsividade: Totalmente funcional em Mobile (para o dono e o cliente).
+6. Instruções de Desenvolvimento (Passo a Passo)
+Setup: Inicie o projeto Next.js com Tailwind e configure o Supabase Client.
+Database: Crie as tabelas e ative o RLS (use o SQL fornecido se houver).
+Auth: Implemente Login/Registro com Supabase Auth.
+Core - Admin: Construa o CRUD de Produtos e Categorias primeiro.
+Core - Cliente: Construa a página do Cardápio Público consumindo os dados.
+Fluxo de Pedido: Implemente a criação de pedidos e a atualização em tempo real no dashboard do admin (Supabase Realtime).
+Polimento: Ajuste o CSS, adicione Feedbacks (Toasts) e Loadings.
+Objetivo Final: Entregar um código limpo, modular e pronto para produção, focando na experiência do usuário final e na facilidade de gestão para o dono da lanchonete.

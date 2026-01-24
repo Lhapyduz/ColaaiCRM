@@ -3,13 +3,18 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { FiCheck, FiX, FiChevronDown, FiChevronUp, FiShoppingBag, FiTruck, FiBarChart2, FiUsers, FiGift, FiTag, FiPackage, FiCreditCard, FiSmartphone, FiSettings, FiStar, FiZap, FiShield, FiHeadphones } from 'react-icons/fi';
+import {
+    FiCheck, FiX, FiChevronDown, FiChevronUp, FiShoppingBag, FiTruck, FiBarChart2,
+    FiUsers, FiGift, FiTag, FiPackage, FiCreditCard, FiSmartphone, FiSettings,
+    FiStar, FiZap, FiShield, FiHeadphones, FiArrowRight, FiPlay
+} from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
-import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import ComparisonTable, { PlanFeature } from '@/components/vendas/ComparisonTable';
+import PricingCard from '@/components/vendas/PricingCard';
 
 type BillingPeriod = 'monthly' | 'annual';
-interface PlanFeature { name: string; basic: boolean | string; professional: boolean | string; enterprise: boolean | string; }
 interface FAQ { question: string; answer: string; }
 
 const features: PlanFeature[] = [
@@ -52,100 +57,339 @@ const testimonials = [
 ];
 
 const highlights = [
-    { icon: <FiShoppingBag />, title: 'Gestão de Pedidos', description: 'Controle completo do fluxo de pedidos, do recebimento à entrega.' },
-    { icon: <GiCookingPot />, title: 'Tela de Cozinha', description: 'Visualização em tempo real para sua equipe de preparo.' },
-    { icon: <FiTruck />, title: 'Gestão de Entregas', description: 'Acompanhe suas entregas e otimize rotas.' },
-    { icon: <FiBarChart2 />, title: 'Relatórios Avançados', description: 'Gráficos e métricas para decisões inteligentes.' },
-    { icon: <FiGift />, title: 'Programa de Fidelidade', description: '4 níveis de recompensas para fidelizar clientes.' },
-    { icon: <FiTag />, title: 'Cupons de Desconto', description: 'Crie promoções e atraia mais clientes.' },
-    { icon: <FiPackage />, title: 'Controle de Estoque', description: 'Alertas de estoque baixo e controle de ingredientes.' },
-    { icon: <FiSmartphone />, title: 'Cardápio Online', description: 'Seus clientes fazem pedidos pelo celular.' },
-    { icon: <FiCreditCard />, title: 'Múltiplos Pagamentos', description: 'Aceite PIX, cartão, dinheiro e muito mais.' },
-    { icon: <FiUsers />, title: 'Multi-funcionários', description: 'Gerencie sua equipe com diferentes acessos.' },
-    { icon: <FiSettings />, title: 'Personalização Total', description: 'Sua marca, suas cores, seu logo.' },
-    { icon: <FiZap />, title: 'Previsão de Vendas', description: 'IA que prevê suas vendas do dia.' }
+    { icon: <FiShoppingBag />, title: 'Gestão de Pedidos', description: 'Controle centralizado de todas as suas vendas.' },
+    { icon: <GiCookingPot />, title: 'Tela de Cozinha', description: 'Sincronia perfeita entre atendimento e preparo.' },
+    { icon: <FiTruck />, title: 'Delivery e Retirada', description: 'Organize suas entregas sem dor de cabeça.' },
+    { icon: <FiBarChart2 />, title: 'Relatórios Inteligentes', description: 'Dados reais para tomar decisões melhores.' },
+    { icon: <FiGift />, title: 'Fidelidade Digital', description: 'Faça os clientes voltarem sempre.' },
+    { icon: <FiZap />, title: 'Previsão com IA', description: 'Antecipe a demanda do dia com inteligência.' }
 ];
 
 export default function VendasPage() {
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
     const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-    const prices = { basic: { monthly: 49, annual: 490 }, professional: { monthly: 79, annual: 790 }, enterprise: { monthly: 149, annual: 1490 } };
-    const getMonthlyPrice = (plan: 'basic' | 'professional' | 'enterprise') => billingPeriod === 'annual' ? (prices[plan].annual / 12).toFixed(2).replace('.', ',') : prices[plan].monthly.toString();
-    const renderFeatureValue = (value: boolean | string) => typeof value === 'boolean' ? (value ? <FiCheck className="text-success" /> : <FiX className="text-error" />) : <span className="text-sm text-text-muted">{value}</span>;
-
     const jsonLd = { "@context": "https://schema.org", "@graph": [{ "@type": "Organization", "@id": "https://colaai.com.br/#organization", "name": "Cola Aí", "url": "https://colaai.com.br", "logo": { "@type": "ImageObject", "url": "https://colaai.com.br/logo.png" } }, { "@type": "WebSite", "@id": "https://colaai.com.br/#website", "url": "https://colaai.com.br", "name": "Cola Aí", "publisher": { "@id": "https://colaai.com.br/#organization" } }, { "@type": "SoftwareApplication", "name": "Cola Aí", "applicationCategory": "BusinessApplication", "operatingSystem": "Web", "offers": { "@type": "AggregateOffer", "priceCurrency": "BRL", "lowPrice": "49", "highPrice": "149", "offerCount": "3" }, "aggregateRating": { "@type": "AggregateRating", "ratingValue": "5", "ratingCount": "3", "bestRating": "5", "worstRating": "1" } }, { "@type": "FAQPage", "mainEntity": faqs.map(faq => ({ "@type": "Question", "name": faq.question, "acceptedAnswer": { "@type": "Answer", "text": faq.answer } })) }] };
 
     return (
-        <>
+        <div className="min-h-screen bg-bg-primary overflow-x-hidden font-sans selection:bg-primary/20">
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-            <div className="min-h-screen bg-background">
-                {/* Hero Section */}
-                <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 pointer-events-none"><div className="absolute top-[-30%] left-[-20%] w-[800px] h-[800px] rounded-full bg-primary/30 blur-[150px]" /><div className="absolute bottom-[-30%] right-[-20%] w-[700px] h-[700px] rounded-full bg-accent/30 blur-[150px]" /></div>
-                    <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-                        <div className="mb-8"><Image src="/logo-colaai.webp" alt="Cola Aí - Sistema para Lanchonetes" width={280} height={120} priority className="mx-auto" /></div>
-                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 text-primary rounded-full text-sm font-medium mb-6"><FiZap /> Sistema #1 para Lanchonetes</span>
-                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">Transforme sua <span className="text-primary">Lanchonete</span> em uma Máquina de Vendas</h1>
-                        <p className="text-lg md:text-xl text-text-secondary mb-8 max-w-2xl mx-auto">O sistema completo para gerenciar pedidos, fidelizar clientes e aumentar seu faturamento. Tudo em um só lugar, sem complicação.</p>
-                        <div className="flex flex-wrap gap-4 justify-center mb-10">
-                            <Link href="/assinatura" className="px-8 py-4 bg-primary text-white rounded-lg font-semibold text-lg hover:bg-primary-hover transition-all shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5">Começar Agora - 3 Dias Grátis</Link>
-                            <Link href="/menu" className="px-8 py-4 bg-bg-tertiary text-text-primary rounded-lg font-semibold text-lg border border-border hover:border-primary transition-all flex items-center gap-2">Ver Demo <FiChevronDown /></Link>
-                        </div>
-                        <div className="flex justify-center gap-8 md:gap-12">{[['3 dias', 'Teste Grátis'], ['100%', 'Online'], ['0', 'Instalação']].map(([num, label]) => <div key={label} className="text-center"><span className="block text-2xl font-bold text-primary">{num}</span><span className="text-sm text-text-muted">{label}</span></div>)}</div>
-                    </div>
-                </section>
 
-                {/* Features Grid */}
-                <section className="py-20 px-4">
-                    <div className="max-w-6xl mx-auto"><div className="text-center mb-12"><h2 className="text-3xl font-bold mb-4">Tudo que você precisa para crescer</h2><p className="text-text-secondary">Mais de 20 funcionalidades pensadas para o dia a dia do seu negócio</p></div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{highlights.map((f, i) => <div key={i} className="bg-bg-card border border-border rounded-xl p-5 hover:border-primary/50 transition-all group"><div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center text-primary text-xl mb-4 group-hover:scale-110 transition-transform">{f.icon}</div><h3 className="font-semibold mb-2">{f.title}</h3><p className="text-sm text-text-muted">{f.description}</p></div>)}</div></div>
-                </section>
-
-                {/* Pricing Section */}
-                <section id="pricing" className="py-20 px-4 bg-bg-card">
-                    <div className="max-w-6xl mx-auto"><div className="text-center mb-8"><h2 className="text-3xl font-bold mb-4">Escolha o plano ideal para você</h2><p className="text-text-secondary">Comece grátis por 3 dias. Cancele quando quiser.</p></div>
-                        <div className="flex justify-center mb-10"><div className="inline-flex bg-bg-tertiary p-1 rounded-lg"><button className={cn('px-6 py-2 rounded-md font-medium transition-all', billingPeriod === 'monthly' && 'bg-primary text-white')} onClick={() => setBillingPeriod('monthly')}>Mensal</button><button className={cn('px-6 py-2 rounded-md font-medium transition-all flex items-center gap-2', billingPeriod === 'annual' && 'bg-primary text-white')} onClick={() => setBillingPeriod('annual')}>Anual <span className="text-xs px-2 py-0.5 bg-success text-white rounded-full">2 Meses Grátis</span></button></div></div>
-                        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                            {/* Basic */}
-                            <div className="bg-bg-tertiary border border-border rounded-xl p-6"><h3 className="text-xl font-bold mb-1">Básico</h3><p className="text-sm text-text-muted mb-4">Para quem está começando</p><div className="mb-4"><span className="text-sm text-text-muted">R$</span><span className="text-4xl font-bold">{getMonthlyPrice('basic')}</span><span className="text-text-muted">/mês</span></div>{billingPeriod === 'annual' && <p className="text-xs text-text-muted mb-4">Cobrado {formatCurrency(prices.basic.annual)} anualmente</p>}<ul className="space-y-2 mb-6 text-sm">{['Dashboard em tempo real', 'Gestão de pedidos', 'Até 30 produtos', 'Até 5 categorias', 'Relatórios básicos', 'Suporte por email'].map(f => <li key={f} className="flex items-center gap-2"><FiCheck className="text-success shrink-0" />{f}</li>)}</ul><Link href="/assinatura" className="block text-center w-full py-3 rounded-lg border border-border hover:border-primary transition-all font-medium">Começar Grátis</Link></div>
-                            {/* Professional */}
-                            <div className="bg-bg-tertiary border-2 border-primary rounded-xl p-6 relative"><div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-white text-xs font-semibold rounded-full">Mais Popular</div><h3 className="text-xl font-bold mb-1 mt-2">Avançado</h3><p className="text-sm text-text-muted mb-4">Para negócios em crescimento</p><div className="mb-4"><span className="text-sm text-text-muted">R$</span><span className="text-4xl font-bold">{getMonthlyPrice('professional')}</span><span className="text-text-muted">/mês</span></div>{billingPeriod === 'annual' && <p className="text-xs text-text-muted mb-4">Cobrado {formatCurrency(prices.professional.annual)} anualmente</p>}<ul className="space-y-2 mb-6 text-sm">{['Tudo do Básico +', 'Até 100 produtos', 'Tela de cozinha', 'Gestão de entregas', 'Controle de estoque', 'Programa de fidelidade', 'Cardápio Online', 'Relatórios avançados', 'Até 5 funcionários', 'Suporte via chat'].map(f => <li key={f} className="flex items-center gap-2"><FiCheck className="text-success shrink-0" />{f}</li>)}</ul><Link href="/assinatura" className="block text-center w-full py-3 rounded-lg bg-primary text-white hover:bg-primary-hover transition-all font-medium">Começar Grátis</Link></div>
-                            {/* Enterprise */}
-                            <div className="bg-bg-tertiary border border-border rounded-xl p-6"><h3 className="text-xl font-bold mb-1">Profissional</h3><p className="text-sm text-text-muted mb-4">Para operações maiores</p><div className="mb-4"><span className="text-sm text-text-muted">R$</span><span className="text-4xl font-bold">{getMonthlyPrice('enterprise')}</span><span className="text-text-muted">/mês</span></div>{billingPeriod === 'annual' && <p className="text-xs text-text-muted mb-4">Cobrado {formatCurrency(prices.enterprise.annual)} anualmente</p>}<ul className="space-y-2 mb-6 text-sm">{['Tudo do Avançado +', 'Produtos ilimitados', 'Cupons de desconto', 'Previsão de vendas (IA)', 'Funcionários ilimitados', 'Relatórios completos', 'Suporte prioritário 24/7'].map(f => <li key={f} className="flex items-center gap-2"><FiCheck className="text-success shrink-0" />{f}</li>)}</ul><Link href="/assinatura" className="block text-center w-full py-3 rounded-lg border border-border hover:border-primary transition-all font-medium">Começar Grátis</Link></div>
-                        </div>
-                        {/* Comparison Table */}
-                        <div className="mt-16 max-w-5xl mx-auto"><h3 className="text-2xl font-bold text-center mb-8">Comparativo Completo</h3><div className="bg-bg-tertiary rounded-xl overflow-hidden border border-border"><div className="grid grid-cols-4 bg-background p-4 font-semibold text-sm"><div>Recurso</div><div className="text-center">Básico</div><div className="text-center">Avançado</div><div className="text-center">Profissional</div></div>{features.map((f, i) => <div key={i} className="grid grid-cols-4 p-4 border-t border-border text-sm hover:bg-bg-card/50"><div>{f.name}</div><div className="text-center">{renderFeatureValue(f.basic)}</div><div className="text-center">{renderFeatureValue(f.professional)}</div><div className="text-center">{renderFeatureValue(f.enterprise)}</div></div>)}</div></div>
-                    </div>
-                </section>
-
-                {/* Testimonials */}
-                <section className="py-20 px-4">
-                    <div className="max-w-5xl mx-auto"><div className="text-center mb-12"><h2 className="text-3xl font-bold mb-4">O que nossos clientes dizem</h2><p className="text-text-secondary">Mais de 500 negócios já transformaram suas operações</p></div>
-                        <div className="grid md:grid-cols-3 gap-6">{testimonials.map((t, i) => <div key={i} className="bg-bg-card border border-border rounded-xl p-6"><div className="flex gap-1 mb-4 text-warning">{[...Array(t.rating)].map((_, j) => <FiStar key={j} className="fill-current" />)}</div><p className="text-text-secondary mb-4">"{t.text}"</p><div className="flex items-center gap-3"><span className="text-3xl">{t.avatar}</span><div><span className="block font-semibold">{t.name}</span><span className="text-sm text-text-muted">{t.business}</span></div></div></div>)}</div></div>
-                </section>
-
-                {/* Trust Badges */}
-                <section className="py-16 px-4 bg-bg-card">
-                    <div className="max-w-4xl mx-auto grid md:grid-cols-3 gap-8 text-center">{[{ icon: <FiShield />, title: 'Dados Seguros', desc: 'Criptografia de ponta a ponta' }, { icon: <FiZap />, title: '99.9% Uptime', desc: 'Sistema sempre disponível' }, { icon: <FiHeadphones />, title: 'Suporte Humano', desc: 'Atendimento real, sem robôs' }].map((t, i) => <div key={i}><div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center text-primary text-2xl">{t.icon}</div><h4 className="font-semibold mb-1">{t.title}</h4><p className="text-sm text-text-muted">{t.desc}</p></div>)}</div>
-                </section>
-
-                {/* FAQ */}
-                <section className="py-20 px-4">
-                    <div className="max-w-3xl mx-auto"><div className="text-center mb-12"><h2 className="text-3xl font-bold mb-4">Perguntas Frequentes</h2><p className="text-text-secondary">Tire suas dúvidas sobre o Cola Aí</p></div>
-                        <div className="space-y-3">{faqs.map((faq, i) => <div key={i} className="bg-bg-card border border-border rounded-lg overflow-hidden"><button className="w-full flex justify-between items-center p-4 text-left font-medium hover:bg-bg-tertiary transition-all" onClick={() => setOpenFaq(openFaq === i ? null : i)}><span>{faq.question}</span>{openFaq === i ? <FiChevronUp /> : <FiChevronDown />}</button><div className={cn('overflow-hidden transition-all', openFaq === i ? 'max-h-40 p-4 pt-0' : 'max-h-0')}><p className="text-text-secondary text-sm">{faq.answer}</p></div></div>)}</div></div>
-                </section>
-
-                {/* Final CTA */}
-                <section className="py-20 px-4 bg-linear-to-r from-primary/20 to-accent/20">
-                    <div className="max-w-2xl mx-auto text-center"><h2 className="text-3xl font-bold mb-4">Pronto para turbinar seu negócio?</h2><p className="text-text-secondary mb-8">Comece seus 3 dias grátis agora. Sem cartão de crédito.</p><Link href="/assinatura" className="inline-block px-10 py-4 bg-primary text-white rounded-lg font-semibold text-lg hover:bg-primary-hover transition-all shadow-lg hover:shadow-primary/30 hover:-translate-y-0.5">Começar Agora - É Grátis!</Link></div>
-                </section>
-
-                {/* Footer */}
-                <footer className="py-12 px-4 border-t border-border">
-                    <div className="max-w-4xl mx-auto text-center"><Image src="/logo-colaai.webp" alt="Cola Aí" width={150} height={65} className="mx-auto mb-6" /><div className="flex justify-center gap-4 mb-4 text-sm"><Link href="/termos" className="text-text-muted hover:text-primary">Termos de Uso</Link><span className="text-border">|</span><Link href="/privacidade" className="text-text-muted hover:text-primary">Política de Privacidade</Link></div><p className="text-sm text-text-muted">© 2026 Cola Aí. Todos os direitos reservados.</p></div>
-                </footer>
+            {/* Background Texture/Gradient */}
+            <div className="fixed inset-0 pointer-events-none z-0">
+                <div className="absolute top-0 right-0 w-[50vw] h-[50vh] bg-primary/5 blur-[120px] rounded-full mix-blend-screen" />
+                <div className="absolute bottom-0 left-0 w-[40vw] h-[40vh] bg-accent/5 blur-[100px] rounded-full mix-blend-screen" />
+                <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.02]" />
             </div>
-        </>
+
+            {/* Navbar (Simplified) */}
+            <nav className="relative z-50 flex items-center justify-between px-6 py-6 md:px-12 max-w-7xl mx-auto">
+                <Link href="/" className="flex items-center gap-2">
+                    <span className="text-2xl">🌭</span>
+                    <span className="font-bold text-xl tracking-tight">Cola Aí</span>
+                </Link>
+                <div className="flex items-center gap-4">
+                    <Link href="/login" className="hidden md:block font-medium text-text-secondary hover:text-text-primary transition-colors">
+                        Entrar
+                    </Link>
+                    <Link href="/assinatura" className="px-5 py-2.5 bg-text-primary text-bg-primary rounded-full font-bold hover:bg-primary hover:text-white transition-all duration-300">
+                        Começar Agora
+                    </Link>
+                </div>
+            </nav>
+
+            {/* Hero Section */}
+            <section className="relative z-10 pt-16 pb-32 px-6">
+                <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+                    <motion.div
+                        initial={{ opacity: 0, x: -50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                    >
+                        <motion.div
+                            animate={{
+                                y: [0, -10, 0],
+                            }}
+                            transition={{
+                                duration: 6,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                            }}
+                            whileHover={{
+                                scale: 1.05,
+                                filter: "drop-shadow(0px 0px 20px rgba(255, 107, 53, 0.4))",
+                                y: -5,
+                                transition: { duration: 0.2 }
+                            }}
+                            className="mb-8 block origin-left"
+                        >
+                            <Image
+                                src="/logo-cola-ai.png"
+                                alt="Cola Aí Logo"
+                                width={300}
+                                height={100}
+                                className="w-auto h-24 md:h-28 object-contain"
+                                priority
+                            />
+                        </motion.div>
+
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-bg-tertiary border border-border rounded-full text-xs font-mono mb-8 text-primary">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                            </span>
+                            SISTEMA ESPECIALIZADO EM LANCHONETES
+                        </div>
+                        <h1 className="text-5xl md:text-7xl font-bold leading-[1.1] mb-6 tracking-tight">
+                            Venda mais.<br />
+                            <span className="text-transparent bg-clip-text bg-linear-to-r from-primary to-accent">Sem chaos.</span>
+                        </h1>
+                        <p className="text-xl md:text-2xl text-text-secondary mb-10 max-w-lg leading-relaxed">
+                            O sistema operacional completo para lanchonetes modernas. Pedidos, entregas e fidelidade em uma única tela.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <Link href="/assinatura" className="group px-8 py-4 bg-primary text-white rounded-xl font-bold text-lg hover:bg-primary-hover transition-all shadow-[0_10px_40px_-10px_rgba(255,107,53,0.5)] hover:shadow-[0_20px_60px_-15px_rgba(255,107,53,0.6)] hover:-translate-y-1 flex items-center justify-center gap-2">
+                                Testar Grátis
+                                <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
+                            </Link>
+                            <button className="px-8 py-4 bg-bg-tertiary text-text-primary rounded-xl font-bold text-lg border border-border hover:border-text-secondary transition-all flex items-center justify-center gap-2">
+                                <FiPlay className="fill-current" />
+                                Ver Demo
+                            </button>
+                        </div>
+                        <div className="mt-12 flex items-center gap-8 text-sm font-medium text-text-muted">
+                            <div className="flex -space-x-3">
+                                {[1, 2, 3, 4].map(i => (
+                                    <div key={i} className="w-10 h-10 rounded-full border-2 border-bg-primary bg-zinc-800 flex items-center justify-center text-xs overflow-hidden">
+                                        {i === 4 ? '+500' : '👤'}
+                                    </div>
+                                ))}
+                            </div>
+                            <p>Junte-se a +500 lanchonetes</p>
+                        </div>
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9, rotate: 5 }}
+                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                        transition={{ duration: 1, delay: 0.2, type: "spring" }}
+                        className="relative hidden lg:block"
+                    >
+                        <div className="absolute -inset-4 bg-linear-to-r from-primary to-accent opacity-20 blur-3xl rounded-full" />
+                        <div className="relative bg-bg-card border border-border rounded-2xl p-4 shadow-2xl backdrop-blur-sm -rotate-2 hover:rotate-0 transition-transform duration-500">
+                            {/* Mock UI */}
+                            <div className="aspect-4/3 bg-bg-primary rounded-lg overflow-hidden relative">
+                                <div className="absolute top-0 left-0 right-0 h-12 border-b border-border bg-bg-tertiary flex items-center px-4 gap-2">
+                                    <div className="flex gap-1.5">
+                                        <div className="w-3 h-3 rounded-full bg-red-500" />
+                                        <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                                        <div className="w-3 h-3 rounded-full bg-green-500" />
+                                    </div>
+                                </div>
+                                <div className="p-8 flex items-center justify-center h-full">
+                                    <div className="text-center">
+                                        <div className="text-6xl mb-4">🌭</div>
+                                        <div className="text-2xl font-bold text-text-primary">Dashboard Cola Aí</div>
+                                        <div className="text-text-secondary">Seus dados em tempo real</div>
+                                    </div>
+                                </div>
+                                {/* Floating Elements */}
+                                <motion.div
+                                    animate={{ y: [0, -10, 0] }}
+                                    transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                                    className="absolute top-20 right-10 bg-bg-card p-3 rounded-lg shadow-lg border border-border border-l-4 border-l-success"
+                                >
+                                    <div className="text-xs text-text-muted">Venda Confirmada</div>
+                                    <div className="font-bold text-success">+ R$ 45,90</div>
+                                </motion.div>
+                                <motion.div
+                                    animate={{ y: [0, 10, 0] }}
+                                    transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }}
+                                    className="absolute bottom-20 left-10 bg-bg-card p-3 rounded-lg shadow-lg border border-border border-l-4 border-l-primary"
+                                >
+                                    <div className="text-xs text-text-muted">Pedido #1024</div>
+                                    <div className="font-bold flex items-center gap-2">Prepare-se <GiCookingPot /></div>
+                                </motion.div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            </section>
+
+            {/* Highlights Grid */}
+            <section className="py-32 px-6">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center max-w-2xl mx-auto mb-20">
+                        <h2 className="text-3xl md:text-4xl font-bold mb-6">Tudo o que você precisa. <br />Em um só lugar.</h2>
+                        <p className="text-text-secondary text-lg">Substitua planilhas, anotações em papel e sistemas lentos por uma solução moderna.</p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {highlights.map((item, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: "-100px" }}
+                                transition={{ delay: i * 0.1 }}
+                                className="group p-8 rounded-2xl bg-bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                            >
+                                <div className="w-14 h-14 rounded-xl bg-bg-tertiary flex items-center justify-center text-2xl text-primary mb-6 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                                    {item.icon}
+                                </div>
+                                <h3 className="text-xl font-bold mb-3">{item.title}</h3>
+                                <p className="text-text-secondary leading-relaxed">{item.description}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* Pricing Section */}
+            <section id="pricing" className="py-32 px-6 bg-bg-tertiary/30 relative">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-12">
+                        <span className="text-primary font-bold tracking-wider text-sm uppercase">Planos Flexíveis</span>
+                        <h2 className="text-4xl md:text-5xl font-bold mt-3 mb-6">Escolha seu poder</h2>
+
+                        {/* Period Toggle */}
+                        <div className="inline-flex bg-bg-tertiary p-1.5 rounded-xl border border-border relative">
+                            <div className={cn(
+                                "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-primary rounded-lg shadow-sm transition-all duration-300",
+                                billingPeriod === 'monthly' ? "left-1.5" : "left-[calc(50%+3px)]"
+                            )} />
+                            <button
+                                onClick={() => setBillingPeriod('monthly')}
+                                className={cn("relative z-10 px-6 py-2 rounded-lg font-bold text-sm transition-colors w-32", billingPeriod === 'monthly' ? 'text-white' : 'text-text-secondary hover:text-text-primary')}
+                            >
+                                Mensal
+                            </button>
+                            <button
+                                onClick={() => setBillingPeriod('annual')}
+                                className={cn("relative z-10 px-6 py-2 rounded-lg font-bold text-sm transition-colors w-32", billingPeriod === 'annual' ? 'text-white' : 'text-text-secondary hover:text-text-primary')}
+                            >
+                                Anual <span className="text-[10px] ml-1 opacity-80">-15%</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-center">
+                        <PricingCard
+                            title="Básico"
+                            description="Ideal para quem está apenas começando."
+                            price="49"
+                            annualPrice="490"
+                            period={billingPeriod}
+                            features={['Até 30 produtos', '50 vendas/mês', 'Relatórios básicos']}
+                            delay={0}
+                        />
+                        <PricingCard
+                            title="Avançado"
+                            description="Para quem quer crescer de verdade."
+                            price="79"
+                            annualPrice="790"
+                            period={billingPeriod}
+                            isPopular
+                            features={['Produtos ilimitados', 'Vendas ilimitadas', 'Cardápio Digital', 'Controle de Estoque', 'Fidelidade']}
+                            dataSet-glow="true"
+                            delay={0.1}
+                        />
+                        <PricingCard
+                            title="Profissional"
+                            description="Para operações de alto volume."
+                            price="149"
+                            annualPrice="1490"
+                            period={billingPeriod}
+                            features={['Múltiplos usuários', 'Previsão com IA', 'API de Integração', 'Suporte Prioritário']}
+                            delay={0.2}
+                        />
+                    </div>
+
+                    {/* Comparison Table Section */}
+                    <div className="mt-32">
+                        <h3 className="text-3xl font-bold text-center mb-12">Comparativo Completo</h3>
+                        <ComparisonTable features={features} />
+                    </div>
+                </div>
+            </section>
+
+            {/* Testimonials */}
+            <section className="py-32 px-6 overflow-hidden">
+                <div className="max-w-7xl mx-auto">
+                    <h2 className="text-3xl font-bold text-center mb-16">Quem usa, recomenda</h2>
+                    <div className="grid md:grid-cols-3 gap-8">
+                        {testimonials.map((t, i) => (
+                            <div key={i} className="bg-bg-card p-8 rounded-2xl border border-border relative">
+                                <span className="text-6xl absolute top-4 right-6 opacity-10 font-serif">&quot;</span>
+                                <div className="flex gap-1 mb-6">
+                                    {[...Array(5)].map((_, j) => (
+                                        <FiStar key={j} className="text-warning fill-current" />
+                                    ))}
+                                </div>
+                                <p className="text-lg mb-8 leading-relaxed font-medium">&quot;{t.text}&quot;</p>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full bg-bg-tertiary flex items-center justify-center text-2xl">
+                                        {t.avatar}
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-text-primary">{t.name}</div>
+                                        <div className="text-sm text-text-muted">{t.business}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* FAQ */}
+            <section className="py-20 px-6 max-w-3xl mx-auto">
+                <h2 className="text-3xl font-bold mb-12 text-center">Perguntas Frequentes</h2>
+                <div className="space-y-4">
+                    {faqs.map((faq, i) => (
+                        <div key={i} className="border border-border rounded-xl bg-bg-card overflow-hidden">
+                            <button
+                                onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                                className="w-full flex items-center justify-between p-6 text-left font-bold hover:bg-bg-tertiary/50 transition-colors"
+                            >
+                                {faq.question}
+                                <FiChevronDown className={cn("transition-transform duration-300", openFaq === i && "rotate-180")} />
+                            </button>
+                            <AnimatePresence>
+                                {openFaq === i && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="p-6 pt-0 text-text-secondary leading-relaxed">
+                                            {faq.answer}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            {/* Footer */}
+            <footer className="py-12 px-6 border-t border-border bg-bg-tertiary/20">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="text-center md:text-left">
+                        <Link href="/" className="font-bold text-xl flex items-center justify-center md:justify-start gap-2 mb-2">
+                            <span>🌭</span> Cola Aí
+                        </Link>
+                        <p className="text-sm text-text-muted">© 2026 Todos os direitos reservados.</p>
+                    </div>
+                    <div className="flex gap-8 text-sm text-text-secondary">
+                        <Link href="/termos" className="hover:text-primary transition-colors">Termos</Link>
+                        <Link href="/privacidade" className="hover:text-primary transition-colors">Privacidade</Link>
+                        <Link href="/suporte" className="hover:text-primary transition-colors">Suporte</Link>
+                    </div>
+                </div>
+            </footer>
+        </div>
     );
 }

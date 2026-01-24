@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
 import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -51,6 +52,7 @@ import { GiCookingPot } from 'react-icons/gi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
 import { useSidebar } from '@/contexts/SidebarContext';
+import { useEmployee } from '@/contexts/EmployeeContext';
 import PinPadModal from '@/components/auth/PinPadModal';
 import { cn } from '@/lib/utils';
 
@@ -88,7 +90,7 @@ interface SortableNavItemProps {
     onMobileClose: () => void;
 }
 
-function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableNavItemProps) {
+const SortableNavItem = React.memo(({ item, isActive, collapsed, onMobileClose }: SortableNavItemProps) => {
     const {
         attributes,
         listeners,
@@ -106,6 +108,14 @@ function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableN
 
     const Icon = item.icon;
 
+    const handleClick = useCallback((e: React.MouseEvent) => {
+        if (isDragging) {
+            e.preventDefault();
+            return;
+        }
+        onMobileClose();
+    }, [isDragging, onMobileClose]);
+
     return (
         <Link
             ref={setNodeRef}
@@ -115,19 +125,13 @@ function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableN
             href={item.href}
             scroll={false}
             className={cn(
-                'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-colors duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                'relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary no-underline transition-colors duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                 'hover:bg-bg-tertiary hover:text-text-primary',
                 isActive && 'bg-primary/10 text-primary',
                 isDragging && 'opacity-50 bg-bg-tertiary',
                 collapsed && 'justify-center px-3.5'
             )}
-            onClick={(e) => {
-                if (isDragging) {
-                    e.preventDefault();
-                    return;
-                }
-                onMobileClose();
-            }}
+            onClick={handleClick}
         >
             <Icon className="text-xl shrink-0" />
             {!collapsed && <span className="whitespace-nowrap overflow-hidden">{item.label}</span>}
@@ -136,7 +140,9 @@ function SortableNavItem({ item, isActive, collapsed, onMobileClose }: SortableN
             )}
         </Link>
     );
-}
+});
+
+SortableNavItem.displayName = 'SortableNavItem';
 
 // Overlay item (shown while dragging)
 interface OverlayItemProps {
@@ -147,7 +153,7 @@ interface OverlayItemProps {
 function OverlayItem({ item, collapsed }: OverlayItemProps) {
     const Icon = item.icon;
     return (
-        <div className="relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary opacity-95 bg-bg-card shadow-lg border border-primary cursor-grabbing">
+        <div className="relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary opacity-95 bg-bg-card shadow-lg border border-primary cursor-grabbing">
             <Icon className="text-xl shrink-0" />
             {!collapsed && <span className="whitespace-nowrap overflow-hidden">{item.label}</span>}
         </div>
@@ -168,7 +174,7 @@ export default function Sidebar() {
     const { setShowHelp } = useKeyboardShortcuts();
 
     // Employee Context
-    const { activeEmployee, logoutEmployee, loginWithPin, hasPermission, isLocked, lockScreen, unlockScreen, hasAdmin } = require('@/contexts/EmployeeContext').useEmployee();
+    const { activeEmployee, logoutEmployee, loginWithPin, hasPermission, isLocked, lockScreen, unlockScreen, hasAdmin } = useEmployee();
 
     const appName = userSettings?.app_name || 'Cola Aí';
 
@@ -208,6 +214,7 @@ export default function Sidebar() {
                 overrideHrefs.every((href, index) => href === contextHrefs[index]);
 
             if (ordersMatch) {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setLocalOrderOverride(null);
             }
         }
@@ -215,6 +222,7 @@ export default function Sidebar() {
 
     // Hydration safety - only enable DnD after mount
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsMounted(true);
     }, []);
 
@@ -276,36 +284,38 @@ export default function Sidebar() {
     }, [userSettings?.hidden_sidebar_items, orderedItems]);
 
     // Filter menu items based on permissions
-    const filteredMenuItems = visibleMenuItems.filter(item => {
-        const path = item.href.replace('/', '');
+    const filteredMenuItems = useMemo(() => {
+        return visibleMenuItems.filter(item => {
+            const path = item.href.replace('/', '');
 
-        if (path === 'dashboard') return true;
-        if (!activeEmployee) return true;
+            if (path === 'dashboard') return true;
+            if (!activeEmployee) return true;
 
-        const permissionMap: Record<string, string> = {
-            'produtos': 'products',
-            'adicionais': 'products',
-            'categorias': 'categories',
-            'pedidos': 'orders',
-            'cozinha': 'orders',
-            'entregas': 'orders',
-            'estoque': 'products',
-            'cupons': 'settings',
-            'fidelidade': 'customers',
-            'caixa': 'finance',
-            'contas': 'finance',
-            'fluxo-caixa': 'finance',
-            'funcionarios': 'employees',
-            'relatorios': 'reports',
-            'historico': 'reports',
-            'configuracoes': 'settings'
-        };
+            const permissionMap: Record<string, string> = {
+                'produtos': 'products',
+                'adicionais': 'products',
+                'categorias': 'categories',
+                'pedidos': 'orders',
+                'cozinha': 'orders',
+                'entregas': 'orders',
+                'estoque': 'products',
+                'cupons': 'settings',
+                'fidelidade': 'customers',
+                'caixa': 'finance',
+                'contas': 'finance',
+                'fluxo-caixa': 'finance',
+                'funcionarios': 'employees',
+                'relatorios': 'reports',
+                'historico': 'reports',
+                'configuracoes': 'settings'
+            };
 
-        const requiredPerm = permissionMap[path];
-        if (!requiredPerm) return true;
+            const requiredPerm = permissionMap[path];
+            if (!requiredPerm) return true;
 
-        return hasPermission(requiredPerm);
-    });
+            return hasPermission(requiredPerm);
+        });
+    }, [visibleMenuItems, activeEmployee, hasPermission]);
 
     const handleDragStart = (event: DragStartEvent) => {
         setActiveId(event.active.id as string);
@@ -360,14 +370,22 @@ export default function Sidebar() {
         return false;
     };
 
+    const toggleMobileMenu = useCallback(() => {
+        setMobileOpen(prev => !prev);
+    }, []);
+
+    const closeMobileMenu = useCallback(() => {
+        setMobileOpen(false);
+    }, []);
+
     const activeItem = activeId ? orderedItems.find(item => item.href === activeId) : null;
 
     return (
         <>
             {/* Mobile Menu Button */}
             <button
-                className="hidden max-md:flex fixed top-4 left-4 w-11 h-11 bg-bg-card border border-border rounded-md text-text-primary text-xl items-center justify-center cursor-pointer z-sticky"
-                onClick={() => setMobileOpen(!mobileOpen)}
+                className="hidden max-md:flex fixed top-4 left-4 w-11 h-11 bg-bg-card border border-border rounded-xl text-text-primary text-xl items-center justify-center cursor-pointer z-sticky"
+                onClick={toggleMobileMenu}
                 aria-label={mobileOpen ? 'Fechar menu' : 'Abrir menu'}
             >
                 <FiMenu />
@@ -377,7 +395,7 @@ export default function Sidebar() {
             {mobileOpen && (
                 <div
                     className="hidden max-md:block fixed inset-0 bg-black/50 z-[calc(var(--z-sticky)-1)]"
-                    onClick={() => setMobileOpen(false)}
+                    onClick={closeMobileMenu}
                 />
             )}
 
@@ -399,7 +417,7 @@ export default function Sidebar() {
                                 src={userSettings.logo_url}
                                 alt=""
                                 aria-hidden="true"
-                                className="w-10 h-10 rounded-md object-cover"
+                                className="w-10 h-10 rounded-xl object-cover"
                             />
                         ) : (
                             <span className="text-[2rem]">🌭</span>
@@ -442,7 +460,7 @@ export default function Sidebar() {
                                         item={item}
                                         isActive={pathname === item.href}
                                         collapsed={collapsed}
-                                        onMobileClose={() => setMobileOpen(false)}
+                                        onMobileClose={closeMobileMenu}
                                     />
                                 ))}
                             </SortableContext>
@@ -463,12 +481,12 @@ export default function Sidebar() {
                                     href={item.href}
                                     scroll={false}
                                     className={cn(
-                                        'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                                        'relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                                         'hover:bg-bg-tertiary hover:text-text-primary',
                                         isActive && 'bg-primary/10 text-primary',
                                         collapsed && 'justify-center px-3.5'
                                     )}
-                                    onClick={() => setMobileOpen(false)}
+                                    onClick={closeMobileMenu}
                                 >
                                     <Icon className="text-xl shrink-0" />
                                     {!collapsed && <span className="whitespace-nowrap overflow-hidden">{item.label}</span>}
@@ -488,12 +506,12 @@ export default function Sidebar() {
                             href="/configuracoes"
                             scroll={false}
                             className={cn(
-                                'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                                'relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                                 'hover:bg-bg-tertiary hover:text-text-primary',
                                 pathname === '/configuracoes' && 'bg-primary/10 text-primary',
                                 collapsed && 'justify-center px-3.5'
                             )}
-                            onClick={() => setMobileOpen(false)}
+                            onClick={closeMobileMenu}
                         >
                             <FiSettings className="text-xl shrink-0" />
                             {!collapsed && <span className="whitespace-nowrap overflow-hidden">Configurações</span>}
@@ -504,7 +522,7 @@ export default function Sidebar() {
                         <div className="flex flex-col gap-1">
                             <button
                                 className={cn(
-                                    'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                                    'relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                                     'hover:bg-bg-tertiary hover:text-text-primary',
                                     collapsed && 'justify-center px-3.5'
                                 )}
@@ -521,7 +539,7 @@ export default function Sidebar() {
                         <>
                             <button
                                 className={cn(
-                                    'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                                    'relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                                     'hover:bg-bg-tertiary hover:text-text-primary',
                                     collapsed && 'justify-center px-3.5'
                                 )}
@@ -533,7 +551,7 @@ export default function Sidebar() {
                             </button>
                             <button
                                 className={cn(
-                                    'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                                    'relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                                     'hover:bg-bg-tertiary hover:text-text-primary',
                                     collapsed && 'justify-center px-3.5'
                                 )}
@@ -548,7 +566,7 @@ export default function Sidebar() {
 
                     <button
                         className={cn(
-                            'relative flex items-center gap-3 px-4 py-3 rounded-md text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
+                            'relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                             'hover:bg-bg-tertiary hover:text-text-primary',
                             'mt-2 border-t border-border pt-3',
                             collapsed && 'justify-center px-3.5'
