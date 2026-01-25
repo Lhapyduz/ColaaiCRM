@@ -14,7 +14,8 @@ import {
     FiPieChart,
     FiUsers,
     FiPackage,
-    FiActivity
+    FiActivity,
+    FiFileText
 } from 'react-icons/fi';
 import { BsCash } from 'react-icons/bs';
 import {
@@ -43,6 +44,14 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency, formatCurrencyShort } from '@/hooks/useFormatters';
 import styles from './page.module.css';
+import dynamic from 'next/dynamic';
+import RelatorioPDFCompleto from '@/components/reports/RelatorioPDFCompleto';
+
+const PDFDownloadLink = dynamic(
+    () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
+    { ssr: false }
+);
+
 
 type PeriodType = 'today' | 'week' | 'month' | '30days' | 'custom';
 type ComparisonType = 'previous' | 'lastWeek' | 'lastMonth' | 'lastYear';
@@ -112,7 +121,7 @@ const PAYMENT_COLORS: Record<string, string> = {
 };
 
 export default function RelatoriosPage() {
-    const { user } = useAuth();
+    const { user, userSettings } = useAuth();
     const { canAccess, plan } = useSubscription();
     const toast = useToast();
     const [period, setPeriod] = useState<PeriodType>('month');
@@ -120,6 +129,7 @@ export default function RelatoriosPage() {
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
     const [loading, setLoading] = useState(true);
+    const [isClient, setIsClient] = useState(false);
     const [stats, setStats] = useState<ReportStats>({
         totalRevenue: 0,
         totalOrders: 0,
@@ -235,6 +245,10 @@ export default function RelatoriosPage() {
 
         return { startDate, endDate, previousStartDate, previousEndDate, comparisonStartDate, comparisonEndDate };
     }, [period, customStartDate, customEndDate, comparison]);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     useEffect(() => {
         if (user) {
@@ -532,6 +546,58 @@ export default function RelatoriosPage() {
         window.print();
     };
 
+    const handleExportCSV = () => {
+        // Build CSV Content
+        const lines: string[] = [];
+        lines.push(`Relatório Gerencial - ${userSettings?.app_name || 'Ligeirinho Hotdog'}`);
+        lines.push(`Período: ${periodLabels[period]}`);
+
+        lines.push(`Gerado em: ${new Date().toLocaleString('pt-BR')}`);
+        lines.push('');
+
+        // Resumo Geral
+        lines.push('RESUMO GERAL');
+        lines.push('Métrica;Valor');
+        lines.push(`Receita Total;${formatCurrency(stats.totalRevenue)}`);
+        lines.push(`Total de Pedidos;${stats.totalOrders}`);
+        lines.push(`Ticket Médio;${formatCurrency(stats.averageTicket)}`);
+        lines.push('');
+
+        // Formas de Pagamento
+        lines.push('FORMAS DE PAGAMENTO');
+        lines.push('Método;Valor');
+        Object.entries(stats.byPaymentMethod).forEach(([method, total]) => {
+            lines.push(`${getPaymentMethodLabel(method)};${formatCurrency(total)}`);
+        });
+        lines.push('');
+
+        // Status
+        lines.push('DISTRIBUIÇÃO DE STATUS');
+        lines.push('Status;Quantidade');
+        Object.entries(stats.byStatus).forEach(([status, count]) => {
+            lines.push(`${getStatusLabel(status)};${count}`);
+        });
+        lines.push('');
+
+        // Top Produtos
+        lines.push('TOP PRODUTOS');
+        lines.push('Produto;Quantidade;Receita');
+        stats.topProducts.forEach(p => {
+            lines.push(`${p.name};${p.quantity};${formatCurrency(p.revenue)}`);
+        });
+
+        // Trigger Download
+        const csvContent = lines.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `relatorio_gerencial_${period}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const periodLabels: Record<PeriodType, string> = {
         today: 'Hoje',
         week: 'Esta Semana',
@@ -571,471 +637,542 @@ export default function RelatoriosPage() {
 
     return (
         <div className={styles.container}>
-                {/* Header */}
-                <div className={styles.header}>
-                    <div>
-                        <h1 className={styles.title}>Relatórios</h1>
-                        <p className={styles.subtitle}>Análise detalhada do desempenho do seu negócio</p>
-                    </div>
-                    {canAccess('exportPdf') && (
-                        <Button leftIcon={<FiDownload />} onClick={handleExportPDF}>
-                            Exportar PDF
+            {/* Header */}
+            <div className={styles.header}>
+                <div>
+                    <h1 className={styles.title}>Relatórios</h1>
+                    <p className={styles.subtitle}>Análise detalhada do desempenho do seu negócio</p>
+                </div>
+
+                <div className="flex gap-2">
+                    {canAccess('exportPdf') && isClient && (
+                        <Button leftIcon={<FiFileText />} onClick={handleExportCSV} variant="outline">
+                            Exportar CSV
                         </Button>
                     )}
-                </div>
 
-                {/* Period Selector */}
-                <div className={styles.periodSelector}>
-                    <div className={styles.periodTabs}>
-                        {(['today', 'week', 'month', '30days', 'custom'] as PeriodType[]).map((p) => (
-                            <button
-                                key={p}
-                                className={`${styles.periodTab} ${period === p ? styles.active : ''}`}
-                                onClick={() => setPeriod(p)}
-                            >
-                                {periodLabels[p]}
-                            </button>
-                        ))}
-                    </div>
-                    {period === 'custom' && (
-                        <div className={styles.customDates}>
-                            <div className={styles.dateInputGroup}>
-                                <FiCalendar />
-                                <input
-                                    type="date"
-                                    value={customStartDate}
-                                    onChange={(e) => setCustomStartDate(e.target.value)}
-                                    className={styles.dateInput}
+                    {canAccess('exportPdf') && isClient && (
+                        <PDFDownloadLink
+                            document={
+                                <RelatorioPDFCompleto
+                                    reportData={{
+                                        businessName: userSettings?.app_name || 'Ligeirinho Hotdog',
+                                        periodoSelecionado: periodLabels[period],
+                                        secoes: [
+                                            {
+                                                titulo: 'Resumo Geral',
+                                                tipo: 'kpi' as const,
+                                                dados: [
+                                                    { label: 'Receita Total', value: formatCurrency(stats.totalRevenue) },
+                                                    { label: 'Total Pedidos', value: String(stats.totalOrders) },
+                                                    { label: 'Ticket Médio', value: formatCurrency(stats.averageTicket) }
+                                                ]
+                                            },
+                                            {
+                                                titulo: 'Formas de Pagamento',
+                                                tipo: 'kpi' as const,
+                                                dados: Object.entries(stats.byPaymentMethod).map(([method, total]) => ({
+                                                    label: getPaymentMethodLabel(method),
+                                                    value: formatCurrency(total)
+                                                }))
+                                            },
+                                            {
+                                                titulo: 'Top Produtos',
+                                                tipo: 'tabela' as const,
+                                                dados: stats.topProducts.map(p => ({
+                                                    produto: p.name,
+                                                    qtd: p.quantity,
+                                                    total: formatCurrency(p.revenue)
+                                                })),
+                                                colunas: [
+                                                    { header: 'Produto', key: 'produto', width: '50%' },
+                                                    { header: 'Qtd.', key: 'qtd', width: '20%' },
+                                                    { header: 'Total', key: 'total', width: '30%' }
+                                                ]
+                                            },
+                                            {
+                                                titulo: 'Distribuição de Status',
+                                                tipo: 'lista' as const,
+                                                dados: Object.entries(stats.byStatus).map(([status, count]) => ({
+                                                    label: getStatusLabel(status),
+                                                    value: String(count)
+                                                }))
+                                            }
+                                        ],
+                                        comparacao: {
+                                            periodo: getComparisonLabel(comparison),
+                                            dados: {
+                                                'Receita': formatCurrency(stats.comparisonRevenue),
+                                                'Pedidos': String(stats.comparisonOrders)
+                                            }
+                                        }
+                                    }}
                                 />
-                            </div>
-                            <span className={styles.dateSeparator}>até</span>
-                            <div className={styles.dateInputGroup}>
-                                <FiCalendar />
-                                <input
-                                    type="date"
-                                    value={customEndDate}
-                                    onChange={(e) => setCustomEndDate(e.target.value)}
-                                    className={styles.dateInput}
-                                />
-                            </div>
-                        </div>
+                            }
+                            fileName={`relatorio_${period}.pdf`}
+                        >
+                            {({ loading }) => (
+                                <Button leftIcon={<FiDownload />} isLoading={loading}>
+                                    {loading ? 'Preparando...' : 'Exportar PDF'}
+                                </Button>
+                            )}
+                        </PDFDownloadLink>
                     )}
                 </div>
+            </div>
 
-                {/* Comparison Selector */}
-                <div className={styles.comparisonSelector}>
-                    <span className={styles.comparisonLabel}>
-                        <FiActivity /> Comparar com:
-                    </span>
-                    <div className={styles.comparisonTabs}>
-                        {(['previous', 'lastWeek', 'lastMonth', 'lastYear'] as ComparisonType[]).map((c) => (
-                            <button
-                                key={c}
-                                className={`${styles.comparisonTab} ${comparison === c ? styles.active : ''}`}
-                                onClick={() => setComparison(c)}
-                            >
-                                {getComparisonLabel(c)}
-                            </button>
-                        ))}
-                    </div>
+            {/* Period Selector */}
+            <div className={styles.periodSelector}>
+                <div className={styles.periodTabs}>
+                    {(['today', 'week', 'month', '30days', 'custom'] as PeriodType[]).map((p) => (
+                        <button
+                            key={p}
+                            className={`${styles.periodTab} ${period === p ? styles.active : ''}`}
+                            onClick={() => setPeriod(p)}
+                        >
+                            {periodLabels[p]}
+                        </button>
+                    ))}
                 </div>
-
-                {loading ? (
-                    <div className={styles.loadingGrid}>
-                        {[1, 2, 3, 4].map(i => (
-                            <div key={i} className={`${styles.loadingCard} skeleton`} />
-                        ))}
+                {period === 'custom' && (
+                    <div className={styles.customDates}>
+                        <div className={styles.dateInputGroup}>
+                            <FiCalendar />
+                            <input
+                                type="date"
+                                value={customStartDate}
+                                onChange={(e) => setCustomStartDate(e.target.value)}
+                                className={styles.dateInput}
+                            />
+                        </div>
+                        <span className={styles.dateSeparator}>até</span>
+                        <div className={styles.dateInputGroup}>
+                            <FiCalendar />
+                            <input
+                                type="date"
+                                value={customEndDate}
+                                onChange={(e) => setCustomEndDate(e.target.value)}
+                                className={styles.dateInput}
+                            />
+                        </div>
                     </div>
-                ) : (
-                    <>
-                        {/* Main Stats */}
-                        <div className={styles.statsGrid}>
-                            <Card className={styles.statCard}>
-                                <div className={styles.statIconWrapper} style={{ background: 'rgba(0, 184, 148, 0.1)' }}>
-                                    <FiDollarSign style={{ color: 'var(--accent)' }} />
-                                </div>
-                                <div className={styles.statContent}>
-                                    <span className={styles.statLabel}>Receita Total</span>
-                                    <span className={styles.statValue}>{formatCurrency(stats.totalRevenue)}</span>
-                                    <div className={`${styles.statChange} ${revenueChange >= 0 ? styles.positive : styles.negative}`}>
-                                        {revenueChange >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
-                                        <span>{Math.abs(revenueChange).toFixed(1)}%</span>
-                                        <span className={styles.changeLabel}>vs período anterior</span>
-                                    </div>
-                                </div>
-                            </Card>
-
-                            <Card className={styles.statCard}>
-                                <div className={styles.statIconWrapper} style={{ background: 'rgba(255, 107, 53, 0.1)' }}>
-                                    <FiShoppingBag style={{ color: 'var(--primary)' }} />
-                                </div>
-                                <div className={styles.statContent}>
-                                    <span className={styles.statLabel}>Total de Pedidos</span>
-                                    <span className={styles.statValue}>{stats.totalOrders}</span>
-                                    <div className={`${styles.statChange} ${ordersChange >= 0 ? styles.positive : styles.negative}`}>
-                                        {ordersChange >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
-                                        <span>{Math.abs(ordersChange).toFixed(1)}%</span>
-                                        <span className={styles.changeLabel}>vs período anterior</span>
-                                    </div>
-                                </div>
-                            </Card>
-
-                            <Card className={styles.statCard}>
-                                <div className={styles.statIconWrapper} style={{ background: 'rgba(9, 132, 227, 0.1)' }}>
-                                    <FiBarChart2 style={{ color: 'var(--info)' }} />
-                                </div>
-                                <div className={styles.statContent}>
-                                    <span className={styles.statLabel}>Ticket Médio</span>
-                                    <span className={styles.statValue}>{formatCurrency(stats.averageTicket)}</span>
-                                    <span className={styles.statMeta}>por pedido</span>
-                                </div>
-                            </Card>
-
-                            <Card className={styles.statCard}>
-                                <div className={styles.statIconWrapper} style={{ background: 'rgba(253, 203, 110, 0.1)' }}>
-                                    <FiTruck style={{ color: 'var(--warning)' }} />
-                                </div>
-                                <div className={styles.statContent}>
-                                    <span className={styles.statLabel}>Entregas / Balcão</span>
-                                    <span className={styles.statValue}>{stats.deliveryCount} / {stats.pickupCount}</span>
-                                    <div className={styles.deliveryBar}>
-                                        <div
-                                            className={styles.deliveryProgress}
-                                            style={{
-                                                width: `${(stats.deliveryCount / (stats.deliveryCount + stats.pickupCount || 1)) * 100}%`
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </Card>
-                        </div>
-
-                        {/* Interactive Sales Chart */}
-                        <Card className={styles.chartCard}>
-                            <div className={styles.cardHeader}>
-                                <h2><FiBarChart2 /> Vendas por Dia</h2>
-                                <div className={styles.chartLegend}>
-                                    <span className={styles.legendItem}>
-                                        <span className={styles.legendDot} style={{ background: '#ff6b35' }}></span>
-                                        Período atual
-                                    </span>
-                                    <span className={styles.legendItem}>
-                                        <span className={styles.legendDot} style={{ background: 'rgba(0, 184, 148, 0.5)' }}></span>
-                                        {getComparisonLabel(comparison)}
-                                    </span>
-                                </div>
-                            </div>
-                            <div className={styles.chartContainer}>
-                                {dailySalesData.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <AreaChart data={dailySalesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="colorAtual" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.8} />
-                                                    <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1} />
-                                                </linearGradient>
-                                                <linearGradient id="colorComparacao" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#00b894" stopOpacity={0.5} />
-                                                    <stop offset="95%" stopColor="#00b894" stopOpacity={0.1} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                                            <XAxis
-                                                dataKey="date"
-                                                stroke="#888"
-                                                fontSize={12}
-                                                tickLine={false}
-                                            />
-                                            <YAxis
-                                                stroke="#888"
-                                                fontSize={12}
-                                                tickFormatter={(value) => formatCurrencyShort(value)}
-                                                tickLine={false}
-                                                axisLine={false}
-                                            />
-                                            <Tooltip content={<CustomTooltip />} />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="comparacao"
-                                                stroke="#00b894"
-                                                fillOpacity={1}
-                                                fill="url(#colorComparacao)"
-                                                name="comparação"
-                                                strokeWidth={2}
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="atual"
-                                                stroke="#ff6b35"
-                                                fillOpacity={1}
-                                                fill="url(#colorAtual)"
-                                                name="atual"
-                                                strokeWidth={2}
-                                            />
-                                        </AreaChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className={styles.noData}>
-                                        <span>📊</span>
-                                        <p>Nenhuma venda no período selecionado</p>
-                                    </div>
-                                )}
-                            </div>
-                        </Card>
-
-                        {/* Two Column Charts Layout */}
-                        <div className={styles.twoColumns}>
-                            {/* Payment Methods Pie Chart */}
-                            <Card className={styles.sectionCard}>
-                                <div className={styles.cardHeader}>
-                                    <h2><BsCash /> Formas de Pagamento</h2>
-                                </div>
-                                <div className={styles.pieChartContainer}>
-                                    {paymentData.length > 0 ? (
-                                        <>
-                                            <ResponsiveContainer width="100%" height={250}>
-                                                <PieChart>
-                                                    <Pie
-                                                        data={paymentData}
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        innerRadius={60}
-                                                        outerRadius={90}
-                                                        paddingAngle={5}
-                                                        dataKey="value"
-                                                    >
-                                                        {paymentData.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                                        ))}
-                                                    </Pie>
-                                                    <Tooltip
-                                                        formatter={(value) => formatCurrency(value as number)}
-                                                    />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                            <div className={styles.pieLegend}>
-                                                {paymentData.map((entry, index) => (
-                                                    <div key={index} className={styles.pieLegendItem}>
-                                                        <span
-                                                            className={styles.pieLegendDot}
-                                                            style={{ backgroundColor: entry.color }}
-                                                        />
-                                                        <span className={styles.pieLegendLabel}>{entry.name}</span>
-                                                        <span className={styles.pieLegendValue}>{formatCurrency(entry.value)}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className={styles.noDataSmall}>
-                                            <p>Nenhum pagamento no período</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </Card>
-
-                            {/* Hourly Orders Bar Chart */}
-                            <Card className={styles.sectionCard}>
-                                <div className={styles.cardHeader}>
-                                    <h2><FiClock /> Pedidos por Hora</h2>
-                                </div>
-                                <div className={styles.chartContainer}>
-                                    <ResponsiveContainer width="100%" height={250}>
-                                        <BarChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                                            <XAxis
-                                                dataKey="hour"
-                                                stroke="#888"
-                                                fontSize={10}
-                                                tickLine={false}
-                                                interval={2}
-                                            />
-                                            <YAxis
-                                                stroke="#888"
-                                                fontSize={12}
-                                                tickLine={false}
-                                                axisLine={false}
-                                            />
-                                            <Tooltip
-                                                formatter={(value) => [value as number, 'Pedidos']}
-                                                contentStyle={{
-                                                    background: 'rgba(45, 52, 54, 0.95)',
-                                                    border: 'none',
-                                                    borderRadius: '8px',
-                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-                                                }}
-                                            />
-                                            <Bar
-                                                dataKey="pedidos"
-                                                fill="#ff6b35"
-                                                radius={[4, 4, 0, 0]}
-                                            />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </Card>
-                        </div>
-
-                        {/* Top Products Bar Chart */}
-                        <Card className={styles.chartCard}>
-                            <div className={styles.cardHeader}>
-                                <h2><FiPackage /> Top 5 Produtos Mais Vendidos</h2>
-                            </div>
-                            <div className={styles.chartContainer}>
-                                {topProductsData.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <BarChart
-                                            data={topProductsData}
-                                            layout="vertical"
-                                            margin={{ top: 10, right: 30, left: 100, bottom: 10 }}
-                                        >
-                                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" horizontal={false} />
-                                            <XAxis
-                                                type="number"
-                                                stroke="#888"
-                                                fontSize={12}
-                                                tickLine={false}
-                                            />
-                                            <YAxis
-                                                dataKey="name"
-                                                type="category"
-                                                stroke="#888"
-                                                fontSize={12}
-                                                tickLine={false}
-                                                axisLine={false}
-                                            />
-                                            <Tooltip
-                                                formatter={(value, name) => [
-                                                    name === 'receita' ? formatCurrency(value as number) : (value as number) + 'x',
-                                                    name === 'receita' ? 'Receita' : 'Quantidade'
-                                                ]}
-                                                contentStyle={{
-                                                    background: 'rgba(45, 52, 54, 0.95)',
-                                                    border: 'none',
-                                                    borderRadius: '8px',
-                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
-                                                }}
-                                            />
-                                            <Legend />
-                                            <Bar dataKey="quantidade" fill="#ff6b35" name="Quantidade" radius={[0, 4, 4, 0]} />
-                                            <Bar dataKey="receita" fill="#00b894" name="Receita" radius={[0, 4, 4, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className={styles.noData}>
-                                        <span>📦</span>
-                                        <p>Nenhum produto vendido no período</p>
-                                    </div>
-                                )}
-                            </div>
-                        </Card>
-
-                        {/* Three Column Layout */}
-                        <div className={styles.threeColumns}>
-                            {/* Categories */}
-                            <Card className={styles.miniCard}>
-                                <div className={styles.cardHeaderMini}>
-                                    <h3><FiPieChart /> Categorias</h3>
-                                </div>
-                                <div className={styles.categoryGrid}>
-                                    {stats.byCategory.length > 0 ? (
-                                        stats.byCategory.map((cat) => {
-                                            const totalCategorySales = stats.byCategory.reduce((sum, c) => sum + c.total, 0);
-                                            const percentage = totalCategorySales > 0 ? (cat.total / totalCategorySales) * 100 : 0;
-                                            return (
-                                                <div
-                                                    key={cat.categoryId}
-                                                    className={styles.categoryCard}
-                                                    style={{ borderColor: cat.color }}
-                                                >
-                                                    <span className={styles.categoryIcon}>{cat.icon}</span>
-                                                    <span className={styles.categoryName}>{cat.name}</span>
-                                                    <span className={styles.categoryValue}>{formatCurrency(cat.total)}</span>
-                                                    <span className={styles.categoryPercent}>{percentage.toFixed(1)}%</span>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <p className={styles.noDataText}>Nenhuma categoria</p>
-                                    )}
-                                </div>
-                            </Card>
-
-                            {/* Status Distribution */}
-                            <Card className={styles.miniCard}>
-                                <div className={styles.cardHeaderMini}>
-                                    <h3><FiUsers /> Status dos Pedidos</h3>
-                                </div>
-                                <div className={styles.statusList}>
-                                    {Object.entries(stats.byStatus).length > 0 ? (
-                                        Object.entries(stats.byStatus)
-                                            .sort(([, a], [, b]) => b - a)
-                                            .map(([status, count]) => (
-                                                <div key={status} className={styles.statusItem}>
-                                                    <span className={`${styles.statusDot} status-${status}`}></span>
-                                                    <span className={styles.statusLabel}>{getStatusLabel(status)}</span>
-                                                    <span className={styles.statusCount}>{count}</span>
-                                                </div>
-                                            ))
-                                    ) : (
-                                        <p className={styles.noDataText}>Nenhum pedido</p>
-                                    )}
-                                </div>
-                            </Card>
-
-                            {/* Peak Hours */}
-                            <Card className={styles.miniCard}>
-                                <div className={styles.cardHeaderMini}>
-                                    <h3><FiClock /> Horários de Pico</h3>
-                                </div>
-                                <div className={styles.peakList}>
-                                    {getPeakHours().length > 0 ? (
-                                        getPeakHours().map(({ hour, count }, index) => (
-                                            <div key={hour} className={styles.peakItem}>
-                                                <span className={styles.peakMedal}>
-                                                    {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                                                </span>
-                                                <span className={styles.peakHour}>
-                                                    {hour.toString().padStart(2, '0')}:00 - {(hour + 1).toString().padStart(2, '0')}:00
-                                                </span>
-                                                <span className={styles.peakCount}>{count} pedidos</span>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className={styles.noDataText}>Sem dados de horário</p>
-                                    )}
-                                </div>
-                            </Card>
-                        </div>
-
-                        {/* Period Comparison Summary */}
-                        <Card className={styles.comparisonCard}>
-                            <div className={styles.cardHeader}>
-                                <h2><FiActivity /> Comparativo de Períodos</h2>
-                            </div>
-                            <div className={styles.comparisonGrid}>
-                                <div className={styles.comparisonItem}>
-                                    <span className={styles.comparisonTitle}>Receita Atual</span>
-                                    <span className={styles.comparisonValue}>{formatCurrency(stats.totalRevenue)}</span>
-                                </div>
-                                <div className={styles.comparisonVs}>VS</div>
-                                <div className={styles.comparisonItem}>
-                                    <span className={styles.comparisonTitle}>{getComparisonLabel(comparison)}</span>
-                                    <span className={styles.comparisonValue}>{formatCurrency(stats.comparisonRevenue)}</span>
-                                </div>
-                                <div className={`${styles.comparisonResult} ${stats.totalRevenue >= stats.comparisonRevenue ? styles.positive : styles.negative}`}>
-                                    <span className={styles.comparisonDiff}>
-                                        {stats.totalRevenue >= stats.comparisonRevenue ? '+' : ''}
-                                        {formatCurrency(stats.totalRevenue - stats.comparisonRevenue)}
-                                    </span>
-                                    <span className={styles.comparisonPercent}>
-                                        ({getPercentChange(stats.totalRevenue, stats.comparisonRevenue).toFixed(1)}%)
-                                    </span>
-                                </div>
-                            </div>
-                        </Card>
-                    </>
                 )}
             </div>
+
+            {/* Comparison Selector */}
+            <div className={styles.comparisonSelector}>
+                <span className={styles.comparisonLabel}>
+                    <FiActivity /> Comparar com:
+                </span>
+                <div className={styles.comparisonTabs}>
+                    {(['previous', 'lastWeek', 'lastMonth', 'lastYear'] as ComparisonType[]).map((c) => (
+                        <button
+                            key={c}
+                            className={`${styles.comparisonTab} ${comparison === c ? styles.active : ''}`}
+                            onClick={() => setComparison(c)}
+                        >
+                            {getComparisonLabel(c)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {loading ? (
+                <div className={styles.loadingGrid}>
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className={`${styles.loadingCard} skeleton`} />
+                    ))}
+                </div>
+            ) : (
+                <>
+                    {/* Main Stats */}
+                    <div className={styles.statsGrid}>
+                        <Card className={styles.statCard}>
+                            <div className={styles.statIconWrapper} style={{ background: 'rgba(0, 184, 148, 0.1)' }}>
+                                <FiDollarSign style={{ color: 'var(--accent)' }} />
+                            </div>
+                            <div className={styles.statContent}>
+                                <span className={styles.statLabel}>Receita Total</span>
+                                <span className={styles.statValue}>{formatCurrency(stats.totalRevenue)}</span>
+                                <div className={`${styles.statChange} ${revenueChange >= 0 ? styles.positive : styles.negative}`}>
+                                    {revenueChange >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
+                                    <span>{Math.abs(revenueChange).toFixed(1)}%</span>
+                                    <span className={styles.changeLabel}>vs período anterior</span>
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card className={styles.statCard}>
+                            <div className={styles.statIconWrapper} style={{ background: 'rgba(255, 107, 53, 0.1)' }}>
+                                <FiShoppingBag style={{ color: 'var(--primary)' }} />
+                            </div>
+                            <div className={styles.statContent}>
+                                <span className={styles.statLabel}>Total de Pedidos</span>
+                                <span className={styles.statValue}>{stats.totalOrders}</span>
+                                <div className={`${styles.statChange} ${ordersChange >= 0 ? styles.positive : styles.negative}`}>
+                                    {ordersChange >= 0 ? <FiTrendingUp /> : <FiTrendingDown />}
+                                    <span>{Math.abs(ordersChange).toFixed(1)}%</span>
+                                    <span className={styles.changeLabel}>vs período anterior</span>
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card className={styles.statCard}>
+                            <div className={styles.statIconWrapper} style={{ background: 'rgba(9, 132, 227, 0.1)' }}>
+                                <FiBarChart2 style={{ color: 'var(--info)' }} />
+                            </div>
+                            <div className={styles.statContent}>
+                                <span className={styles.statLabel}>Ticket Médio</span>
+                                <span className={styles.statValue}>{formatCurrency(stats.averageTicket)}</span>
+                                <span className={styles.statMeta}>por pedido</span>
+                            </div>
+                        </Card>
+
+                        <Card className={styles.statCard}>
+                            <div className={styles.statIconWrapper} style={{ background: 'rgba(253, 203, 110, 0.1)' }}>
+                                <FiTruck style={{ color: 'var(--warning)' }} />
+                            </div>
+                            <div className={styles.statContent}>
+                                <span className={styles.statLabel}>Entregas / Balcão</span>
+                                <span className={styles.statValue}>{stats.deliveryCount} / {stats.pickupCount}</span>
+                                <div className={styles.deliveryBar}>
+                                    <div
+                                        className={styles.deliveryProgress}
+                                        style={{
+                                            width: `${(stats.deliveryCount / (stats.deliveryCount + stats.pickupCount || 1)) * 100}%`
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* Interactive Sales Chart */}
+                    <Card className={styles.chartCard}>
+                        <div className={styles.cardHeader}>
+                            <h2><FiBarChart2 /> Vendas por Dia</h2>
+                            <div className={styles.chartLegend}>
+                                <span className={styles.legendItem}>
+                                    <span className={styles.legendDot} style={{ background: '#ff6b35' }}></span>
+                                    Período atual
+                                </span>
+                                <span className={styles.legendItem}>
+                                    <span className={styles.legendDot} style={{ background: 'rgba(0, 184, 148, 0.5)' }}></span>
+                                    {getComparisonLabel(comparison)}
+                                </span>
+                            </div>
+                        </div>
+                        <div className={styles.chartContainer}>
+                            {dailySalesData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <AreaChart data={dailySalesData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorAtual" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#ff6b35" stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor="#ff6b35" stopOpacity={0.1} />
+                                            </linearGradient>
+                                            <linearGradient id="colorComparacao" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#00b894" stopOpacity={0.5} />
+                                                <stop offset="95%" stopColor="#00b894" stopOpacity={0.1} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                                        <XAxis
+                                            dataKey="date"
+                                            stroke="#888"
+                                            fontSize={12}
+                                            tickLine={false}
+                                        />
+                                        <YAxis
+                                            stroke="#888"
+                                            fontSize={12}
+                                            tickFormatter={(value) => formatCurrencyShort(value)}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="comparacao"
+                                            stroke="#00b894"
+                                            fillOpacity={1}
+                                            fill="url(#colorComparacao)"
+                                            name="comparação"
+                                            strokeWidth={2}
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="atual"
+                                            stroke="#ff6b35"
+                                            fillOpacity={1}
+                                            fill="url(#colorAtual)"
+                                            name="atual"
+                                            strokeWidth={2}
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className={styles.noData}>
+                                    <span>📊</span>
+                                    <p>Nenhuma venda no período selecionado</p>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+
+                    {/* Two Column Charts Layout */}
+                    <div className={styles.twoColumns}>
+                        {/* Payment Methods Pie Chart */}
+                        <Card className={styles.sectionCard}>
+                            <div className={styles.cardHeader}>
+                                <h2><BsCash /> Formas de Pagamento</h2>
+                            </div>
+                            <div className={styles.pieChartContainer}>
+                                {paymentData.length > 0 ? (
+                                    <>
+                                        <ResponsiveContainer width="100%" height={250}>
+                                            <PieChart>
+                                                <Pie
+                                                    data={paymentData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={60}
+                                                    outerRadius={90}
+                                                    paddingAngle={5}
+                                                    dataKey="value"
+                                                >
+                                                    {paymentData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip
+                                                    formatter={(value) => formatCurrency(value as number)}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                        <div className={styles.pieLegend}>
+                                            {paymentData.map((entry, index) => (
+                                                <div key={index} className={styles.pieLegendItem}>
+                                                    <span
+                                                        className={styles.pieLegendDot}
+                                                        style={{ backgroundColor: entry.color }}
+                                                    />
+                                                    <span className={styles.pieLegendLabel}>{entry.name}</span>
+                                                    <span className={styles.pieLegendValue}>{formatCurrency(entry.value)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className={styles.noDataSmall}>
+                                        <p>Nenhum pagamento no período</p>
+                                    </div>
+                                )}
+                            </div>
+                        </Card>
+
+                        {/* Hourly Orders Bar Chart */}
+                        <Card className={styles.sectionCard}>
+                            <div className={styles.cardHeader}>
+                                <h2><FiClock /> Pedidos por Hora</h2>
+                            </div>
+                            <div className={styles.chartContainer}>
+                                <ResponsiveContainer width="100%" height={250}>
+                                    <BarChart data={hourlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                                        <XAxis
+                                            dataKey="hour"
+                                            stroke="#888"
+                                            fontSize={10}
+                                            tickLine={false}
+                                            interval={2}
+                                        />
+                                        <YAxis
+                                            stroke="#888"
+                                            fontSize={12}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+                                        <Tooltip
+                                            formatter={(value) => [value as number, 'Pedidos']}
+                                            contentStyle={{
+                                                background: 'rgba(45, 52, 54, 0.95)',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                                            }}
+                                        />
+                                        <Bar
+                                            dataKey="pedidos"
+                                            fill="#ff6b35"
+                                            radius={[4, 4, 0, 0]}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* Top Products Bar Chart */}
+                    <Card className={styles.chartCard}>
+                        <div className={styles.cardHeader}>
+                            <h2><FiPackage /> Top 5 Produtos Mais Vendidos</h2>
+                        </div>
+                        <div className={styles.chartContainer}>
+                            {topProductsData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <BarChart
+                                        data={topProductsData}
+                                        layout="vertical"
+                                        margin={{ top: 10, right: 30, left: 100, bottom: 10 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" horizontal={false} />
+                                        <XAxis
+                                            type="number"
+                                            stroke="#888"
+                                            fontSize={12}
+                                            tickLine={false}
+                                        />
+                                        <YAxis
+                                            dataKey="name"
+                                            type="category"
+                                            stroke="#888"
+                                            fontSize={12}
+                                            tickLine={false}
+                                            axisLine={false}
+                                        />
+                                        <Tooltip
+                                            formatter={(value, name) => [
+                                                name === 'receita' ? formatCurrency(value as number) : (value as number) + 'x',
+                                                name === 'receita' ? 'Receita' : 'Quantidade'
+                                            ]}
+                                            contentStyle={{
+                                                background: 'rgba(45, 52, 54, 0.95)',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                                            }}
+                                        />
+                                        <Legend />
+                                        <Bar dataKey="quantidade" fill="#ff6b35" name="Quantidade" radius={[0, 4, 4, 0]} />
+                                        <Bar dataKey="receita" fill="#00b894" name="Receita" radius={[0, 4, 4, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className={styles.noData}>
+                                    <span>📦</span>
+                                    <p>Nenhum produto vendido no período</p>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+
+                    {/* Three Column Layout */}
+                    <div className={styles.threeColumns}>
+                        {/* Categories */}
+                        <Card className={styles.miniCard}>
+                            <div className={styles.cardHeaderMini}>
+                                <h3><FiPieChart /> Categorias</h3>
+                            </div>
+                            <div className={styles.categoryGrid}>
+                                {stats.byCategory.length > 0 ? (
+                                    stats.byCategory.map((cat) => {
+                                        const totalCategorySales = stats.byCategory.reduce((sum, c) => sum + c.total, 0);
+                                        const percentage = totalCategorySales > 0 ? (cat.total / totalCategorySales) * 100 : 0;
+                                        return (
+                                            <div
+                                                key={cat.categoryId}
+                                                className={styles.categoryCard}
+                                                style={{ borderColor: cat.color }}
+                                            >
+                                                <span className={styles.categoryIcon}>{cat.icon}</span>
+                                                <span className={styles.categoryName}>{cat.name}</span>
+                                                <span className={styles.categoryValue}>{formatCurrency(cat.total)}</span>
+                                                <span className={styles.categoryPercent}>{percentage.toFixed(1)}%</span>
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    <p className={styles.noDataText}>Nenhuma categoria</p>
+                                )}
+                            </div>
+                        </Card>
+
+                        {/* Status Distribution */}
+                        <Card className={styles.miniCard}>
+                            <div className={styles.cardHeaderMini}>
+                                <h3><FiUsers /> Status dos Pedidos</h3>
+                            </div>
+                            <div className={styles.statusList}>
+                                {Object.entries(stats.byStatus).length > 0 ? (
+                                    Object.entries(stats.byStatus)
+                                        .sort(([, a], [, b]) => b - a)
+                                        .map(([status, count]) => (
+                                            <div key={status} className={styles.statusItem}>
+                                                <span className={`${styles.statusDot} status-${status}`}></span>
+                                                <span className={styles.statusLabel}>{getStatusLabel(status)}</span>
+                                                <span className={styles.statusCount}>{count}</span>
+                                            </div>
+                                        ))
+                                ) : (
+                                    <p className={styles.noDataText}>Nenhum pedido</p>
+                                )}
+                            </div>
+                        </Card>
+
+                        {/* Peak Hours */}
+                        <Card className={styles.miniCard}>
+                            <div className={styles.cardHeaderMini}>
+                                <h3><FiClock /> Horários de Pico</h3>
+                            </div>
+                            <div className={styles.peakList}>
+                                {getPeakHours().length > 0 ? (
+                                    getPeakHours().map(({ hour, count }, index) => (
+                                        <div key={hour} className={styles.peakItem}>
+                                            <span className={styles.peakMedal}>
+                                                {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                                            </span>
+                                            <span className={styles.peakHour}>
+                                                {hour.toString().padStart(2, '0')}:00 - {(hour + 1).toString().padStart(2, '0')}:00
+                                            </span>
+                                            <span className={styles.peakCount}>{count} pedidos</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className={styles.noDataText}>Sem dados de horário</p>
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* Period Comparison Summary */}
+                    <Card className={styles.comparisonCard}>
+                        <div className={styles.cardHeader}>
+                            <h2><FiActivity /> Comparativo de Períodos</h2>
+                        </div>
+                        <div className={styles.comparisonGrid}>
+                            <div className={styles.comparisonItem}>
+                                <span className={styles.comparisonTitle}>Receita Atual</span>
+                                <span className={styles.comparisonValue}>{formatCurrency(stats.totalRevenue)}</span>
+                            </div>
+                            <div className={styles.comparisonVs}>VS</div>
+                            <div className={styles.comparisonItem}>
+                                <span className={styles.comparisonTitle}>{getComparisonLabel(comparison)}</span>
+                                <span className={styles.comparisonValue}>{formatCurrency(stats.comparisonRevenue)}</span>
+                            </div>
+                            <div className={`${styles.comparisonResult} ${stats.totalRevenue >= stats.comparisonRevenue ? styles.positive : styles.negative}`}>
+                                <span className={styles.comparisonDiff}>
+                                    {stats.totalRevenue >= stats.comparisonRevenue ? '+' : ''}
+                                    {formatCurrency(stats.totalRevenue - stats.comparisonRevenue)}
+                                </span>
+                                <span className={styles.comparisonPercent}>
+                                    ({getPercentChange(stats.totalRevenue, stats.comparisonRevenue).toFixed(1)}%)
+                                </span>
+                            </div>
+                        </div>
+                    </Card>
+                </>
+            )}
+        </div>
     );
 }
