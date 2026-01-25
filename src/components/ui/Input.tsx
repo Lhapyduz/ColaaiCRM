@@ -4,7 +4,7 @@ import React, { InputHTMLAttributes, forwardRef, useState } from 'react';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { cn } from '@/lib/utils';
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: string;
     error?: string;
     leftIcon?: React.ReactNode;
