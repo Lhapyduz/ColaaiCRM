@@ -317,79 +317,128 @@ export default function ConfiguracoesPage() {
                             </div>
                         ) : (
                             <>
-                                {/* Status & Key Info Card */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Store Status */}
-                                    <div className="bg-bg-tertiary border border-border rounded-xl p-6 flex flex-col justify-between hover:border-border-light transition-colors">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="p-3 bg-bg-card rounded-lg border border-white/5">
-                                                <FiSmartphone className="text-2xl text-primary" />
+                                {/* Status & Key Info Cards - Vertical Stack */}
+                                <div className="flex flex-col gap-6">
+                                    {/* Store Status - Wide Banner Style */}
+                                    <div className="bg-bg-tertiary border border-border rounded-xl p-4 sm:p-6 relative overflow-hidden group hover:border-border-light transition-all duration-300">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10 relative">
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn("p-3 rounded-xl shrink-0", storeOpen ? "bg-primary/10 text-primary" : "bg-bg-card text-text-muted")}>
+                                                    {storeOpen ? <FiSmartphone size={24} /> : <FiLock size={24} />}
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-text-primary">Status da Loja</h3>
+                                                    <p className={cn(
+                                                        "text-sm font-bold uppercase tracking-wider flex items-center gap-2 mt-1",
+                                                        storeOpen ? "text-primary" : "text-text-muted"
+                                                    )}>
+                                                        {storeOpen ? (
+                                                            <>
+                                                                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                                                                Aberta para Pedidos
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span className="w-2 h-2 rounded-full bg-text-muted" />
+                                                                Atualmente Fechada
+                                                            </>
+                                                        )}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <label className="relative inline-flex items-center cursor-pointer">
+
+                                            <label className="relative inline-flex items-center cursor-pointer self-end sm:self-center">
                                                 <input
                                                     type="checkbox"
                                                     checked={storeOpen}
                                                     onChange={(e) => setStoreOpen(e.target.checked)}
                                                     className="sr-only peer"
                                                 />
-                                                <div className="w-14 h-7 bg-bg-card peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+                                                <div className="w-14 h-7 bg-bg-card peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary shadow-sm hover:scale-105 transition-transform"></div>
                                             </label>
                                         </div>
-                                        <div>
-                                            <h3 className="text-lg font-semibold text-text-primary mb-1">Status da Loja</h3>
-                                            <p className={cn(
-                                                "text-sm font-medium",
-                                                storeOpen ? "text-success" : "text-error"
-                                            )}>
-                                                {storeOpen ? 'LOJA ABERTA' : 'LOJA FECHADA'}
-                                            </p>
-                                            <p className="text-xs text-text-muted mt-2">
-                                                Quando fechada, o sistema bloqueia novos pedidos automaticamente.
+
+                                        <div className="mt-4 pt-4 border-t border-white/5">
+                                            <p className="text-sm text-text-secondary leading-relaxed flex items-center gap-2">
+                                                <FiClock className="shrink-0" />
+                                                {storeOpen
+                                                    ? 'Sua loja está online! Clientes podem acessar o cardápio e enviar pedidos.'
+                                                    : 'Loja fechada. O cardápio permanece visível apenas para consulta.'}
                                             </p>
                                         </div>
                                     </div>
 
-                                    {/* Link Share */}
-                                    <div className="bg-bg-tertiary border border-border rounded-xl p-6 flex flex-col gap-4 hover:border-border-light transition-colors">
-                                        <div className="flex items-center justify-between">
-                                            <h3 className="text-lg font-semibold text-text-primary">Link do Cardápio</h3>
+                                    {/* Link Share - Full Width & Spacious */}
+                                    <div className="bg-bg-tertiary border border-border rounded-xl p-4 sm:p-6 lg:p-8 flex flex-col gap-6 hover:border-border-light transition-all duration-300">
+                                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                            <div>
+                                                <h3 className="text-xl font-bold text-text-primary">Link do Cardápio</h3>
+                                                <p className="text-sm text-text-secondary mt-1">Este é o endereço único da sua loja digital</p>
+                                            </div>
                                             {publicSlug && userSettings?.public_slug && (
-                                                <div className="flex gap-2">
-                                                    <Button variant="ghost" size="sm" onClick={() => window.open(getMenuUrl(), '_blank')}>
-                                                        <FiLink size={16} />
-                                                    </Button>
-                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => window.open(getMenuUrl(), '_blank')}
+                                                    leftIcon={<FiLink />}
+                                                    className="w-full sm:w-auto justify-center shrink-0"
+                                                >
+                                                    Abrir Link
+                                                </Button>
                                             )}
                                         </div>
 
-                                        <div className="flex flex-col gap-2">
-                                            <div className="flex items-center bg-bg-card border border-border rounded-lg overflow-hidden group focus-within:border-primary transition-colors">
-                                                <span className="bg-bg-secondary px-3 py-3 text-sm text-text-muted border-r border-border h-full flex items-center">
-                                                    /menu/
-                                                </span>
-                                                <input
-                                                    value={publicSlug}
-                                                    onChange={(e) => handleSlugChange(e.target.value)}
-                                                    placeholder="seu-negocio"
-                                                    className="bg-transparent border-none px-3 py-2 text-text-primary flex-1 focus:outline-none"
-                                                />
-                                            </div>
-                                            {slugError && <p className="text-xs text-error">{slugError}</p>}
-                                        </div>
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-center">
+                                            {/* Left: Input & Copy */}
+                                            <div className="lg:col-span-2 flex flex-col gap-4">
+                                                <div className="group relative">
+                                                    <label className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2 block">Personalizar Link</label>
+                                                    <div className={cn(
+                                                        "flex items-center bg-bg-card border rounded-xl overflow-hidden transition-all duration-300 h-14 sm:h-16 shadow-inner",
+                                                        slugError ? "border-error" : "border-border group-focus-within:border-primary group-focus-within:ring-2 group-focus-within:ring-primary/20"
+                                                    )}>
+                                                        <div className="hidden sm:flex bg-bg-secondary/30 px-3 sm:px-5 h-full items-center text-sm sm:text-base text-text-muted border-r border-border font-mono select-none tracking-tight">
+                                                            {typeof window !== 'undefined' ? window.location.host : ''}/menu/
+                                                        </div>
+                                                        <div className="flex sm:hidden bg-bg-secondary/30 px-3 h-full items-center text-sm text-text-muted border-r border-border font-mono select-none">
+                                                            /
+                                                        </div>
+                                                        <input
+                                                            value={publicSlug}
+                                                            onChange={(e) => handleSlugChange(e.target.value)}
+                                                            placeholder="nome-da-loja"
+                                                            className="flex-1 bg-transparent border-none px-3 sm:px-5 h-full text-text-primary focus:outline-none font-bold text-base sm:text-lg placeholder:text-text-muted/30 placeholder:font-normal min-w-0"
+                                                        />
+                                                        {publicSlug && userSettings?.public_slug && (
+                                                            <button
+                                                                onClick={copyMenuLink}
+                                                                className="px-4 sm:px-8 h-full text-sm font-bold text-primary hover:bg-primary hover:text-white transition-all duration-300 border-l border-border flex items-center gap-2 active:scale-95 shrink-0"
+                                                                title="Copiar Link"
+                                                            >
+                                                                {copied ? <FiCheck size={20} /> : <FiCopy size={20} />}
+                                                                <span className="hidden sm:inline">{copied ? 'Copiado!' : 'Copiar'}</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    {slugError && <p className="text-sm text-error mt-2 flex items-center gap-1 font-medium"><FiLock size={14} /> {slugError}</p>}
+                                                </div>
 
-                                        {publicSlug && userSettings?.public_slug && (
-                                            <div className="flex gap-2 mt-auto">
-                                                <Button
-                                                    variant="outline"
-                                                    className="flex-1"
-                                                    leftIcon={copied ? <FiCheck /> : <FiCopy />}
-                                                    onClick={copyMenuLink}
-                                                >
-                                                    {copied ? 'Copiado!' : 'Copiar'}
-                                                </Button>
-                                                <QRCodeGenerator url={getMenuUrl()} appName={appName} primaryColor={primaryColor} />
+                                                <div className="bg-bg-card/50 rounded-lg p-3 sm:p-4 border border-white/5">
+                                                    <p className="text-xs sm:text-sm text-text-secondary flex gap-2">
+                                                        <span className="text-primary font-bold shrink-0">💡 Dica:</span>
+                                                        Escolha um nome curto e fácil de lembrar.
+                                                    </p>
+                                                </div>
                                             </div>
-                                        )}
+
+                                            {/* Right: QR Code */}
+                                            {publicSlug && userSettings?.public_slug && (
+                                                <div className="flex flex-col items-center justify-center p-4 sm:p-6 bg-bg-card/30 rounded-xl border border-white/5 mt-2 lg:mt-0">
+                                                    <QRCodeGenerator url={getMenuUrl()} appName={appName} primaryColor={primaryColor} />
+                                                    <p className="text-xs text-text-muted mt-3 text-center">Seu QR Code oficial</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
