@@ -226,39 +226,6 @@ export default function Sidebar() {
         setIsMounted(true);
     }, []);
 
-    // Restore scroll position synchronously before paint using useLayoutEffect
-    useLayoutEffect(() => {
-        const nav = navRef.current;
-        if (!nav) return;
-
-        // Restore scroll position immediately (before browser paints)
-        const savedScroll = sessionStorage.getItem('sidebar-scroll');
-        if (savedScroll) {
-            nav.scrollTop = parseInt(savedScroll, 10);
-        }
-    }, [pathname]);
-
-    // Save scroll position on scroll (separate effect to avoid re-running restore)
-    useEffect(() => {
-        const nav = navRef.current;
-        if (!nav) return;
-
-        // Save scroll position on scroll (debounced)
-        let scrollTimeout: NodeJS.Timeout;
-        const handleScroll = () => {
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => {
-                sessionStorage.setItem('sidebar-scroll', String(nav.scrollTop));
-            }, 50);
-        };
-
-        nav.addEventListener('scroll', handleScroll, { passive: true });
-        return () => {
-            nav.removeEventListener('scroll', handleScroll);
-            clearTimeout(scrollTimeout);
-        };
-    }, []);
-
     // Configure sensors for drag and drop
     const sensors = useSensors(
         useSensor(MouseSensor, {
@@ -400,8 +367,9 @@ export default function Sidebar() {
             )}
 
             <aside
+                style={{ backgroundColor: 'var(--sidebar-bg)' }}
                 className={cn(
-                    'fixed top-0 left-0 h-screen bg-bg-secondary border-r border-border flex flex-col z-sticky will-change-[width]',
+                    'fixed top-0 left-0 h-screen border-r border-border flex flex-col z-sticky will-change-[width]',
                     // Only enable transitions after hydration to prevent FOUC
                     isHydrated ? 'transition-[width] duration-normal' : '',
                     collapsed ? 'w-sidebar-collapsed' : 'w-sidebar',

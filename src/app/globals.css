@@ -277,6 +277,9 @@
   --sidebar-width: 280px;
   --sidebar-collapsed: 80px;
   --header-height: 70px;
+  
+  /* Dynamic Components */
+  --sidebar-bg: var(--bg-secondary);
 }
 
 /* Global Styles - wrapped in @layer base so Tailwind utilities can override */

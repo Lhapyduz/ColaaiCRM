@@ -35,7 +35,24 @@ function MainLayoutContent({ children }: MainLayoutProps) {
 }
 
 export default function MainLayout({ children }: MainLayoutProps) {
-    const { loading } = useAuth();
+    const { loading, userSettings } = useAuth();
+
+    // Apply theme settings
+    React.useEffect(() => {
+        if (userSettings && typeof document !== 'undefined') {
+            const root = document.documentElement;
+            if (userSettings.primary_color) {
+                root.style.setProperty('--color-primary', userSettings.primary_color);
+                root.style.setProperty('--primary', userSettings.primary_color); // Keep for legacy compatibility
+            }
+            if (userSettings.secondary_color) {
+                root.style.setProperty('--color-secondary', userSettings.secondary_color);
+            }
+            if (userSettings.sidebar_color) {
+                root.style.setProperty('--sidebar-bg', userSettings.sidebar_color);
+            }
+        }
+    }, [userSettings]);
 
     if (loading) {
         return (

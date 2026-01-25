@@ -22,6 +22,10 @@ interface UserSettings {
     access_token: string | null;
     delivery_fee_type: 'fixed' | 'neighborhood' | null;
     delivery_fee_value: number | null;
+    store_open: boolean | null;
+    delivery_time_min: number | null;
+    delivery_time_max: number | null;
+    sidebar_color: string | null;
 }
 
 interface AuthContextType {
@@ -98,7 +102,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                     if (!insertError && newSettings) {
                         setUserSettings(newSettings);
-                        applyThemeColors(newSettings.primary_color, newSettings.secondary_color);
+                        applyThemeColors(
+                            newSettings.primary_color,
+                            newSettings.secondary_color,
+                            newSettings.sidebar_color || newSettings.secondary_color
+                        );
 
                         // Also create default categories if they don't exist
                         const { error: catError } = await supabase.from('categories').insert([
@@ -117,7 +125,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (data) {
                 setUserSettings(data);
-                applyThemeColors(data.primary_color, data.secondary_color);
+                applyThemeColors(
+                    data.primary_color,
+                    data.secondary_color,
+                    data.sidebar_color || data.secondary_color
+                );
             }
         } catch (error) {
             console.error('Error:', error);
@@ -126,7 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const applyThemeColors = (primary: string, secondary: string) => {
+    const applyThemeColors = (primary: string, secondary: string, sidebar: string | null) => {
         const root = document.documentElement;
         root.style.setProperty('--primary', primary);
 
@@ -140,6 +152,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         root.style.setProperty('--primary-rgb', hex2rgb(primary));
         root.style.setProperty('--secondary', secondary);
+
+        // Apply sidebar color if provided, otherwise fallback to secondary (default behavior)
+        if (sidebar) {
+            root.style.setProperty('--sidebar-bg', sidebar);
+        } else {
+            root.style.setProperty('--sidebar-bg', secondary);
+        }
     };
 
     const signIn = async (email: string, password: string) => {
@@ -207,10 +226,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (!error) {
                 setUserSettings(prev => prev ? { ...prev, ...settings } : null);
-                if (settings.primary_color || settings.secondary_color) {
+                if (settings.primary_color || settings.secondary_color || settings.sidebar_color) {
                     applyThemeColors(
                         settings.primary_color || userSettings?.primary_color || '#ff6b35',
-                        settings.secondary_color || userSettings?.secondary_color || '#2d3436'
+                        settings.secondary_color || userSettings?.secondary_color || '#2d3436',
+                        settings.sidebar_color ?? userSettings?.sidebar_color ?? null
                     );
                 }
             }
@@ -226,10 +246,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserSettings(prev => prev ? { ...prev, ...settings } : null);
 
         // Apply theme colors if they are being changed
-        if (settings.primary_color || settings.secondary_color) {
+        if (settings.primary_color || settings.secondary_color || settings.sidebar_color) {
             applyThemeColors(
                 settings.primary_color || userSettings?.primary_color || '#ff6b35',
-                settings.secondary_color || userSettings?.secondary_color || '#2d3436'
+                settings.secondary_color || userSettings?.secondary_color || '#2d3436',
+                settings.sidebar_color ?? userSettings?.sidebar_color ?? null
             );
         }
     };

@@ -12,42 +12,43 @@ const config: Config = {
             // Cores do Design System atual
             colors: {
                 primary: {
-                    DEFAULT: '#ff6b35',
-                    light: '#ff8c5a',
-                    dark: '#e55a2b',
+                    DEFAULT: 'var(--primary)',
+                    light: 'var(--primary-light)',
+                    dark: 'var(--primary-dark)',
                 },
                 secondary: {
-                    DEFAULT: '#2d3436',
-                    light: '#636e72',
-                    dark: '#1e2224',
+                    DEFAULT: 'var(--secondary)',
+                    light: 'var(--secondary-light)',
+                    dark: 'var(--secondary-dark)',
                 },
                 accent: {
-                    DEFAULT: '#00b894',
-                    light: '#55efc4',
-                    dark: '#00a381',
+                    DEFAULT: 'var(--accent)',
+                    light: 'var(--accent-light)',
+                    dark: 'var(--accent-dark)',
                 },
-                success: '#00b894',
-                warning: '#fdcb6e',
-                error: '#e74c3c',
-                info: '#0984e3',
+                success: 'var(--success)',
+                warning: 'var(--warning)',
+                error: 'var(--error)',
+                info: 'var(--info)',
                 // Backgrounds (dark theme)
                 bg: {
-                    primary: '#0f0f0f',
-                    secondary: '#1a1a1a',
-                    tertiary: '#252525',
-                    card: '#1e1e1e',
-                    'card-hover': '#2a2a2a',
+                    primary: 'var(--bg-primary)',
+                    secondary: 'var(--bg-secondary)',
+                    tertiary: 'var(--bg-tertiary)',
+                    card: 'var(--bg-card)',
+                    'card-hover': 'var(--bg-card-hover)',
+                    'sidebar': 'var(--sidebar-bg)',
                 },
                 // Text colors
                 text: {
-                    primary: '#ffffff',
-                    secondary: '#b0b0b0',
-                    muted: '#6b6b6b',
+                    primary: 'var(--text-primary)',
+                    secondary: 'var(--text-secondary)',
+                    muted: 'var(--text-muted)',
                 },
                 // Border colors
                 border: {
-                    DEFAULT: '#333333',
-                    light: '#404040',
+                    DEFAULT: 'var(--border-color)',
+                    light: 'var(--border-light)',
                 },
                 // Grays
                 gray: {

@@ -38,9 +38,19 @@ export default function RatingClient({ token }: { token: string }) {
         if (rating === 0) { setError('Por favor, selecione uma avaliação'); return; }
         setSubmitting(true); setError('');
         try {
-            const { data: orderData } = await supabase.from('orders').select('id, user_id').eq('rating_token', token).single();
+            const { data: orderData } = await supabase.from('orders').select('id, user_id, customer_name').eq('rating_token', token).single();
             if (!orderData) { setError('Pedido não encontrado'); return; }
-            await supabase.from('ratings').insert({ order_id: orderData.id, user_id: orderData.user_id, rating, comment: comment.trim() || null });
+            
+            // Insert into store_ratings instead of ratings
+            const { error: ratingError } = await supabase.from('store_ratings').insert({
+                user_id: orderData.user_id,
+                rating,
+                comment: comment.trim() || null,
+                customer_name: orderData.customer_name || 'Cliente'
+            });
+
+            if (ratingError) throw ratingError;
+
             await supabase.from('orders').update({ rated: true }).eq('id', orderData.id);
             setSubmitted(true);
         } catch (err) { console.error(err); setError('Erro ao enviar avaliação. Tente novamente.'); } finally { setSubmitting(false); }

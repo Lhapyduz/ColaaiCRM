@@ -1,15 +1,32 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { FiShoppingBag, FiMinus, FiPlus, FiX, FiMessageCircle, FiUser, FiPhone, FiTag, FiCheck, FiGift } from 'react-icons/fi';
+import React, { useEffect, useState, useRef } from 'react';
+import { FiShoppingBag, FiMinus, FiPlus, FiX, FiMessageCircle, FiUser, FiPhone, FiTag, FiCheck, FiGift, FiStar, FiClock } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
+import StoreRatingModal from '@/components/menu/StoreRatingModal';
+import ProductRatingModal from '@/components/menu/ProductRatingModal';
+import StoreReviewsModal from '@/components/menu/StoreReviewsModal';
+import StarRating from '@/components/ui/StarRating';
 
 interface Category { id: string; name: string; icon: string; color: string; }
 interface Product { id: string; name: string; description: string | null; price: number; image_url: string | null; category_id: string; available: boolean; }
-interface UserSettings { app_name: string; logo_url: string | null; primary_color: string; secondary_color: string; whatsapp_number: string | null; user_id: string; delivery_fee_value: number | null; }
+interface UserSettings {
+    app_name: string;
+    logo_url: string | null;
+    primary_color: string;
+    secondary_color: string;
+    whatsapp_number: string | null;
+    user_id: string;
+    delivery_fee_value: number | null;
+    store_open: boolean | null;
+    delivery_time_min: number | null;
+    delivery_time_max: number | null;
+    sidebar_color?: string | null;
+    public_slug?: string;
+}
 interface Addon { id: string; name: string; price: number; }
 interface AddonGroup { id: string; name: string; required: boolean; max_selection: number; addons: Addon[]; }
 interface SelectedAddon { id: string; name: string; price: number; }
@@ -17,6 +34,7 @@ interface CartItem { product: Product; quantity: number; notes: string; addons: 
 interface Customer { id: string; phone: string; name: string; total_points: number; total_spent: number; total_orders: number; tier: string; }
 interface LoyaltySettings { points_per_real: number; is_active: boolean; }
 interface AppSettings { loyalty_enabled: boolean; coupons_enabled: boolean; }
+interface OpeningHour { day_of_week: number; open_time: string | null; close_time: string | null; is_closed: boolean; }
 
 interface MenuClientProps {
     slug: string;
@@ -35,7 +53,6 @@ export default function MenuClient({
     initialAppSettings = null,
     initialLoyaltySettings = null
 }: MenuClientProps) {
-    // Use initial data from SSR if available, otherwise start with empty/loading state
     const hasInitialData = initialSettings !== null;
 
     const [settings, setSettings] = useState<UserSettings | null>(initialSettings);
@@ -53,6 +70,7 @@ export default function MenuClient({
     const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
     const [loadingAddons, setLoadingAddons] = useState(false);
     const categoryRefs = useRef<{ [key: string]: HTMLElement | null }>({});
+
     // Customer & Coupon states
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -64,106 +82,194 @@ export default function MenuClient({
     const [customerData, setCustomerData] = useState<Customer | null>(null);
     const [loyaltySettings, setLoyaltySettings] = useState<LoyaltySettings | null>(initialLoyaltySettings);
 
-    // Debounce phone for customer lookup
+    // New Features States
+    const [openingHours, setOpeningHours] = useState<OpeningHour[]>([]);
+    const [isStoreOpen, setIsStoreOpen] = useState(false);
+    const [storeRating, setStoreRating] = useState({ average: 0, count: 0 });
+    const [productRatings, setProductRatings] = useState<{ [key: string]: { average: number; count: number } }>({});
+    const [showStoreRatingModal, setShowStoreRatingModal] = useState(false);
+    const [showProductRatingModal, setShowProductRatingModal] = useState(false);
+    const [showReviewsModal, setShowReviewsModal] = useState(false);
+    const [storeReviews, setStoreReviews] = useState<any[]>([]);
+    const [ratingProduct, setRatingProduct] = useState<Product | null>(null);
+
     const debouncedPhone = useDebounce(customerPhone, 500);
 
-    // Only fetch data client-side if SSR data wasn't provided
     useEffect(() => {
         if (!hasInitialData) {
             fetchMenuData();
+        } else if (settings) {
+            // Fetch extra data if we have initial settings but not the rest
+            fetchExtraData(settings.user_id);
         }
     }, [slug, hasInitialData]);
 
     useEffect(() => {
         if (settings) {
-            document.documentElement.style.setProperty('--menu-primary', settings.primary_color);
-            document.documentElement.style.setProperty('--menu-secondary', settings.secondary_color);
+            document.documentElement.style.setProperty('--color-primary', settings.primary_color);
+            document.documentElement.style.setProperty('--color-secondary', settings.secondary_color);
+            // Apply sidebar color
+            const sidebarColor = settings.sidebar_color || settings.secondary_color;
+            document.documentElement.style.setProperty('--color-sidebar-bg', sidebarColor);
         }
     }, [settings]);
 
-    // Debounced customer lookup
     useEffect(() => {
         if (debouncedPhone && debouncedPhone.length >= 10 && settings) {
             lookupCustomer(debouncedPhone);
         }
     }, [debouncedPhone, settings]);
 
+    // Check store status every minute
+    useEffect(() => {
+        if (settings && openingHours.length > 0) {
+            checkStoreStatus();
+            const interval = setInterval(checkStoreStatus, 60000);
+            return () => clearInterval(interval);
+        }
+    }, [settings, openingHours]);
+
+    const checkStoreStatus = () => {
+        if (!settings) return;
+
+        // Manual override (Master Switch)
+        if (settings.store_open === false) {
+            setIsStoreOpen(false);
+            return;
+        }
+
+        // Check schedule
+        const now = new Date();
+        const dayOfWeek = now.getDay(); // 0 = Sunday
+        const currentTime = now.getHours() * 60 + now.getMinutes(); // Minutes from midnight
+
+        const todaySchedule = openingHours.find(h => h.day_of_week === dayOfWeek);
+
+        if (!todaySchedule || todaySchedule.is_closed) {
+            setIsStoreOpen(false);
+            return;
+        }
+
+        if (todaySchedule.open_time && todaySchedule.close_time) {
+            const [openHour, openMinute] = todaySchedule.open_time.split(':').map(Number);
+            const [closeHour, closeMinute] = todaySchedule.close_time.split(':').map(Number);
+
+            const openTime = openHour * 60 + openMinute;
+            const closeTime = closeHour * 60 + closeMinute;
+
+            if (closeTime < openTime) {
+                // Spans midnight (e.g. 18:00 to 02:00)
+                // If current time is after open OR before close
+                if (currentTime >= openTime || currentTime <= closeTime) {
+                    setIsStoreOpen(true);
+                } else {
+                    setIsStoreOpen(false);
+                }
+            } else {
+                // Normal hours (e.g. 09:00 to 22:00)
+                if (currentTime >= openTime && currentTime <= closeTime) {
+                    setIsStoreOpen(true);
+                } else {
+                    setIsStoreOpen(false);
+                }
+            }
+        } else {
+            // Fallback if no time set but not closed? Assume open? Better closed.
+            setIsStoreOpen(false);
+        }
+    };
+
+    const fetchExtraData = async (userId: string) => {
+        try {
+            const [{ data: hours }, { data: sRatings }, { data: pRatings }] = await Promise.all([
+                supabase.from('opening_hours').select('*').eq('user_id', userId),
+                supabase.from('store_ratings').select('*').eq('user_id', userId).eq('hidden', false).order('created_at', { ascending: false }),
+                supabase.from('product_ratings').select('rating, product_id').eq('user_id', userId).eq('hidden', false)
+            ]);
+
+            if (hours) setOpeningHours(hours);
+
+            if (sRatings && sRatings.length > 0) {
+                const avg = sRatings.reduce((a, b) => a + b.rating, 0) / sRatings.length;
+                setStoreRating({ average: avg, count: sRatings.length });
+                setStoreReviews(sRatings);
+            }
+
+            if (pRatings && pRatings.length > 0) {
+                const ratingsMap: { [key: string]: { sum: number; count: number } } = {};
+                pRatings.forEach(r => {
+                    if (!ratingsMap[r.product_id]) ratingsMap[r.product_id] = { sum: 0, count: 0 };
+                    ratingsMap[r.product_id].sum += r.rating;
+                    ratingsMap[r.product_id].count += 1;
+                });
+
+                const finalMap: { [key: string]: { average: number; count: number } } = {};
+                Object.keys(ratingsMap).forEach(id => {
+                    finalMap[id] = {
+                        average: ratingsMap[id].sum / ratingsMap[id].count,
+                        count: ratingsMap[id].count
+                    };
+                });
+                setProductRatings(finalMap);
+            }
+        } catch (e) {
+            console.error('Error fetching extra data', e);
+        }
+    };
+
     const fetchMenuData = async () => {
         try {
             const { data: settingsData, error: settingsError } = await supabase.from('user_settings').select('*').eq('public_slug', slug).single();
             if (settingsError || !settingsData) { setNotFound(true); setLoading(false); return; }
             setSettings(settingsData);
+
             const [{ data: categoriesData }, { data: productsData }, { data: appSettingsData }, { data: loyaltySettingsData }] = await Promise.all([
                 supabase.from('categories').select('*').eq('user_id', settingsData.user_id).order('name'),
                 supabase.from('products').select('*').eq('user_id', settingsData.user_id).eq('available', true).order('name'),
                 supabase.from('app_settings').select('loyalty_enabled, coupons_enabled').eq('user_id', settingsData.user_id).single(),
                 supabase.from('loyalty_settings').select('points_per_real, is_active').eq('user_id', settingsData.user_id).single()
             ]);
+
             setCategories(categoriesData || []); setProducts(productsData || []);
             if (appSettingsData) { setLoyaltyEnabled(appSettingsData.loyalty_enabled ?? false); setCouponsEnabled(appSettingsData.coupons_enabled ?? false); }
             if (loyaltySettingsData) { setLoyaltySettings(loyaltySettingsData); }
+
+            await fetchExtraData(settingsData.user_id);
+
         } catch { setNotFound(true); } finally { setLoading(false); }
     };
 
-
     const loadProductAddons = async (productId: string): Promise<AddonGroup[]> => {
         if (!settings) return [];
-
         try {
             const { data: groupLinks, error } = await supabase
                 .from('product_addon_groups')
                 .select(`
                     group_id,
                     addon_groups(
-                        id,
-                        name,
-                        required,
-                        max_selection,
-                        addon_group_items(
-                            product_addons(id,name,price,available)
-                        )
+                        id, name, required, max_selection,
+                        addon_group_items(product_addons(id,name,price,available))
                     )
                 `)
                 .eq('product_id', productId);
 
-            // Handle error or empty response
-            if (error || !groupLinks || !Array.isArray(groupLinks)) {
-                console.warn('Failed to load addons:', error);
-                return [];
-            }
+            if (error || !groupLinks || !Array.isArray(groupLinks)) return [];
 
-            // Process each group link with proper null checks
             const processedGroups: AddonGroup[] = [];
-
             for (const link of groupLinks) {
-                // Skip if addon_groups is null/undefined
                 if (!link?.addon_groups) continue;
-
-                // Cast to any because Supabase types for nested joins can be incorrect
                 const group = link.addon_groups as any;
-
-                // Skip if required properties are missing
                 if (!group.id || !group.name) continue;
-
-                // Safely process addon items
                 const addonItems = group.addon_group_items;
                 const addons: Addon[] = [];
-
                 if (Array.isArray(addonItems)) {
                     for (const item of addonItems) {
                         const addon = item?.product_addons;
-                        // Only add if addon exists, is available, and has required fields
                         if (addon && addon.available && addon.id && addon.name != null) {
-                            addons.push({
-                                id: addon.id,
-                                name: addon.name,
-                                price: addon.price ?? 0
-                            });
+                            addons.push({ id: addon.id, name: addon.name, price: addon.price ?? 0 });
                         }
                     }
                 }
-
-                // Only add groups that have at least one addon
                 if (addons.length > 0) {
                     processedGroups.push({
                         id: group.id,
@@ -174,7 +280,6 @@ export default function MenuClient({
                     });
                 }
             }
-
             return processedGroups;
         } catch (err) {
             console.error('Error loading product addons:', err);
@@ -194,7 +299,6 @@ export default function MenuClient({
     const getProductsByCategory = (categoryId: string) => products.filter(p => p.category_id === categoryId);
     const getDeliveryFee = () => settings?.delivery_fee_value ?? 5;
 
-    // Coupon validation function
     const applyCoupon = async () => {
         if (!couponCode.trim() || !settings) return;
         setCouponLoading(true); setCouponError('');
@@ -212,16 +316,13 @@ export default function MenuClient({
         } catch { setCouponError('Erro ao validar cupom'); } finally { setCouponLoading(false); }
     };
 
-    // Customer lookup function
     const lookupCustomer = async (phone: string) => {
         if (!phone || phone.length < 10 || !settings) return;
         const cleanPhone = phone.replace(/\D/g, '');
         const { data: customer } = await supabase.from('customers').select('*').eq('user_id', settings.user_id).eq('phone', cleanPhone).single();
-        if (customer) setCustomerData(customer);
-        else setCustomerData(null);
+        setCustomerData(customer || null);
     };
 
-    // Calculate points to earn
     const getPointsToEarn = () => {
         if (!loyaltyEnabled || !loyaltySettings?.is_active) return 0;
         const total = getCartTotalWithDiscount();
@@ -230,6 +331,12 @@ export default function MenuClient({
 
     const sendWhatsAppOrder = () => {
         if (!settings?.whatsapp_number || cart.length === 0) return;
+
+        if (!isStoreOpen) {
+            alert('A loja está fechada no momento. Por favor, verifique o horário de funcionamento.');
+            return;
+        }
+
         const subtotal = getCartTotal();
         const total = getCartTotalWithDiscount();
         const deliveryFee = getDeliveryFee();
@@ -256,7 +363,14 @@ export default function MenuClient({
         const phone = settings.whatsapp_number.replace(/\D/g, '');
         window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
     };
+
     const categoriesWithProducts = categories.filter(cat => getProductsByCategory(cat.id).length > 0);
+
+    const openProductRating = (product: Product, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setRatingProduct(product);
+        setShowProductRatingModal(true);
+    };
 
     if (loading) return <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /><p className="text-text-muted">Carregando cardápio...</p></div>;
     if (notFound) return <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 text-center p-4"><span className="text-6xl mb-4">🔍</span><h1 className="text-2xl font-bold">Cardápio não encontrado</h1><p className="text-text-muted">O link que você acessou não existe ou foi removido.</p></div>;
@@ -265,14 +379,12 @@ export default function MenuClient({
 
     return (
         <div className="min-h-screen bg-bg-primary font-sans text-text-primary selection:bg-primary/30">
-            {/* Background Gradients/Effects */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-[500px] bg-linear-to-b from-primary/10 to-transparent opacity-60" />
                 <div className="absolute -top-[200px] right-[10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] opacity-40" />
                 <div className="absolute top-[10%] left-[10%] w-[300px] h-[300px] bg-accent/10 rounded-full blur-[100px] opacity-30" />
             </div>
 
-            {/* Hero Section */}
             <header className="relative pt-12 pb-16 px-4 text-center z-10">
                 <div className="max-w-3xl mx-auto space-y-6">
                     <div className="relative w-28 h-28 mx-auto rounded-full bg-bg-card border-4 border-bg-card shadow-xl shadow-black/20 overflow-hidden flex items-center justify-center group transition-transform hover:scale-105 duration-500">
@@ -294,24 +406,51 @@ export default function MenuClient({
                     </div>
 
                     <div className="flex flex-wrap justify-center gap-3">
-                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/20 text-success text-sm font-semibold backdrop-blur-sm shadow-lg shadow-success/5">
-                            <span className="relative flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success"></span>
+                        {isStoreOpen ? (
+                            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/20 text-success text-sm font-semibold backdrop-blur-sm shadow-lg shadow-success/5">
+                                <span className="relative flex h-2.5 w-2.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success"></span>
+                                </span>
+                                Aberto Agora
                             </span>
-                            Aberto Agora
-                        </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-error/10 border border-error/20 text-error text-sm font-semibold backdrop-blur-sm shadow-lg shadow-error/5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-error"></span>
+                                Fechado
+                            </span>
+                        )}
+
                         <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-card/50 border border-white/5 text-text-primary text-sm font-medium backdrop-blur-sm shadow-lg">
-                            🛵 30-45 min
+                            <FiClock size={14} />
+                            {settings?.delivery_time_min ?? 30}-{settings?.delivery_time_max ?? 45} min
                         </span>
-                        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-card/50 border border-white/5 text-text-primary text-sm font-medium backdrop-blur-sm shadow-lg">
-                            ⭐ 4.8 (500+)
-                        </span>
+
+                        <button
+                            onClick={() => setShowStoreRatingModal(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-card/50 border border-white/5 text-text-primary text-sm font-medium backdrop-blur-sm shadow-lg hover:bg-white/10 transition-colors cursor-pointer"
+                        >
+                            <FiStar className="text-yellow-400 fill-current" size={14} />
+                            {storeRating.count > 0 ? (
+                                <span>{storeRating.average.toFixed(1)} ({storeRating.count})</span>
+                            ) : (
+                                <span>Avaliar</span>
+                            )}
+                        </button>
+
+                        {storeRating.count > 0 && (
+                            <button
+                                onClick={() => setShowReviewsModal(true)}
+                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-card/50 border border-white/5 text-text-primary text-sm font-medium backdrop-blur-sm shadow-lg hover:bg-white/10 transition-colors cursor-pointer"
+                            >
+                                <FiMessageCircle size={14} />
+                                Ver Avaliações
+                            </button>
+                        )}
                     </div>
                 </div>
             </header>
 
-            {/* Category Navigation - Sticky */}
             <div className="sticky top-0 z-40 bg-bg-primary/80 backdrop-blur-xl border-y border-white/5 shadow-2xl shadow-black/20">
                 <nav className="max-w-7xl mx-auto px-4 py-3 overflow-x-auto no-scrollbar mask-linear-fade">
                     <div className="flex gap-2 min-w-max px-2">
@@ -344,9 +483,7 @@ export default function MenuClient({
                 </nav>
             </div>
 
-            {/* Main Content */}
             <div className="flex gap-8 px-4 py-8 max-w-7xl mx-auto relative z-10">
-                {/* Product List */}
                 <main className="flex-1 min-w-0 space-y-12">
                     {categoriesWithProducts.map((category) => (
                         <section
@@ -365,7 +502,6 @@ export default function MenuClient({
                                         key={product.id}
                                         className="group w-full bg-bg-card rounded-3xl shadow-xl overflow-hidden border border-white/5 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300"
                                     >
-                                        {/* Image Container */}
                                         <div className="relative h-48 overflow-hidden">
                                             {product.image_url ? (
                                                 <img
@@ -379,38 +515,34 @@ export default function MenuClient({
                                                 </div>
                                             )}
 
-                                            {/* Rating Badge (Top Right) */}
-                                            <div className="absolute top-4 right-4 flex items-center gap-1 bg-bg-tertiary/80 backdrop-blur-sm px-2 py-1 rounded-md">
-                                                <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                </svg>
-                                                <span className="text-sm font-semibold text-white">4.8</span>
-                                            </div>
+                                            <button
+                                                onClick={(e) => openProductRating(product, e)}
+                                                className="absolute top-4 right-4 flex items-center gap-1 bg-bg-tertiary/80 backdrop-blur-sm px-2 py-1 rounded-md hover:bg-bg-tertiary transition-colors cursor-pointer"
+                                            >
+                                                <FiStar className={cn("w-4 h-4 fill-current", (productRatings[product.id]?.count ?? 0) > 0 ? "text-yellow-400" : "text-text-muted")} />
+                                                <span className="text-sm font-semibold text-white">
+                                                    {(productRatings[product.id]?.count ?? 0) > 0
+                                                        ? productRatings[product.id].average.toFixed(1)
+                                                        : 'Avaliar'}
+                                                </span>
+                                            </button>
                                         </div>
 
-                                        {/* Content */}
                                         <div className="p-5">
-                                            {/* Title */}
                                             <h3 className="text-xl font-bold text-white leading-tight mb-2 group-hover:text-primary transition-colors">
                                                 {product.name}
                                             </h3>
-
-                                            {/* Description */}
                                             {product.description && (
                                                 <p className="text-text-secondary text-sm mb-4 line-clamp-2">
                                                     {product.description}
                                                 </p>
                                             )}
-
-                                            {/* Meta Details (Time & Info) */}
                                             <div className="flex items-center gap-4 text-sm text-text-muted mb-5">
                                                 <div className="flex items-center gap-1.5">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                                    <span>15-20 min</span>
+                                                    <span>{settings?.delivery_time_min ?? 15}-{settings?.delivery_time_max ?? 20} min</span>
                                                 </div>
                                             </div>
-
-                                            {/* Price & Button Action */}
                                             <div className="flex items-center justify-between pt-4 border-t border-white/5">
                                                 <div className="flex flex-col">
                                                     <span className="text-xs text-text-muted">Preço</span>
@@ -432,10 +564,12 @@ export default function MenuClient({
                     ))}
                 </main>
 
-                {/* Desktop Cart Sidebar */}
                 <aside className="hidden lg:block w-[380px] shrink-0">
-                    <div className="sticky top-28 bg-bg-card/80 backdrop-blur-xl border border-white/5 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[calc(100vh-140px)]">
-                        <div className="p-6 border-b border-white/5 bg-bg-card/50">
+                    <div
+                        className="sticky top-28 backdrop-blur-xl border border-white/5 rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[calc(100vh-140px)] transition-colors duration-300"
+                        style={{ backgroundColor: `var(--color-sidebar-bg)` }}
+                    >
+                        <div className="p-6 border-b border-white/5 bg-white/5">
                             <h2 className="flex items-center gap-3 text-lg font-bold">
                                 <div className="p-2 bg-primary/10 rounded-lg text-primary">
                                     <FiShoppingBag size={20} />
@@ -462,7 +596,6 @@ export default function MenuClient({
 
                         {cart.length > 0 && (
                             <div className="p-6 bg-bg-card border-t border-white/5 space-y-4 shadow-top">
-                                {/* Customer Info Section */}
                                 <div className="space-y-3">
                                     <h3 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
                                         <FiUser size={14} /> Seus Dados
@@ -489,7 +622,6 @@ export default function MenuClient({
                                             />
                                         </div>
                                     </div>
-                                    {/* Loyalty Info */}
                                     {loyaltyEnabled && customerData && (
                                         <div className="flex items-center gap-2 p-2 bg-primary/10 rounded-lg text-xs">
                                             <FiGift className="text-primary" size={14} />
@@ -505,7 +637,6 @@ export default function MenuClient({
                                     )}
                                 </div>
 
-                                {/* Coupon Section */}
                                 {couponsEnabled && (
                                     <div className="space-y-2">
                                         <h3 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
@@ -541,7 +672,6 @@ export default function MenuClient({
                                     </div>
                                 )}
 
-                                {/* Totals */}
                                 <div className="space-y-2 text-sm pt-2 border-t border-white/5">
                                     <div className="flex justify-between text-text-secondary">
                                         <span>Subtotal</span>
@@ -579,7 +709,6 @@ export default function MenuClient({
                 </aside>
             </div>
 
-            {/* Mobile Cart Floating Bar */}
             {cart.length > 0 && (
                 <div className="lg:hidden fixed bottom-6 left-4 right-4 z-40">
                     <button
@@ -605,7 +734,6 @@ export default function MenuClient({
                 </div>
             )}
 
-            {/* Mobile Cart Modal (Sheet) */}
             {showMobileCart && (
                 <div
                     className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 lg:hidden flex items-end animate-fadeIn"
@@ -638,7 +766,6 @@ export default function MenuClient({
                         </div>
 
                         <div className="p-6 border-t border-white/5 bg-bg-tertiary/50 pb-8 space-y-4">
-                            {/* Customer Info Section - Mobile */}
                             <div className="space-y-2">
                                 <h3 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
                                     <FiUser size={14} /> Seus Dados
@@ -680,7 +807,6 @@ export default function MenuClient({
                                 )}
                             </div>
 
-                            {/* Coupon Section - Mobile */}
                             {couponsEnabled && (
                                 <div className="space-y-2">
                                     <h3 className="text-sm font-semibold text-text-secondary flex items-center gap-2">
@@ -716,7 +842,6 @@ export default function MenuClient({
                                 </div>
                             )}
 
-                            {/* Totals - Mobile */}
                             <div className="space-y-2 pt-2 border-t border-white/5">
                                 <div className="flex justify-between text-text-secondary">
                                     <span>Subtotal</span>
@@ -751,7 +876,6 @@ export default function MenuClient({
                 </div>
             )}
 
-            {/* Addon Modal */}
             {showAddonModal && pendingProduct && (
                 <div
                     className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
@@ -761,7 +885,6 @@ export default function MenuClient({
                         className="w-full max-w-lg bg-bg-card rounded-3xl overflow-hidden max-h-[90vh] flex flex-col shadow-2xl animate-scaleIn border border-white/10"
                         onClick={e => e.stopPropagation()}
                     >
-                        {/* Header com Ícone e Título */}
                         <div className="relative h-32 bg-bg-tertiary overflow-hidden shrink-0">
                             {pendingProduct.image_url && <img src={pendingProduct.image_url} className="w-full h-full object-cover opacity-60 blur-sm" />}
                             <div className="absolute inset-0 bg-linear-to-t from-bg-card to-transparent" />
@@ -844,7 +967,6 @@ export default function MenuClient({
                 </div>
             )}
 
-            {/* Loading Overlay for Addons */}
             {loadingAddons && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-60 flex items-center justify-center">
                     <div className="bg-bg-card p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 border border-white/5 animate-scaleIn">
@@ -852,6 +974,40 @@ export default function MenuClient({
                         <p className="font-medium text-white">Carregando opções...</p>
                     </div>
                 </div>
+            )}
+
+            {settings && (
+                <StoreRatingModal
+                    isOpen={showStoreRatingModal}
+                    onClose={() => setShowStoreRatingModal(false)}
+                    storeOwnerId={settings.user_id}
+                    appName={settings.app_name}
+                />
+            )}
+
+            {settings && (
+                <StoreReviewsModal
+                    isOpen={showReviewsModal}
+                    onClose={() => setShowReviewsModal(false)}
+                    reviews={storeReviews}
+                    appName={settings.app_name}
+                    averageRating={storeRating.average}
+                    totalRatings={storeRating.count}
+                />
+            )}
+
+            {settings && ratingProduct && (
+                <ProductRatingModal
+                    isOpen={showProductRatingModal}
+                    onClose={() => {
+                        setShowProductRatingModal(false);
+                        setRatingProduct(null);
+                    }}
+                    storeOwnerId={settings.user_id}
+                    productId={ratingProduct.id}
+                    productName={ratingProduct.name}
+                    productImage={ratingProduct.image_url}
+                />
             )}
         </div>
     );
