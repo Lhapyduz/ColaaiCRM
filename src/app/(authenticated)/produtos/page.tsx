@@ -94,13 +94,12 @@ function SortableProductCard({
         transition,
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 1000 : 'auto',
-        touchAction: 'none',
     };
 
     return (
         <div ref={setNodeRef} style={style}>
             <Card className={cn(
-                'p-4! flex flex-col relative transition-all duration-200 touch-none select-none',
+                'p-4! flex flex-col relative transition-all duration-200',
                 !product.available && 'opacity-60',
                 isDragging && 'shadow-[0_8px_24px_rgba(0,0,0,0.3)] border-primary'
             )}>

@@ -49,12 +49,11 @@ function SortableCategoryCard({ category, onEdit, onDelete }: { category: Catego
         transition,
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 1000 : 'auto',
-        touchAction: 'none',
     };
 
     return (
         <div ref={setNodeRef} style={style}>
-            <Card className={cn('flex items-center gap-4 p-5! relative transition-all duration-200 touch-none select-none', isDragging && 'shadow-[0_8px_24px_rgba(0,0,0,0.3)] border-primary')}>
+            <Card className={cn('flex items-center gap-4 p-5! relative transition-all duration-200', isDragging && 'shadow-[0_8px_24px_rgba(0,0,0,0.3)] border-primary')}>
                 <div
                     className="flex items-center justify-center w-6 h-6 text-text-muted opacity-100 cursor-grab transition-all duration-fast shrink-0 rounded-sm touch-none select-none hover:text-primary hover:bg-primary/10 active:cursor-grabbing"
                     {...attributes}
@@ -186,78 +185,78 @@ export default function CategoriasPage() {
         <div className="max-w-[1000px] mx-auto overscroll-contain">
             <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
                 <div>
-                        <h1 className="text-[2rem] font-bold mb-2">Categorias</h1>
-                        <p className="text-text-secondary">Organize seus produtos em categorias (arraste para reordenar)</p>
-                    </div>
-                    <Button leftIcon={<FiPlus />} onClick={() => openModal()} disabled={isAtLimit}>Nova Categoria</Button>
+                    <h1 className="text-[2rem] font-bold mb-2">Categorias</h1>
+                    <p className="text-text-secondary">Organize seus produtos em categorias (arraste para reordenar)</p>
                 </div>
+                <Button leftIcon={<FiPlus />} onClick={() => openModal()} disabled={isAtLimit}>Nova Categoria</Button>
+            </div>
 
-                <LimitWarning resource="categorias" current={categories.length} limit={categoriesLimit} requiredPlan="Avançado" />
+            <LimitWarning resource="categorias" current={categories.length} limit={categoriesLimit} requiredPlan="Avançado" />
 
-                {loading ? (
-                    <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1 overscroll-y-none">
-                        {[1, 2, 3, 4].map(i => <div key={i} className="h-[120px] rounded-xl bg-bg-tertiary animate-pulse" />)}
-                    </div>
-                ) : categories.length > 0 ? (
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                        <SortableContext items={categories.map(c => c.id)} strategy={rectSortingStrategy}>
-                            <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1 overscroll-y-none">
-                                {categories.map((category) => (
-                                    <SortableCategoryCard key={category.id} category={category} onEdit={() => openModal(category)} onDelete={() => deleteCategory(category.id)} />
-                                ))}
-                            </div>
-                        </SortableContext>
-                    </DndContext>
-                ) : (
-                    <div className="flex flex-col items-center justify-center py-15 px-5 text-center">
-                        <span className="text-6xl mb-4">📁</span>
-                        <h3 className="text-xl mb-2">Nenhuma categoria</h3>
-                        <p className="text-text-secondary mb-5">Crie categorias para organizar seus produtos</p>
-                        <Button leftIcon={<FiPlus />} onClick={() => openModal()}>Nova Categoria</Button>
-                    </div>
-                )}
+            {loading ? (
+                <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1 overscroll-y-none">
+                    {[1, 2, 3, 4].map(i => <div key={i} className="h-[120px] rounded-xl bg-bg-tertiary animate-pulse" />)}
+                </div>
+            ) : categories.length > 0 ? (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                    <SortableContext items={categories.map(c => c.id)} strategy={rectSortingStrategy}>
+                        <div className="grid grid-cols-3 gap-4 max-md:grid-cols-1 overscroll-y-none">
+                            {categories.map((category) => (
+                                <SortableCategoryCard key={category.id} category={category} onEdit={() => openModal(category)} onDelete={() => deleteCategory(category.id)} />
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
+            ) : (
+                <div className="flex flex-col items-center justify-center py-15 px-5 text-center">
+                    <span className="text-6xl mb-4">📁</span>
+                    <h3 className="text-xl mb-2">Nenhuma categoria</h3>
+                    <p className="text-text-secondary mb-5">Crie categorias para organizar seus produtos</p>
+                    <Button leftIcon={<FiPlus />} onClick={() => openModal()}>Nova Categoria</Button>
+                </div>
+            )}
 
-                {/* Modal */}
-                {showModal && (
-                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-modal p-6" onClick={closeModal}>
-                        <div className="w-full max-w-[440px] bg-bg-card rounded-xl border border-border p-7" onClick={(e) => e.stopPropagation()}>
-                            <h2 className="text-xl font-semibold mb-6">{editingCategory ? 'Editar Categoria' : 'Nova Categoria'}</h2>
+            {/* Modal */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-modal p-6" onClick={closeModal}>
+                    <div className="w-full max-w-[440px] bg-bg-card rounded-xl border border-border p-7" onClick={(e) => e.stopPropagation()}>
+                        <h2 className="text-xl font-semibold mb-6">{editingCategory ? 'Editar Categoria' : 'Nova Categoria'}</h2>
 
-                            <div className="flex flex-col gap-5 mb-6">
-                                <Input label="Nome" placeholder="Nome da categoria" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} required />
+                        <div className="flex flex-col gap-5 mb-6">
+                            <Input label="Nome" placeholder="Nome da categoria" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} required />
 
-                                <div className="flex flex-col gap-2.5">
-                                    <label className="text-sm font-medium text-text-secondary">Ícone</label>
-                                    <div className="grid grid-cols-6 gap-2">
-                                        {iconOptions.map((icon) => (
-                                            <button key={icon} className={cn('w-11 h-11 flex items-center justify-center bg-bg-tertiary border-2 border-border rounded-md text-xl cursor-pointer transition-all duration-fast hover:border-border-light', categoryForm.icon === icon && 'border-primary bg-primary/10')} onClick={() => setCategoryForm({ ...categoryForm, icon })}>
-                                                {icon}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-2.5">
-                                    <label className="text-sm font-medium text-text-secondary">Cor</label>
-                                    <div className="flex items-center gap-3 px-3 py-2 bg-bg-tertiary border border-border rounded-md">
-                                        <input type="color" className="w-9 h-9 border-none rounded-sm cursor-pointer p-0" value={categoryForm.color} onChange={(e) => setCategoryForm({ ...categoryForm, color: e.target.value })} />
-                                        <span className="font-mono text-sm text-text-secondary uppercase">{categoryForm.color}</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3 p-4 bg-bg-tertiary rounded-md">
-                                    <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl" style={{ background: `${categoryForm.color}20` }}>{categoryForm.icon}</div>
-                                    <span className="font-medium">{categoryForm.name || 'Nome da Categoria'}</span>
+                            <div className="flex flex-col gap-2.5">
+                                <label className="text-sm font-medium text-text-secondary">Ícone</label>
+                                <div className="grid grid-cols-6 gap-2">
+                                    {iconOptions.map((icon) => (
+                                        <button key={icon} className={cn('w-11 h-11 flex items-center justify-center bg-bg-tertiary border-2 border-border rounded-md text-xl cursor-pointer transition-all duration-fast hover:border-border-light', categoryForm.icon === icon && 'border-primary bg-primary/10')} onClick={() => setCategoryForm({ ...categoryForm, icon })}>
+                                            {icon}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-3">
-                                <Button variant="ghost" onClick={closeModal}>Cancelar</Button>
-                                <Button onClick={handleSave} isLoading={saving}>{editingCategory ? 'Salvar' : 'Criar'}</Button>
+                            <div className="flex flex-col gap-2.5">
+                                <label className="text-sm font-medium text-text-secondary">Cor</label>
+                                <div className="flex items-center gap-3 px-3 py-2 bg-bg-tertiary border border-border rounded-md">
+                                    <input type="color" className="w-9 h-9 border-none rounded-sm cursor-pointer p-0" value={categoryForm.color} onChange={(e) => setCategoryForm({ ...categoryForm, color: e.target.value })} />
+                                    <span className="font-mono text-sm text-text-secondary uppercase">{categoryForm.color}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 p-4 bg-bg-tertiary rounded-md">
+                                <div className="w-12 h-12 rounded-md flex items-center justify-center text-2xl" style={{ background: `${categoryForm.color}20` }}>{categoryForm.icon}</div>
+                                <span className="font-medium">{categoryForm.name || 'Nome da Categoria'}</span>
                             </div>
                         </div>
+
+                        <div className="flex justify-end gap-3">
+                            <Button variant="ghost" onClick={closeModal}>Cancelar</Button>
+                            <Button onClick={handleSave} isLoading={saving}>{editingCategory ? 'Salvar' : 'Criar'}</Button>
+                        </div>
                     </div>
-                )}
+                </div>
+            )}
         </div>
     );
 }
