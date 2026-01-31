@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     FiUpload, FiSave, FiCheck, FiTrash2, FiLink, FiCopy, FiLock,
     FiEye, FiEyeOff, FiMenu, FiDroplet, FiUser, FiDollarSign,
-    FiSettings, FiSmartphone, FiUsers, FiStar, FiMessageSquare, FiSend, FiClock
+    FiSettings, FiSmartphone, FiUsers, FiStar, FiMessageSquare, FiSend, FiClock, FiHeadphones
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import Card from '@/components/ui/Card';
@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import SupportTab from '@/components/settings/SupportTab';
 import {
     updateStoreStatus,
     updateDeliveryTime,
@@ -44,7 +45,7 @@ const colorPresets = [
     { name: 'Cyan', primary: '#00cec9', secondary: '#1e272e' }
 ];
 
-type SettingsTab = 'geral' | 'aparencia' | 'cardapio' | 'pagamento' | 'menu' | 'links' | 'conta' | 'avaliacoes';
+type SettingsTab = 'geral' | 'aparencia' | 'cardapio' | 'pagamento' | 'menu' | 'links' | 'conta' | 'avaliacoes' | 'suporte';
 
 export default function ConfiguracoesPage() {
     const { user, userSettings, updateSettings, signOut, previewSettings } = useAuth();
@@ -103,6 +104,7 @@ export default function ConfiguracoesPage() {
         { href: '/assinatura', label: 'Assinatura', feature: 'dashboard' },
     ];
 
+
     const TABS = [
         { id: 'geral' as SettingsTab, label: 'Geral', icon: FiSettings },
         { id: 'aparencia' as SettingsTab, label: 'Aparência', icon: FiDroplet },
@@ -110,6 +112,7 @@ export default function ConfiguracoesPage() {
         { id: 'pagamento' as SettingsTab, label: 'Pagamento', icon: FiDollarSign },
         { id: 'menu' as SettingsTab, label: 'Menu Lateral', icon: FiMenu },
         { id: 'avaliacoes' as SettingsTab, label: 'Avaliações', icon: FiStar },
+        { id: 'suporte' as SettingsTab, label: 'Suporte', icon: FiHeadphones },
         { id: 'links' as SettingsTab, label: 'Links de Acesso', icon: FiUsers },
         { id: 'conta' as SettingsTab, label: 'Conta', icon: FiUser },
     ];
@@ -620,6 +623,12 @@ export default function ConfiguracoesPage() {
                         <div className={styles.sectionHeader}><h2>Minha Conta</h2><p>Informações da sua conta</p></div>
                         <div className={styles.accountInfo}><div className={styles.infoRow}><span className={styles.infoLabel}>Email</span><span className={styles.infoValue}>{user?.email}</span></div><div className={styles.infoRow}><span className={styles.infoLabel}>Membro desde</span><span className={styles.infoValue}>{user?.created_at && new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(user.created_at))}</span></div></div>
                         <div className={styles.dangerZone}><h3>Sair da Conta</h3><p>Você será desconectado do sistema</p><Button variant="danger" onClick={signOut}>Sair</Button></div>
+                    </div>
+                );
+            case 'suporte':
+                return (
+                    <div className={styles.tabContent}>
+                        <SupportTab />
                     </div>
                 );
             default: return null;

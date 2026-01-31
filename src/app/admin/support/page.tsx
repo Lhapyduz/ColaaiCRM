@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { DataTable, StatsCard } from '@/components/admin';
 import type { Column } from '@/components/admin';
-import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import {
     FiMessageSquare,
@@ -14,15 +13,28 @@ import {
     FiX,
     FiUser,
     FiShield,
-    FiPaperclip
+    FiPaperclip,
+    FiTrash2,
+    FiEdit2
 } from 'react-icons/fi';
+import {
+    adminGetTickets,
+    adminGetTicketMessages,
+    adminSendMessage,
+    adminUpdateTicketStatus,
+    adminDeleteTicket,
+    adminUpdateTicketDetails
+} from '@/actions/support';
+import { useToast } from '@/components/ui/Toast';
+import { supabase } from '@/lib/supabase'; // We can use public client for realtime channel 
 
 interface Ticket {
     id: string;
     tenant_id: string;
-    store_name: string;
+    store_name: string; // added manually
+    tenant_email?: string;
     subject: string;
-    priority: 'low' | 'normal' | 'high' | 'urgent';
+    priority: 'low' | 'medium' | 'high' | 'urgent';
     status: 'open' | 'in_progress' | 'resolved' | 'closed';
     category: string;
     created_at: string;
@@ -33,7 +45,7 @@ interface Message {
     id: string;
     ticket_id: string;
     sender_id: string;
-    is_admin: boolean;
+    sender_role: string;
     content: string;
     created_at: string;
 }
@@ -46,42 +58,22 @@ export default function SupportPage() {
     const [newMessage, setNewMessage] = useState('');
     const [sendingMessage, setSendingMessage] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const { success, error } = useToast();
+    const [isEditing, setIsEditing] = useState(false);
+    const [editData, setEditData] = useState<{
+        subject: string;
+        priority: 'low' | 'medium' | 'high' | 'urgent';
+        category: string;
+    }>({ subject: '', priority: 'medium', category: '' });
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const fetchTickets = useCallback(async () => {
-
         try {
-            const { data: ticketsData } = await supabase
-                .from('support_tickets')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            const { data: settings } = await supabase
-                .from('user_settings')
-                .select('user_id, app_name');
-
-            interface TicketRow { id: string; tenant_id: string; subject: string; priority: string; status: string; category: string; created_at: string; updated_at: string; }
-            interface SettingRow { user_id: string; app_name: string; }
-            const combined = (ticketsData as TicketRow[] || []).map((t: TicketRow) => ({
-                ...t,
-                priority: t.priority as Ticket['priority'],
-                status: t.status as Ticket['status'],
-                store_name: (settings as SettingRow[] | null)?.find((s: SettingRow) => s.user_id === t.tenant_id)?.app_name || 'N/A'
-            }));
-
-            if (combined.length === 0) {
-                // Demo data
-                setTickets([
-                    { id: '1', tenant_id: '1', store_name: 'Hot Dog Express', subject: 'Problema com impressão de pedidos', priority: 'high', status: 'open', category: 'Técnico', created_at: '2025-01-29T10:30:00', updated_at: '2025-01-29T10:30:00' },
-                    { id: '2', tenant_id: '2', store_name: 'Fast Burger', subject: 'Dúvida sobre relatórios', priority: 'normal', status: 'in_progress', category: 'Dúvida', created_at: '2025-01-28T14:20:00', updated_at: '2025-01-28T16:45:00' },
-                    { id: '3', tenant_id: '3', store_name: 'Dogão do Zé', subject: 'Solicitação de nova funcionalidade', priority: 'low', status: 'resolved', category: 'Sugestão', created_at: '2025-01-27T09:15:00', updated_at: '2025-01-28T11:00:00' },
-                    { id: '4', tenant_id: '4', store_name: 'Lanches da Maria', subject: 'Aplicativo não carrega cardápio', priority: 'urgent', status: 'open', category: 'Bug', created_at: '2025-01-29T15:45:00', updated_at: '2025-01-29T15:45:00' },
-                ]);
-            } else {
-                setTickets(combined);
-            }
-        } catch (error) {
-            console.error('Error fetching tickets:', error);
+            const data = await adminGetTickets();
+            setTickets(data);
+        } catch (err) {
+            console.error('Error fetching tickets:', err);
+            error('Erro ao carregar tickets');
         } finally {
             setLoading(false);
         }
@@ -89,31 +81,60 @@ export default function SupportPage() {
 
     useEffect(() => {
         fetchTickets();
+
+        // Subscribe to ticket changes
+        const channel = supabase
+            .channel('admin_support_tickets')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'support_tickets'
+            }, () => {
+                fetchTickets();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [fetchTickets]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    useEffect(() => {
+        if (selectedTicket) {
+            // Load messages
+            loadMessages(selectedTicket.id);
+
+            // Subscribe to new messages for this ticket
+            const channel = supabase
+                .channel(`admin_ticket_${selectedTicket.id}`)
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'ticket_messages',
+                    filter: `ticket_id=eq.${selectedTicket.id}`
+                }, (payload) => {
+                    const newMsg = payload.new as Message;
+                    setMessages(prev => {
+                        if (prev.find(m => m.id === newMsg.id)) return prev;
+                        return [...prev, newMsg];
+                    });
+                })
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
+        }
+    }, [selectedTicket]);
+
     const loadMessages = async (ticketId: string) => {
-
         try {
-            const { data } = await supabase
-                .from('ticket_messages')
-                .select('*')
-                .eq('ticket_id', ticketId)
-                .order('created_at', { ascending: true });
-
-            if (data && data.length > 0) {
-                setMessages(data);
-            } else {
-                // Demo messages
-                setMessages([
-                    { id: '1', ticket_id: ticketId, sender_id: '1', is_admin: false, content: 'Olá, estou com problemas para imprimir os pedidos. A impressora está conectada mas nada sai.', created_at: '2025-01-29T10:30:00' },
-                    { id: '2', ticket_id: ticketId, sender_id: 'admin', is_admin: true, content: 'Olá! Vamos verificar isso. Você poderia informar o modelo da impressora e se ela está configurada como padrão no sistema?', created_at: '2025-01-29T10:35:00' },
-                    { id: '3', ticket_id: ticketId, sender_id: '1', is_admin: false, content: 'É uma Epson TM-T20X. Sim, está como padrão.', created_at: '2025-01-29T10:40:00' },
-                ]);
-            }
+            const data = await adminGetTicketMessages(ticketId);
+            setMessages(data as Message[]);
         } catch (error) {
             console.error('Error loading messages:', error);
         }
@@ -121,76 +142,91 @@ export default function SupportPage() {
 
     const openTicketChat = async (ticket: Ticket) => {
         setSelectedTicket(ticket);
-        await loadMessages(ticket.id);
     };
 
     const sendMessage = async () => {
         if (!newMessage.trim() || !selectedTicket) return;
         setSendingMessage(true);
 
+        const tempId = Date.now().toString();
+        const optimisticMsg: Message = {
+            id: tempId,
+            ticket_id: selectedTicket.id,
+            sender_id: 'super_admin',
+            sender_role: 'admin',
+            content: newMessage,
+            created_at: new Date().toISOString()
+        };
+
+        setMessages(prev => [...prev, optimisticMsg]);
+        setNewMessage('');
+
         try {
-            const message: Message = {
-                id: Date.now().toString(),
-                ticket_id: selectedTicket.id,
-                sender_id: 'admin',
-                is_admin: true,
-                content: newMessage,
-                created_at: new Date().toISOString()
-            };
-
-            // Try to save to database
-            await supabase
-                .from('ticket_messages')
-                .insert({
-                    ticket_id: selectedTicket.id,
-                    sender_id: 'admin',
-                    is_admin: true,
-                    content: newMessage
-                });
-
-            setMessages(prev => [...prev, message]);
-            setNewMessage('');
-
-            // Update ticket status to in_progress if it was open
-            if (selectedTicket.status === 'open') {
-                await supabase
-                    .from('support_tickets')
-                    .update({ status: 'in_progress', updated_at: new Date().toISOString() })
-                    .eq('id', selectedTicket.id);
-
-                setSelectedTicket({ ...selectedTicket, status: 'in_progress' });
-                setTickets(prev => prev.map(t =>
-                    t.id === selectedTicket.id ? { ...t, status: 'in_progress' as const } : t
-                ));
-            }
-        } catch (error) {
-            console.error('Error sending message:', error);
+            await adminSendMessage(selectedTicket.id, optimisticMsg.content);
+            // Updated in background by realtime
+        } catch (err) {
+            console.error('Error sending message:', err);
+            error('Erro ao enviar mensagem');
+            setMessages(prev => prev.filter(m => m.id !== tempId));
         } finally {
             setSendingMessage(false);
         }
     };
 
     const updateTicketStatus = async (ticketId: string, newStatus: Ticket['status']) => {
-
         try {
-            await supabase
-                .from('support_tickets')
-                .update({
-                    status: newStatus,
-                    updated_at: new Date().toISOString(),
-                    resolved_at: newStatus === 'resolved' ? new Date().toISOString() : null
-                })
-                .eq('id', ticketId);
+            await adminUpdateTicketStatus(ticketId, newStatus);
+            success(`Status atualizado para ${getStatusLabel(newStatus)}`);
 
-            setTickets(prev => prev.map(t =>
-                t.id === ticketId ? { ...t, status: newStatus } : t
-            ));
-
+            // Optimistic update
             if (selectedTicket?.id === ticketId) {
                 setSelectedTicket({ ...selectedTicket, status: newStatus });
             }
-        } catch (error) {
-            console.error('Error updating ticket status:', error);
+        } catch (err) {
+            console.error('Error updating ticket status:', err);
+            error('Erro ao atualizar status');
+        }
+    };
+
+    const handleEditClick = () => {
+        if (!selectedTicket) return;
+        setEditData({
+            subject: selectedTicket.subject,
+            priority: selectedTicket.priority,
+            category: selectedTicket.category
+        });
+        setIsEditing(true);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!selectedTicket) return;
+        try {
+            await adminUpdateTicketDetails(selectedTicket.id, editData);
+            success('Ticket atualizado');
+            setSelectedTicket({ ...selectedTicket, ...editData });
+            setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, ...editData } : t));
+            setIsEditing(false);
+        } catch (err) {
+            console.error('Error updating ticket:', err);
+            error('Erro ao atualizar ticket');
+        }
+    };
+
+    const handleDeleteTicket = async (e: React.MouseEvent, ticketId: string) => {
+        e.stopPropagation(); // Prevent opening chat
+        if (!confirm('Tem certeza que deseja apagar este ticket e todas as mensagens?')) return;
+
+        try {
+            await adminDeleteTicket(ticketId);
+            success('Ticket excluído');
+            if (selectedTicket?.id === ticketId) {
+                setSelectedTicket(null);
+            }
+            // List will auto-update via realtime or explicit re-fetch needed if realtime is slow
+            // Realtime delete event should trigger fetchTickets
+        } catch (err) {
+            console.error('Error deleting ticket:', err);
+            error('Erro ao excluir ticket');
         }
     };
 
@@ -212,13 +248,13 @@ export default function SupportPage() {
     const getPriorityBadge = (priority: string) => {
         const styles: Record<string, string> = {
             low: 'bg-gray-500/20 text-gray-400',
-            normal: 'bg-blue-500/20 text-blue-400',
+            medium: 'bg-blue-500/20 text-blue-400',
             high: 'bg-amber-500/20 text-amber-400',
             urgent: 'bg-red-500/20 text-red-400',
         };
         const labels: Record<string, string> = {
             low: 'Baixa',
-            normal: 'Normal',
+            medium: 'Normal',
             high: 'Alta',
             urgent: 'Urgente',
         };
@@ -229,6 +265,16 @@ export default function SupportPage() {
         );
     };
 
+    const getStatusLabel = (status: string) => {
+        const labels: Record<string, string> = {
+            open: 'Aberto',
+            in_progress: 'Em Andamento',
+            resolved: 'Resolvido',
+            closed: 'Fechado',
+        };
+        return labels[status];
+    };
+
     const getStatusBadge = (status: string) => {
         const styles: Record<string, string> = {
             open: 'bg-red-500/20 text-red-400',
@@ -236,15 +282,9 @@ export default function SupportPage() {
             resolved: 'bg-emerald-500/20 text-emerald-400',
             closed: 'bg-gray-500/20 text-gray-400',
         };
-        const labels: Record<string, string> = {
-            open: 'Aberto',
-            in_progress: 'Em Andamento',
-            resolved: 'Resolvido',
-            closed: 'Fechado',
-        };
         return (
             <span className={cn("px-2 py-1 rounded-full text-xs font-medium", styles[status])}>
-                {labels[status]}
+                {getStatusLabel(status)}
             </span>
         );
     };
@@ -258,9 +298,11 @@ export default function SupportPage() {
             key: 'subject',
             header: 'Assunto',
             render: (_, row) => (
-                <div>
-                    <p className="font-medium text-white">{row.subject}</p>
-                    <p className="text-gray-500 text-xs">{row.store_name}</p>
+                <div className="flex justify-between items-center w-full">
+                    <div>
+                        <p className="font-medium text-white">{row.subject}</p>
+                        <p className="text-gray-500 text-xs">{row.store_name} {row.tenant_email && `(${row.tenant_email})`}</p>
+                    </div>
                 </div>
             )
         },
@@ -287,6 +329,19 @@ export default function SupportPage() {
             sortable: true,
             render: (value) => <span className="text-gray-400">{formatDate(value as string)}</span>
         },
+        {
+            key: 'id',
+            header: 'Ações',
+            render: (_, row) => (
+                <button
+                    onClick={(e) => handleDeleteTicket(e, row.id)}
+                    className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded text-gray-400 transition-colors"
+                    title="Excluir ticket"
+                >
+                    <FiTrash2 size={16} />
+                </button>
+            )
+        }
     ];
 
     const openCount = tickets.filter(t => t.status === 'open').length;
@@ -324,7 +379,7 @@ export default function SupportPage() {
                     loading={loading}
                 />
                 <StatsCard
-                    title="Resolvidos (Mês)"
+                    title="Resolvidos"
                     value={resolvedCount}
                     icon={<FiCheckCircle size={24} />}
                     variant="success"
@@ -345,10 +400,7 @@ export default function SupportPage() {
                                 : "bg-gray-800 text-gray-400 hover:text-white"
                         )}
                     >
-                        {status === 'all' ? 'Todos' :
-                            status === 'open' ? 'Abertos' :
-                                status === 'in_progress' ? 'Em Andamento' :
-                                    status === 'resolved' ? 'Resolvidos' : 'Fechados'}
+                        {status === 'all' ? 'Todos' : getStatusLabel(status)}
                     </button>
                 ))}
             </div>
@@ -371,72 +423,82 @@ export default function SupportPage() {
                         className="fixed inset-0 bg-black/50 z-40"
                         onClick={() => setSelectedTicket(null)}
                     />
-                    <div className="fixed right-0 top-0 h-screen w-[500px] bg-gray-900 border-l border-gray-700 z-50 flex flex-col">
+                    <div className="fixed right-0 top-0 h-screen w-[500px] bg-gray-900 border-l border-gray-700 z-50 flex flex-col shadow-2xl animate-slideLeft">
                         {/* Chat Header */}
-                        <div className="p-4 border-b border-gray-700">
+                        <div className="p-4 border-b border-gray-700 bg-gray-800">
                             <div className="flex items-center justify-between">
                                 <div className="flex-1 min-w-0">
                                     <h2 className="text-lg font-bold text-white truncate">{selectedTicket.subject}</h2>
                                     <p className="text-gray-400 text-sm">{selectedTicket.store_name}</p>
                                 </div>
                                 <button
+                                    onClick={handleEditClick}
+                                    className="p-2 hover:bg-gray-700 rounded-lg transition-colors text-gray-400 ml-4"
+                                    title="Editar Ticket"
+                                >
+                                    <FiEdit2 size={20} />
+                                </button>
+                                <button
                                     onClick={() => setSelectedTicket(null)}
-                                    className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400 ml-4"
+                                    className="p-2 hover:bg-gray-700 rounded-lg transition-colors text-gray-400 ml-4"
                                 >
                                     <FiX size={20} />
                                 </button>
                             </div>
 
                             {/* Status Actions */}
-                            <div className="flex items-center gap-2 mt-4">
+                            <div className="flex items-center gap-2 mt-4 flex-wrap">
                                 <span className="text-gray-500 text-sm">Status:</span>
                                 {['open', 'in_progress', 'resolved', 'closed'].map((status) => (
                                     <button
                                         key={status}
                                         onClick={() => updateTicketStatus(selectedTicket.id, status as Ticket['status'])}
                                         className={cn(
-                                            "px-3 py-1 rounded-lg text-xs font-medium transition-all",
+                                            "px-3 py-1 rounded-lg text-xs font-medium transition-all border border-transparent",
                                             selectedTicket.status === status
                                                 ? "bg-orange-500 text-white"
-                                                : "bg-gray-800 text-gray-400 hover:text-white"
+                                                : "bg-gray-800 text-gray-400 hover:text-white hover:border-gray-600"
                                         )}
                                     >
-                                        {status === 'open' ? 'Aberto' :
-                                            status === 'in_progress' ? 'Em Andamento' :
-                                                status === 'resolved' ? 'Resolvido' : 'Fechado'}
+                                        {getStatusLabel(status)}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
                         {/* Messages */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900">
+                            {messages.length === 0 && (
+                                <div className="text-center text-gray-500 mt-10">
+                                    Nenhuma mensagem ainda.
+                                </div>
+                            )}
                             {messages.map((msg) => (
                                 <div
                                     key={msg.id}
                                     className={cn(
                                         "flex gap-3",
-                                        msg.is_admin && "flex-row-reverse"
+                                        msg.sender_role === 'admin' && "flex-row-reverse"
                                     )}
                                 >
                                     <div className={cn(
                                         "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                                        msg.is_admin ? "bg-orange-500" : "bg-gray-700"
+                                        msg.sender_role === 'admin' ? "bg-orange-500" : "bg-gray-700"
                                     )}>
-                                        {msg.is_admin ? (
+                                        {msg.sender_role === 'admin' ? (
                                             <FiShield size={16} className="text-white" />
                                         ) : (
                                             <FiUser size={16} className="text-gray-400" />
                                         )}
                                     </div>
                                     <div className={cn(
-                                        "max-w-[80%] rounded-lg p-3",
-                                        msg.is_admin
-                                            ? "bg-orange-500/20 border border-orange-500/30"
-                                            : "bg-gray-800 border border-gray-700"
+                                        "max-w-[80%] rounded-2xl p-3 text-sm",
+                                        msg.sender_role === 'admin'
+                                            ? "bg-orange-500/20 border border-orange-500/30 text-white rounded-tr-none"
+                                            : "bg-gray-800 border border-gray-700 text-white rounded-tl-none"
                                     )}>
-                                        <p className="text-white text-sm">{msg.content}</p>
-                                        <p className="text-gray-500 text-xs mt-1">{formatTime(msg.created_at)}</p>
+                                        <p>{msg.content}</p>
+                                        <p className="text-gray-500 text-[10px] mt-1 text-right">{formatTime(msg.created_at)}</p>
                                     </div>
                                 </div>
                             ))}
@@ -444,11 +506,8 @@ export default function SupportPage() {
                         </div>
 
                         {/* Message Input */}
-                        <div className="p-4 border-t border-gray-700">
+                        <div className="p-4 border-t border-gray-700 bg-gray-800">
                             <div className="flex items-end gap-3">
-                                <button className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400">
-                                    <FiPaperclip size={20} />
-                                </button>
                                 <div className="flex-1">
                                     <textarea
                                         value={newMessage}
@@ -461,14 +520,14 @@ export default function SupportPage() {
                                         }}
                                         placeholder="Digite sua resposta..."
                                         rows={2}
-                                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 resize-none"
+                                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-orange-500 resize-none"
                                     />
                                 </div>
                                 <button
                                     onClick={sendMessage}
                                     disabled={!newMessage.trim() || sendingMessage}
                                     className={cn(
-                                        "p-3 rounded-lg transition-all",
+                                        "p-3 rounded-lg transition-all h-[50px] w-[50px] flex items-center justify-center",
                                         "bg-linear-to-r from-orange-500 to-red-500 text-white",
                                         "hover:from-orange-600 hover:to-red-600",
                                         "disabled:opacity-50 disabled:cursor-not-allowed"
@@ -480,6 +539,76 @@ export default function SupportPage() {
                         </div>
                     </div>
                 </>
+            )}
+
+            {/* Edit Modal */}
+            {isEditing && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-60 flex items-center justify-center p-4">
+                    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scaleIn">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-white">Editar Ticket</h3>
+                            <button onClick={() => setIsEditing(false)} className="text-gray-400 hover:text-white">
+                                <FiX size={24} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-400 mb-1">Assunto</label>
+                                <input
+                                    value={editData.subject}
+                                    onChange={(e) => setEditData({ ...editData, subject: e.target.value })}
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-orange-500"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-400 mb-1">Categoria</label>
+                                    <select
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg h-[42px] px-3 focus:outline-none focus:border-orange-500 text-white"
+                                        value={editData.category}
+                                        onChange={(e) => setEditData({ ...editData, category: e.target.value })}
+                                    >
+                                        <option value="Dúvida">Dúvida</option>
+                                        <option value="Problema Técnico">Problema Técnico</option>
+                                        <option value="Financeiro">Financeiro</option>
+                                        <option value="Sugestão">Sugestão</option>
+                                        <option value="Outros">Outros</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-400 mb-1">Prioridade</label>
+                                    <select
+                                        className="w-full bg-gray-800 border border-gray-700 rounded-lg h-[42px] px-3 focus:outline-none focus:border-orange-500 text-white"
+                                        value={editData.priority}
+                                        onChange={(e) => setEditData({ ...editData, priority: e.target.value as any })}
+                                    >
+                                        <option value="low">Baixa</option>
+                                        <option value="medium">Normal</option>
+                                        <option value="high">Alta</option>
+                                        <option value="urgent">Urgente</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    onClick={() => setIsEditing(false)}
+                                    className="flex-1 px-4 py-2 border border-gray-700 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSaveEdit}
+                                    className="flex-1 px-4 py-2 bg-orange-500 rounded-lg text-white font-bold hover:bg-orange-600 transition-colors"
+                                >
+                                    Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

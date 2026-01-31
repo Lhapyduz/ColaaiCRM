@@ -138,7 +138,11 @@ export async function POST(req: NextRequest) {
 
         if (error) {
             console.error('[Sync] Error syncing subscription:', error);
-            return new NextResponse('Failed to update subscription', { status: 500 });
+            return NextResponse.json({
+                error: 'Failed to update subscription',
+                details: error.message,
+                code: error.code
+            }, { status: 500 });
         }
 
         console.log('[Sync] Successfully synced subscription');
