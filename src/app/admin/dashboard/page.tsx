@@ -60,10 +60,10 @@ export default function AdminDashboardPage() {
                 // Fetch subscription data
                 const { data: subscriptions } = await supabase
                     .from('subscriptions_cache')
-                    .select('mrr_cents, status, plan_name, last_synced_at');
+                    .select('amount_cents, status, plan_name, last_synced_at'); // Fix: use amount_cents
 
                 interface SubscriptionRow {
-                    mrr_cents: number | null;
+                    amount_cents: number | null;
                     status: string;
                     plan_name: string;
                     last_synced_at: string;
@@ -71,7 +71,7 @@ export default function AdminDashboardPage() {
 
                 // Calculate metrics
                 const activeSubscriptions = (subscriptions as SubscriptionRow[] | null)?.filter((s: SubscriptionRow) => s.status === 'active') || [];
-                const totalMRR = activeSubscriptions.reduce((sum: number, s: SubscriptionRow) => sum + (s.mrr_cents || 0), 0);
+                const totalMRR = activeSubscriptions.reduce((sum: number, s: SubscriptionRow) => sum + (s.amount_cents || 0), 0);
 
                 // Generate demo monthly data for charts
                 const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -213,7 +213,7 @@ export default function AdminDashboardPage() {
                     period="Últimos 12 meses"
                     loading={loading}
                 >
-                    <div className="h-72">
+                    <div className="h-72 w-full"> {/* Ensure width is explicit */}
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={monthlyData}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />

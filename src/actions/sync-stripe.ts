@@ -83,6 +83,61 @@ export async function syncStripeData() {
                         if (validUserId) results.matched_users++;
                     }
 
+                    // 2. Upsert into 'subscriptions' table (Access Control)
+                    if (validUserId) {
+                        const mapPlanType = (name: string): 'Basico' | 'Avançado' | 'Profissional' => {
+                            const n = name.toLowerCase();
+                            if (n.includes('basico') || n.includes('básico')) return 'Basico';
+                            if (n.includes('avancado') || n.includes('avançado')) return 'Avançado';
+                            if (n.includes('profissional')) return 'Profissional';
+                            return 'Basico';
+                        };
+
+                        const mapInterval = (interval: string): 'monthly' | 'semiannual' | 'annual' => {
+                            if (interval === 'year') return 'annual';
+                            if (interval === 'month') return 'monthly';
+                            return 'monthly';
+                        };
+
+                        const planType = mapPlanType(planName);
+                        const interval = sub.plan?.interval || 'month';
+
+                        // Check for existing manual subscription to avoid overwriting with Canceled Stripe sub
+                        const { data: existingSub } = await supabaseAdmin
+                            .from('subscriptions')
+                            .select('*')
+                            .eq('user_id', validUserId)
+                            .maybeSingle();
+
+                        const isManualActive = existingSub?.payment_method === 'manual' && existingSub?.status === 'active';
+                        const isStripeCanceled = sub.status === 'canceled';
+
+                        // Skip update if we have a manual active plan and Stripe says canceled
+                        if (!isManualActive || !isStripeCanceled) {
+                            // If Stripe is active, or if manual is NOT active, or if both are canceled/whatever -> Update.
+                            // Basically: Only Skip if (Manual=Active AND Stripe=Canceled)
+
+                            const subRecord = {
+                                user_id: validUserId,
+                                plan_type: planType,
+                                status: sub.status,
+                                billing_period: mapInterval(interval),
+                                current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+                                current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+                                stripe_customer_id: sub.customer as string,
+                                stripe_subscription_id: sub.id,
+                                stripe_price_id: sub.plan?.id,
+                                updated_at: new Date().toISOString(),
+                                payment_method: 'card' // Default to card for Stripe Sync
+                            };
+
+                            // Upsert
+                            await supabaseAdmin
+                                .from('subscriptions')
+                                .upsert(subRecord, { onConflict: 'user_id' });
+                        }
+                    }
+
                 } catch (err) {
                     console.error('[Sync] Error processing sub:', sub.id, err);
                     results.errors++;

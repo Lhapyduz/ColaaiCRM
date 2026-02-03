@@ -26,7 +26,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/admin/dashboard', icon: <FiHome size={20} /> },
-    { label: 'Tenants', href: '/admin/tenants', icon: <FiUsers size={20} /> },
+    { label: 'Clientes', href: '/admin/clients', icon: <FiUsers size={20} /> },
     { label: 'Planos', href: '/admin/plans', icon: <FiPackage size={20} /> },
     { label: 'Financeiro', href: '/admin/finance', icon: <FiDollarSign size={20} /> },
     { label: 'Suporte', href: '/admin/support', icon: <FiMessageSquare size={20} /> },

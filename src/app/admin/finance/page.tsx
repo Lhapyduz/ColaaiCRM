@@ -35,7 +35,7 @@ interface Subscription {
     email: string;
     plan_name: string;
     status: string;
-    mrr_cents: number;
+    amount_cents: number;
     current_period_end: string | null;
     ltv_cents: number;
     failed_attempts: number;
@@ -83,9 +83,9 @@ export default function FinancePage() {
                     email: '',
                     plan_name: s.plan_name || 'Desconhecido',
                     status: s.status || 'unknown',
-                    mrr_cents: s.mrr_cents || 0,
+                    amount_cents: s.amount_cents || 0,
                     current_period_end: s.current_period_end,
-                    ltv_cents: (s.mrr_cents || 0) * 6, // Estimated LTV
+                    ltv_cents: (s.amount_cents || 0) * 6, // Estimated LTV
                     failed_attempts: s.status === 'past_due' ? Math.floor(Math.random() * 3) + 1 : 0
                 };
             });
@@ -93,11 +93,11 @@ export default function FinancePage() {
             // If no real data, use demo data
             if (combined.length === 0) {
                 setSubscriptions([
-                    { id: '1', tenant_id: '1', store_name: 'Hot Dog Express', email: 'hotdog@email.com', plan_name: 'Profissional', status: 'active', mrr_cents: 9900, current_period_end: '2025-02-15', ltv_cents: 118800, failed_attempts: 0 },
-                    { id: '2', tenant_id: '2', store_name: 'Fast Burger', email: 'fast@email.com', plan_name: 'Avançado', status: 'active', mrr_cents: 4900, current_period_end: '2025-02-20', ltv_cents: 58800, failed_attempts: 0 },
-                    { id: '3', tenant_id: '3', store_name: 'Dogão do Zé', email: 'dogao@email.com', plan_name: 'Básico', status: 'past_due', mrr_cents: 2900, current_period_end: '2025-01-25', ltv_cents: 34800, failed_attempts: 2 },
-                    { id: '4', tenant_id: '4', store_name: 'Lanches da Maria', email: 'maria@email.com', plan_name: 'Profissional', status: 'active', mrr_cents: 9900, current_period_end: '2025-02-28', ltv_cents: 178200, failed_attempts: 0 },
-                    { id: '5', tenant_id: '5', store_name: 'Pastel do João', email: 'joao@email.com', plan_name: 'Avançado', status: 'past_due', mrr_cents: 4900, current_period_end: '2025-01-18', ltv_cents: 29400, failed_attempts: 3 },
+                    { id: '1', tenant_id: '1', store_name: 'Hot Dog Express', email: 'hotdog@email.com', plan_name: 'Profissional', status: 'active', amount_cents: 9900, current_period_end: '2025-02-15', ltv_cents: 118800, failed_attempts: 0 },
+                    { id: '2', tenant_id: '2', store_name: 'Fast Burger', email: 'fast@email.com', plan_name: 'Avançado', status: 'active', amount_cents: 4900, current_period_end: '2025-02-20', ltv_cents: 58800, failed_attempts: 0 },
+                    { id: '3', tenant_id: '3', store_name: 'Dogão do Zé', email: 'dogao@email.com', plan_name: 'Básico', status: 'past_due', amount_cents: 2900, current_period_end: '2025-01-25', ltv_cents: 34800, failed_attempts: 2 },
+                    { id: '4', tenant_id: '4', store_name: 'Lanches da Maria', email: 'maria@email.com', plan_name: 'Profissional', status: 'active', amount_cents: 9900, current_period_end: '2025-02-28', ltv_cents: 178200, failed_attempts: 0 },
+                    { id: '5', tenant_id: '5', store_name: 'Pastel do João', email: 'joao@email.com', plan_name: 'Avançado', status: 'past_due', amount_cents: 4900, current_period_end: '2025-01-18', ltv_cents: 29400, failed_attempts: 3 },
                 ]);
             } else {
                 setSubscriptions(combined);
@@ -115,9 +115,9 @@ export default function FinancePage() {
 
     useEffect(() => {
         // Calculate stats
-        const totalRevenue = subscriptions.reduce((sum, s) => sum + s.mrr_cents, 0);
+        const totalRevenue = subscriptions.reduce((sum, s) => sum + (s.amount_cents || 0), 0);
         const atRisk = subscriptions.filter(s => s.status === 'past_due');
-        const atRiskRevenue = atRisk.reduce((sum, s) => sum + s.mrr_cents, 0);
+        const atRiskRevenue = atRisk.reduce((sum, s) => sum + (s.amount_cents || 0), 0);
 
         setStats({
             totalRevenue,
@@ -193,7 +193,7 @@ export default function FinancePage() {
             render: (value) => getStatusBadge(value as string)
         },
         {
-            key: 'mrr_cents',
+            key: 'amount_cents',
             header: 'MRR',
             sortable: true,
             render: (value) => (
@@ -279,9 +279,9 @@ export default function FinancePage() {
     ].filter(d => d.value > 0);
 
     const revenueByPlan = [
-        { plan: 'Básico', revenue: subscriptions.filter(s => s.plan_name === 'Básico').reduce((sum, s) => sum + s.mrr_cents, 0) / 100 },
-        { plan: 'Avançado', revenue: subscriptions.filter(s => s.plan_name === 'Avançado').reduce((sum, s) => sum + s.mrr_cents, 0) / 100 },
-        { plan: 'Profissional', revenue: subscriptions.filter(s => s.plan_name === 'Profissional').reduce((sum, s) => sum + s.mrr_cents, 0) / 100 },
+        { plan: 'Básico', revenue: subscriptions.filter(s => s.plan_name === 'Básico').reduce((sum, s) => sum + (s.amount_cents || 0), 0) / 100 },
+        { plan: 'Avançado', revenue: subscriptions.filter(s => s.plan_name === 'Avançado').reduce((sum, s) => sum + (s.amount_cents || 0), 0) / 100 },
+        { plan: 'Profissional', revenue: subscriptions.filter(s => s.plan_name === 'Profissional').reduce((sum, s) => sum + (s.amount_cents || 0), 0) / 100 },
     ];
 
     return (
@@ -356,7 +356,8 @@ export default function FinancePage() {
                             <p className="text-gray-400 text-sm">Total</p>
                         </div>
                     </div>
-                    <div className="flex justify-center gap-4 mt-4">
+                    {/* Fixed Height for Legend */}
+                    <div className="flex justify-center gap-4 mt-4 h-8">
                         {statusData.map((item, index) => (
                             <div key={item.name} className="flex items-center gap-2">
                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
@@ -370,7 +371,7 @@ export default function FinancePage() {
                     title="Receita por Plano"
                     loading={loading}
                 >
-                    <div className="h-64">
+                    <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={revenueByPlan}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />

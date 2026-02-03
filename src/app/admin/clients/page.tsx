@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { DataTable, StatsCard } from '@/components/admin';
 import type { Column } from '@/components/admin';
 import { supabase } from '@/lib/supabase';
@@ -24,6 +25,7 @@ import {
     FiRefreshCw
 } from 'react-icons/fi';
 import { syncStripeData } from '@/actions/sync-stripe';
+import { updateClientPlan, updateClientFeatureFlags } from '@/actions/admin/manage-plan';
 
 interface Tenant {
     id: string;
@@ -50,7 +52,16 @@ const AVAILABLE_FEATURES: FeatureFlag[] = [
     { feature_key: 'custom_branding', enabled: false, description: 'Personalização avançada de marca' },
 ];
 
-export default function TenantsPage() {
+interface Plan {
+    id: string;
+    name: string;
+    price_cents: number;
+    active: boolean;
+    stripe_price_id?: string;
+    billing_interval?: 'monthly' | 'semiannual' | 'annual';
+}
+
+export default function ClientsPage() {
     const [loading, setLoading] = useState(true);
     const [tenants, setTenants] = useState<Tenant[]>([]);
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
@@ -59,16 +70,33 @@ export default function TenantsPage() {
     const [savingFlags, setSavingFlags] = useState(false);
     const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
     const [syncing, setSyncing] = useState(false);
+    const [activePlans, setActivePlans] = useState<Plan[]>([]);
 
     // Create tenant modal state
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [createForm, setCreateForm] = useState({
         email: '',
         store_name: '',
-        plan_name: 'Plano Básico',
+        plan_id: '',
         expiration_date: ''
     });
     const [creatingTenant, setCreatingTenant] = useState(false);
+
+    // Edit Plan Modal State
+    const [showEditPlanModal, setShowEditPlanModal] = useState(false);
+    const [editPlanForm, setEditPlanForm] = useState({
+        plan_id: '',
+        expiration_date: ''
+    });
+    const [savingPlan, setSavingPlan] = useState(false);
+
+    // Bonus Days Modal State
+    const [showBonusModal, setShowBonusModal] = useState(false);
+    const [bonusDays, setBonusDays] = useState(7);
+    const [savingBonus, setSavingBonus] = useState(false);
+
+    // Ban User Check
+    const [processingBan, setProcessingBan] = useState(false);
 
     const fetchTenants = useCallback(async () => {
 
@@ -123,6 +151,33 @@ export default function TenantsPage() {
         }
     }, []);
 
+    const fetchPlans = useCallback(async () => {
+        const { data } = await supabase
+            .from('subscription_plans')
+            .select('*')
+            .eq('is_active', true)
+            .order('price_cents', { ascending: true });
+
+        if (data) {
+            // Map subscription_plans fields to Plan interface
+            const mappedPlans: Plan[] = data.map(p => ({
+                id: p.id, // Keep internal UUID
+                name: p.name,
+                price_cents: p.price_cents,
+                active: p.is_active,
+                // Add stripe_price_id for reference if needed
+                stripe_price_id: p.stripe_price_id,
+                billing_interval: p.billing_interval
+            }));
+            setActivePlans(mappedPlans);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchPlans();
+    }, [fetchPlans]);
+
+
     useEffect(() => {
         fetchTenants();
     }, [fetchTenants]);
@@ -164,22 +219,15 @@ export default function TenantsPage() {
         setSavingFlags(true);
 
         try {
-            // Upsert all flags
-            const upserts = Object.entries(featureFlags).map(([feature_key, enabled]) => ({
-                tenant_id: selectedTenant.id,
-                feature_key,
-                enabled,
-                updated_at: new Date().toISOString()
-            }));
+            const { success, error } = await updateClientFeatureFlags(selectedTenant.id, featureFlags);
 
-            const { error } = await supabase
-                .from('tenant_feature_flags')
-                .upsert(upserts, { onConflict: 'tenant_id,feature_key' });
+            if (!success) throw new Error(error);
 
-            if (error) throw error;
             setShowFlagsPanel(false);
-        } catch (error) {
+            alert('Funcionalidades atualizadas!');
+        } catch (error: any) {
             console.error('Error saving feature flags:', error);
+            alert(`Erro ao salvar flags: ${error.message}`);
         } finally {
             setSavingFlags(false);
         }
@@ -293,22 +341,44 @@ export default function TenantsPage() {
                             <FiToggleRight size={16} />
                             Feature Flags
                         </button>
-                        <button className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditPlan(row);
+                                setActionMenuOpen(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3"
+                        >
                             <FiEdit2 size={16} />
-                            Editar Plano
+                            Alterar Plano
                         </button>
-                        <button className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenBonus(row);
+                                setActionMenuOpen(null);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3"
+                        >
                             <FiGift size={16} />
-                            Dar Dias de Bônus
+                            Adicionar Dias
                         </button>
                         <button className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3">
                             <FiLogIn size={16} />
-                            Login as User
+                            Acessar Painel
                         </button>
                         <hr className="my-2 border-gray-700" />
-                        <button className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-3">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleBanUser(row);
+                                setActionMenuOpen(null);
+                            }}
+                            disabled={processingBan}
+                            className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-3"
+                        >
                             <FiUserX size={16} />
-                            Banir Usuário
+                            Banir Cliente
                         </button>
                     </div>
                 </>
@@ -321,9 +391,13 @@ export default function TenantsPage() {
     const pendingCount = tenants.filter(t => t.status === 'past_due').length;
 
     // Create tenant function
-    const handleCreateTenant = async () => {
-        if (!createForm.email || !createForm.store_name) return;
+    const handleCreateClient = async () => {
+        if (!createForm.email || !createForm.store_name || !createForm.plan_id) return;
         setCreatingTenant(true);
+
+        const selectedPlan = activePlans.find(p => p.id === createForm.plan_id);
+        const planName = selectedPlan?.name || 'Unknown Plan';
+        const planPrice = selectedPlan?.price_cents || 0;
 
         try {
             // Create user settings (in production, you'd create auth user first)
@@ -338,14 +412,15 @@ export default function TenantsPage() {
             // Create subscription cache entry
             await supabase.from('subscriptions_cache').insert({
                 tenant_id: newUserId,
-                plan_name: createForm.plan_name,
+                plan_name: planName,
                 status: 'active',
-                mrr_cents: createForm.plan_name === 'Plano Básico' ? 2990 : createForm.plan_name === 'Plano Avançado' ? 4990 : 9990,
+                mrr_cents: planPrice, // Use dynamic price
+                amount_cents: planPrice, // Also populate amount_cents as per earlier fix
                 current_period_end: createForm.expiration_date ? new Date(createForm.expiration_date).toISOString() : null
             });
 
             setShowCreateModal(false);
-            setCreateForm({ email: '', store_name: '', plan_name: 'Plano Básico', expiration_date: '' });
+            setCreateForm({ email: '', store_name: '', plan_id: '', expiration_date: '' });
             fetchTenants();
         } catch (error) {
             console.error('Error creating tenant:', error);
@@ -354,12 +429,115 @@ export default function TenantsPage() {
         }
     };
 
+    // Edit Plan Functions
+    const handleOpenEditPlan = (tenant: Tenant) => {
+        setSelectedTenant(tenant);
+        // Try to find plan by name
+        const matchingPlan = activePlans.find(p => p.name === tenant.plan_name);
+        setEditPlanForm({
+            plan_id: matchingPlan?.id || '',
+            expiration_date: ''
+        });
+        setShowEditPlanModal(true);
+    };
+
+    const handleSavePlan = async () => {
+        if (!selectedTenant) return;
+        setSavingPlan(true);
+
+        try {
+            const { success, error } = await updateClientPlan({
+                userId: selectedTenant.id,
+                planId: editPlanForm.plan_id,
+                periodEnd: editPlanForm.expiration_date
+            });
+
+            if (!success) throw new Error(error);
+
+            alert('Plano atualizado com sucesso!');
+            setShowEditPlanModal(false);
+            fetchTenants();
+        } catch (error: any) {
+            console.error('Error updating plan:', error);
+            alert(`Erro ao atualizar plano: ${error.message}`);
+        } finally {
+            setSavingPlan(false);
+        }
+    };
+
+    // Bonus Days Function
+    const handleOpenBonus = (tenant: Tenant) => {
+        setSelectedTenant(tenant);
+        setBonusDays(7);
+        setShowBonusModal(true);
+    };
+
+    const handleGiveBonusDays = async () => {
+        if (!selectedTenant) return;
+        setSavingBonus(true);
+
+        try {
+            // Fetch current subscription to get period_end
+            const { data: sub } = await supabase
+                .from('subscriptions_cache')
+                .select('current_period_end')
+                .eq('tenant_id', selectedTenant.id)
+                .single();
+
+            const currentEnd = sub?.current_period_end ? new Date(sub.current_period_end) : new Date();
+            // If expired, start from now. If active, add to existing end.
+            const baseDate = currentEnd > new Date() ? currentEnd : new Date();
+
+            baseDate.setDate(baseDate.getDate() + bonusDays);
+
+            const { error } = await supabase
+                .from('subscriptions_cache')
+                .update({
+                    current_period_end: baseDate.toISOString(),
+                    status: 'active'
+                })
+                .eq('tenant_id', selectedTenant.id);
+
+            if (error) throw error;
+
+            setShowBonusModal(false);
+            fetchTenants();
+        } catch (error) {
+            console.error('Error giving bonus days:', error);
+        } finally {
+            setSavingBonus(false);
+        }
+    };
+
+    // Ban User Function
+    const handleBanUser = async (tenant: Tenant) => {
+        if (!confirm(`Tem certeza que deseja banir a loja "${tenant.store_name}"? Isso impedirá o acesso ao sistema.`)) return;
+        setProcessingBan(true);
+
+        try {
+            const { error } = await supabase
+                .from('subscriptions_cache')
+                .update({
+                    status: 'banned',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('tenant_id', tenant.id);
+
+            if (error) throw error;
+            fetchTenants();
+        } catch (error) {
+            console.error('Error banning user:', error);
+        } finally {
+            setProcessingBan(false);
+        }
+    };
+
     return (
         <div className="p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Gestão de Tenants</h1>
+                    <h1 className="text-3xl font-bold text-white">Gestão de Clientes</h1>
                     <p className="text-gray-400 mt-1">Gerencie todas as lanchonetes cadastradas no sistema</p>
                 </div>
                 <div className="flex gap-2">
@@ -393,7 +571,7 @@ export default function TenantsPage() {
                         )}
                     >
                         <FiPlus size={18} />
-                        Novo Usuário
+                        Novo Cliente
                     </button>
                 </div>
             </div>
@@ -512,7 +690,7 @@ export default function TenantsPage() {
                     <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg">
                         {/* Modal Header */}
                         <div className="flex items-center justify-between p-6 border-b border-gray-700">
-                            <h2 className="text-xl font-bold text-white">Novo Usuário</h2>
+                            <h2 className="text-xl font-bold text-white">Novo Cliente</h2>
                             <button
                                 onClick={() => setShowCreateModal(false)}
                                 className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700"
@@ -556,15 +734,24 @@ export default function TenantsPage() {
                                 <label className="block text-sm font-medium text-gray-300 mb-2">
                                     Plano
                                 </label>
-                                <select
-                                    value={createForm.plan_name}
-                                    onChange={(e) => setCreateForm(prev => ({ ...prev, plan_name: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                                >
-                                    <option value="Plano Básico">Plano Básico - R$ 29,90/mês</option>
-                                    <option value="Plano Avançado">Plano Avançado - R$ 49,90/mês</option>
-                                    <option value="Plano Profissional">Plano Profissional - R$ 99,90/mês</option>
-                                </select>
+                                {activePlans.length === 0 ? (
+                                    <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500 text-sm">
+                                        Nenhum plano ativo encontrado. <Link href="/admin/plans" className="underline font-bold">Criar Planos</Link>.
+                                    </div>
+                                ) : (
+                                    <select
+                                        value={createForm.plan_id}
+                                        onChange={(e) => setCreateForm(prev => ({ ...prev, plan_id: e.target.value }))}
+                                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    >
+                                        <option value="">Selecione um plano...</option>
+                                        {activePlans.map(plan => (
+                                            <option key={plan.id} value={plan.id}>
+                                                {plan.name} - {formatCurrency(plan.price_cents)}/mês
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
 
                             {/* Expiration Date */}
@@ -594,7 +781,7 @@ export default function TenantsPage() {
                                 Cancelar
                             </button>
                             <button
-                                onClick={handleCreateTenant}
+                                onClick={handleCreateClient}
                                 disabled={creatingTenant || !createForm.email || !createForm.store_name}
                                 className={cn(
                                     "flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all",
@@ -604,7 +791,113 @@ export default function TenantsPage() {
                                 )}
                             >
                                 <FiSave size={18} />
-                                {creatingTenant ? 'Criando...' : 'Criar Usuário'}
+                                {creatingTenant ? 'Criando...' : 'Criar Cliente'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Plan Modal */}
+            {showEditPlanModal && selectedTenant && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-700">
+                            <h2 className="text-xl font-bold text-white">Editar Plano - {selectedTenant.store_name}</h2>
+                            <button onClick={() => setShowEditPlanModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">
+                                <FiX size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-5">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Plano</label>
+                                {activePlans.length === 0 ? (
+                                    <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500 text-sm">
+                                        Nenhum plano ativo encontrado. <Link href="/admin/plans" className="underline font-bold">Criar Planos</Link>.
+                                    </div>
+                                ) : (
+                                    <select
+                                        value={editPlanForm.plan_id}
+                                        onChange={(e) => setEditPlanForm(prev => ({ ...prev, plan_id: e.target.value }))}
+                                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    >
+                                        {activePlans.map(plan => (
+                                            <option key={plan.id} value={plan.id}>
+                                                {plan.name} - {formatCurrency(plan.price_cents)}/mês
+                                            </option>
+                                        ))}
+                                        {/* Handle case where current plan might be inactive or custom */}
+                                        {!activePlans.find(p => p.id === editPlanForm.plan_id) && editPlanForm.plan_id && (
+                                            <option value={editPlanForm.plan_id} disabled>Plano Atual (Arquivado)</option>
+                                        )}
+                                    </select>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    <FiCalendar className="inline mr-2" size={16} />
+                                    Nova Data de Expiração (opcional)
+                                </label>
+                                <input
+                                    type="date"
+                                    value={editPlanForm.expiration_date}
+                                    onChange={(e) => setEditPlanForm(prev => ({ ...prev, expiration_date: e.target.value }))}
+                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                />
+                                <p className="text-gray-500 text-xs mt-1">Preencha apenas se desejar alterar a data de vencimento.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-700">
+                            <button onClick={() => setShowEditPlanModal(false)} className="px-6 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-all">
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleSavePlan}
+                                disabled={savingPlan}
+                                className="flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-orange-500 text-white hover:bg-orange-600 transition-all disabled:opacity-50"
+                            >
+                                <FiSave size={18} />
+                                {savingPlan ? 'Salvando...' : 'Salvar Alterações'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bonus Days Modal */}
+            {showBonusModal && selectedTenant && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-sm">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-700">
+                            <h2 className="text-xl font-bold text-white">Dar Dias Bônus</h2>
+                            <button onClick={() => setShowBonusModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">
+                                <FiX size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-5">
+                            <p className="text-gray-300 text-sm">Quantos dias deseja adicionar à assinatura de <strong>{selectedTenant.store_name}</strong>?</p>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Dias</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={bonusDays}
+                                    onChange={(e) => setBonusDays(Math.max(1, parseInt(e.target.value)))}
+                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-700">
+                            <button onClick={() => setShowBonusModal(false)} className="px-6 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-all">
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleGiveBonusDays}
+                                disabled={savingBonus}
+                                className="flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-green-500 text-white hover:bg-green-600 transition-all disabled:opacity-50"
+                            >
+                                <FiGift size={18} />
+                                {savingBonus ? 'Adicionando...' : 'Adicionar Dias'}
                             </button>
                         </div>
                     </div>
