@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import Image from 'next/image';
 import StarRating from '@/components/ui/StarRating';
 import { addProductRating } from '@/app/actions/store';
 import Button from '@/components/ui/Button';
@@ -15,13 +16,13 @@ interface ProductRatingModalProps {
     productImage?: string | null;
 }
 
-export default function ProductRatingModal({ 
-    isOpen, 
-    onClose, 
-    storeOwnerId, 
-    productId, 
+export default function ProductRatingModal({
+    isOpen,
+    onClose,
+    storeOwnerId,
+    productId,
     productName,
-    productImage 
+    productImage
 }: ProductRatingModalProps) {
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
@@ -38,8 +39,8 @@ export default function ProductRatingModal({
                 const date = new Date(lastRated);
                 const now = new Date();
                 const diffTime = Math.abs(now.getTime() - date.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
                 if (diffDays < 7) {
                     setAlreadyRated(true);
                 }
@@ -59,9 +60,9 @@ export default function ProductRatingModal({
 
         try {
             await addProductRating(storeOwnerId, productId, rating, comment, customerName || 'Anônimo');
-            
+
             localStorage.setItem(`product_rated_${productId}`, new Date().toISOString());
-            
+
             setSuccess(true);
             setTimeout(() => {
                 onClose();
@@ -83,7 +84,7 @@ export default function ProductRatingModal({
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
             <div className="w-full max-w-md bg-bg-card rounded-3xl p-6 shadow-2xl animate-scaleIn border border-white/10 relative">
-                <button 
+                <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-text-muted hover:text-white transition-colors z-10"
                 >
@@ -92,8 +93,8 @@ export default function ProductRatingModal({
 
                 <div className="text-center mb-6">
                     {productImage && (
-                        <div className="w-20 h-20 mx-auto mb-4 rounded-xl overflow-hidden border border-white/10">
-                            <img src={productImage} alt={productName} className="w-full h-full object-cover" />
+                        <div className="relative w-20 h-20 mx-auto mb-4 rounded-xl overflow-hidden border border-white/10">
+                            <Image src={productImage} alt={productName} fill className="object-cover" sizes="80px" />
                         </div>
                     )}
                     <h2 className="text-2xl font-bold text-white mb-2">Avaliar {productName}</h2>
@@ -120,11 +121,11 @@ export default function ProductRatingModal({
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="flex justify-center">
-                            <StarRating 
-                                rating={rating} 
-                                onChange={setRating} 
-                                interactive 
-                                size="lg" 
+                            <StarRating
+                                rating={rating}
+                                onChange={setRating}
+                                interactive
+                                size="lg"
                             />
                         </div>
 
@@ -158,8 +159,8 @@ export default function ProductRatingModal({
                             </div>
                         )}
 
-                        <Button 
-                            type="submit" 
+                        <Button
+                            type="submit"
                             className="w-full py-3 text-lg font-bold"
                             isLoading={loading}
                             disabled={rating === 0}

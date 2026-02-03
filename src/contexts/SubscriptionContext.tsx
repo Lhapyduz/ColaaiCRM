@@ -107,7 +107,7 @@ const PLAN_FEATURES = {
     }
 };
 
-type FeatureKey = keyof typeof PLAN_FEATURES.Basico;
+export type FeatureKey = keyof typeof PLAN_FEATURES.Basico;
 type LimitKey = keyof typeof PLAN_LIMITS.Basico;
 
 interface SubscriptionContextType {

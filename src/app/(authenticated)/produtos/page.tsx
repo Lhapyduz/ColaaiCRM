@@ -8,6 +8,7 @@ import {
     FiSearch,
     FiMove
 } from 'react-icons/fi';
+import Image from 'next/image';
 import {
     DndContext,
     closestCenter,
@@ -114,11 +115,13 @@ function SortableProductCard({
                 </div>
                 <div className="flex gap-4">
                     {product.image_url && (
-                        <div className="shrink-0 w-20 h-20 rounded-md overflow-hidden bg-bg-tertiary">
-                            <img
+                        <div className="relative shrink-0 w-20 h-20 rounded-md overflow-hidden bg-bg-tertiary">
+                            <Image
                                 src={product.image_url}
                                 alt={product.name}
-                                className="w-full h-full object-cover"
+                                fill
+                                className="object-cover"
+                                sizes="80px"
                             />
                         </div>
                     )}

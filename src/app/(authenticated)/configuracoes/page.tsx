@@ -6,6 +6,7 @@ import {
     FiEye, FiEyeOff, FiMenu, FiDroplet, FiUser, FiDollarSign,
     FiSettings, FiSmartphone, FiUsers, FiStar, FiMessageSquare, FiSend, FiClock, FiHeadphones
 } from 'react-icons/fi';
+import Image from 'next/image';
 import { FaWhatsapp } from 'react-icons/fa';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -13,7 +14,7 @@ import Input from '@/components/ui/Input';
 import QRCodeGenerator from '@/components/ui/QRCodeGenerator';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useSubscription, FeatureKey } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import SupportTab from '@/components/settings/SupportTab';
 import {
@@ -84,7 +85,7 @@ export default function ConfiguracoesPage() {
     const [replyingId, setReplyingId] = useState<string | null>(null);
     const [replyText, setReplyText] = useState('');
 
-    const SIDEBAR_MENU_ITEMS = [
+    const SIDEBAR_MENU_ITEMS: { href: string; label: string; feature: FeatureKey }[] = [
         { href: '/dashboard', label: 'Dashboard', feature: 'dashboard' },
         { href: '/produtos', label: 'Produtos', feature: 'products' },
         { href: '/adicionais', label: 'Adicionais', feature: 'addons' },
@@ -212,7 +213,7 @@ export default function ConfiguracoesPage() {
     };
 
     const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    const handleOpeningHourChange = (index: number, field: keyof OpeningHourInput, value: any) => {
+    const handleOpeningHourChange = (index: number, field: keyof OpeningHourInput, value: string | boolean) => {
         setOpeningHours(prev => { const newHours = [...prev]; newHours[index] = { ...newHours[index], [field]: value }; return newHours; });
     };
 
@@ -236,15 +237,15 @@ export default function ConfiguracoesPage() {
         if (!user || !userSettings?.logo_url) return;
         try {
             const urlParts = userSettings.logo_url.split('/'); const fileName = `${user.id}/${urlParts[urlParts.length - 1]}`;
-            await supabase.storage.from('logos').remove([fileName]); await updateSettings({ logo_url: null } as any);
+            await supabase.storage.from('logos').remove([fileName]); await updateSettings({ logo_url: null });
         } catch (error) { console.error('Error removing logo:', error); }
     };
 
     const copyMenuLink = () => { const url = getMenuUrl(); if (url) { navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } };
     const formatWhatsApp = (value: string) => { const digits = value.replace(/\D/g, ''); if (digits.length <= 2) return digits; if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`; return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`; };
     const toggleSidebarItem = (href: string) => { setHiddenSidebarItems(prev => prev.includes(href) ? prev.filter(h => h !== href) : [...prev, href]); };
-    const hideUnavailableFeatures = () => { const toHide: string[] = []; SIDEBAR_MENU_ITEMS.forEach(item => { if (!canAccess(item.feature as any)) toHide.push(item.href); }); setHiddenSidebarItems(toHide); };
-    const saveSidebarVisibility = async () => { setSaving(true); try { await updateSettings({ hidden_sidebar_items: hiddenSidebarItems } as any); setSaved(true); setTimeout(() => setSaved(false), 3000); } catch (error) { console.error('Error saving sidebar visibility:', error); } finally { setSaving(false); } };
+    const hideUnavailableFeatures = () => { const toHide: string[] = []; SIDEBAR_MENU_ITEMS.forEach(item => { if (!canAccess(item.feature)) toHide.push(item.href); }); setHiddenSidebarItems(toHide); };
+    const saveSidebarVisibility = async () => { setSaving(true); try { await updateSettings({ hidden_sidebar_items: hiddenSidebarItems }); setSaved(true); setTimeout(() => setSaved(false), 3000); } catch (error) { console.error('Error saving sidebar visibility:', error); } finally { setSaving(false); } };
 
     // Rating Handlers
     const handleToggleRatingVisibility = async (id: string, currentHidden: boolean, type: 'store' | 'product') => {
@@ -285,7 +286,7 @@ export default function ConfiguracoesPage() {
                             <div className={styles.formGroup}><label>Nome do Negócio</label><Input value={appName} onChange={(e) => { setAppName(e.target.value); previewSettings({ app_name: e.target.value }); }} placeholder="Nome do seu negócio" /><span className={styles.hint}>Este nome aparece no topo da sidebar</span></div>
                             <div className={styles.formGroup}><label><FaWhatsapp style={{ marginRight: '8px', color: '#25D366' }} />WhatsApp</label><Input value={formatWhatsApp(whatsappNumber)} onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))} placeholder="(11) 99999-9999" maxLength={16} /><span className={styles.hint}>Usado para receber pedidos via WhatsApp</span></div>
                         </div>
-                        <div className={styles.formGroup}><label>Logo do Negócio</label><div className={styles.logoUpload}><div className={styles.currentLogo}>{userSettings?.logo_url ? <img src={userSettings.logo_url} alt="Logo" /> : <span className={styles.logoEmoji}>🌭</span>}</div><div className={styles.logoActions}><input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} hidden /><Button variant="outline" leftIcon={<FiUpload />} onClick={() => fileInputRef.current?.click()} isLoading={uploading}>{userSettings?.logo_url ? 'Trocar' : 'Carregar'}</Button>{userSettings?.logo_url && <Button variant="danger" leftIcon={<FiTrash2 />} onClick={handleRemoveLogo}>Remover</Button>}</div></div></div>
+                        <div className={styles.formGroup}><label>Logo do Negócio</label><div className={styles.logoUpload}><div className={styles.currentLogo}>{userSettings?.logo_url ? <div className="relative w-full h-full"><Image src={userSettings.logo_url} alt="Logo" fill className="object-contain" /></div> : <span className={styles.logoEmoji}>🌭</span>}</div><div className={styles.logoActions}><input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} hidden /><Button variant="outline" leftIcon={<FiUpload />} onClick={() => fileInputRef.current?.click()} isLoading={uploading}>{userSettings?.logo_url ? 'Trocar' : 'Carregar'}</Button>{userSettings?.logo_url && <Button variant="danger" leftIcon={<FiTrash2 />} onClick={handleRemoveLogo}>Remover</Button>}</div></div></div>
                         <div className={styles.saveSection}><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={handleSave} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Alterações'}</Button></div>
                     </div>
                 );
@@ -299,7 +300,7 @@ export default function ConfiguracoesPage() {
                             <div className={styles.colorPicker}><span>Cor Secundária</span><div className={styles.colorInput}><input type="color" value={secondaryColor} onChange={(e) => { setSecondaryColor(e.target.value); previewSettings({ secondary_color: e.target.value }); }} /><span>{secondaryColor}</span></div></div>
                             <div className={styles.colorPicker}><span>Cor da Sidebar</span><div className={styles.colorInput}><input type="color" value={sidebarColor} onChange={(e) => { setSidebarColor(e.target.value); previewSettings({ sidebar_color: e.target.value }); }} /><span>{sidebarColor}</span></div></div>
                         </div></div>
-                        <div className={styles.formGroup}><label>Prévia</label><div className={styles.preview}><div className={styles.previewSidebar} style={{ background: sidebarColor }}><div className={styles.previewLogo} style={{ background: `${primaryColor}20` }}>{userSettings?.logo_url ? <img src={userSettings.logo_url} alt="" /> : <span>🌭</span>}</div><div className={styles.previewName} style={{ color: primaryColor }}>{appName}</div></div><div className={styles.previewContent}><div className={styles.previewButton} style={{ background: primaryColor }}>Exemplo de Botão</div></div></div></div>
+                        <div className={styles.formGroup}><label>Prévia</label><div className={styles.preview}><div className={styles.previewSidebar} style={{ background: sidebarColor }}><div className={styles.previewLogo} style={{ background: `${primaryColor}20` }}>{userSettings?.logo_url ? <div className="relative w-full h-full"><Image src={userSettings.logo_url} alt="" fill className="object-contain" /></div> : <span>🌭</span>}</div><div className={styles.previewName} style={{ color: primaryColor }}>{appName}</div></div><div className={styles.previewContent}><div className={styles.previewButton} style={{ background: primaryColor }}>Exemplo de Botão</div></div></div></div>
                         <div className={styles.saveSection}><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={handleSave} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Alterações'}</Button></div>
                     </div>
                 );

@@ -1,0 +1,644 @@
+
+> cola-ai@0.1.0 lint
+> eslint
+
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\app\docs\agents\page.tsx
+  112:61  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\app\docs\installation\page.tsx
+  71:64  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\app\docs\page.tsx
+  37:32  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  44:25  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\app\docs\skills\page.tsx
+  30:151  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+  38:133  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\app\docs\workflows\page.tsx
+  44:119  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`         react/no-unescaped-entities
+  71:184  error  Comments inside children section of tag should be placed inside braces  react/jsx-no-comment-textnodes
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\app\page.tsx
+  466:9  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\docs\code-block.tsx
+  13:35  warning  'language' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\docs\sidebar.tsx
+  3:10  warning  'useState' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\layout\header\components\donate-dialog.tsx
+   6:41  warning  'User' is defined but never used                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  27:30  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+  74:33  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\layout\header\components\mobile-menu.tsx
+  40:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\layout\header\components\mobile-menu.tsx:40:9
+  38 |     // Close menu when route changes
+  39 |     useEffect(() => {
+> 40 |         setIsOpen(false);
+     |         ^^^^^^^^^ Avoid calling setState() directly within an effect
+  41 |     }, [pathname]);
+  42 |
+  43 |     return (  react-hooks/set-state-in-effect
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\layout\header\components\theme-toggle.tsx
+  12:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\layout\header\components\theme-toggle.tsx:12:9
+  10 |
+  11 |     useEffect(() => {
+> 12 |         setMounted(true);
+     |         ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  13 |     }, []);
+  14 |
+  15 |     if (!mounted) {  react-hooks/set-state-in-effect
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\ui\command.tsx
+  154:25  warning  'className' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\ui\sheet.tsx
+  35:3  warning  'className' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\ui\sidebar.tsx
+  628:26  error  Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\.temp_ag_kit\web\src\components\ui\sidebar.tsx:628:26
+  626 |   // Random width between 50 to 90%.
+  627 |   const width = React.useMemo(() => {
+> 628 |     return `${Math.floor(Math.random() * 40) + 50}%`;
+      |                          ^^^^^^^^^^^^^ Cannot call impure function
+  629 |   }, []);
+  630 |
+  631 |   return (  react-hooks/purity
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\scan_error.js
+   1:12  error    A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   2:14  error    A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  26:14  warning  'e' is defined but never used            @typescript-eslint/no-unused-vars
+  45:14  warning  'e' is defined but never used            @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\scripts\check-app-url.js
+  1:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  2:16  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\scripts\check-setup.js
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  2:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\scripts\debug-webhook.js
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  2:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\scripts\fix-env-file.js
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  2:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\scripts\setup-stripe-products.js
+  1:16  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  2:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  3:16  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\scripts\setup-stripe.js
+    1:12  error    A `require()` style import is forbidden     @typescript-eslint/no-require-imports
+    2:14  error    A `require()` style import is forbidden     @typescript-eslint/no-require-imports
+    3:16  error    A `require()` style import is forbidden     @typescript-eslint/no-require-imports
+   21:16  error    A `require()` style import is forbidden     @typescript-eslint/no-require-imports
+  121:21  warning  'value' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\scripts\setup-webhook.js
+  1:12  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  2:14  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  3:18  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\actions\admin\manage-plan.ts
+   39:13  error  'stripeSubscriptionId' is never reassigned. Use 'const' instead  prefer-const
+   63:35  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  124:21  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+  147:21  error  Unexpected any. Specify a different type                         @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\actions\support.ts
+  164:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  227:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\actions\sync-stripe.ts
+  19:43  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  60:60  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\adicionais\page.tsx
+   8:8    warning  'UpgradePrompt' is defined but never used                                                                     @typescript-eslint/no-unused-vars
+  35:24   warning  'plan' is assigned a value but never used                                                                     @typescript-eslint/no-unused-vars
+  56:11   warning  'hasAccess' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+  59:49   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  68:110  error    Unexpected any. Specify a different type                                                                      @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\assinatura\page.tsx
+  22:27   warning  'loading' is assigned a value but never used                                                                                                @typescript-eslint/no-unused-vars
+  32:199  warning  React Hook React.useEffect has missing dependencies: 'handleAutoSync' and 'handleSync'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  37:598  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  38:322  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+  40:554  error    Unexpected any. Specify a different type                                                                                                    @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\caixa\page.tsx
+  10:26  warning  'formatDate' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+  30:52  warning  React Hook useEffect has a missing dependency: 'fetchSummary'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\categorias\page.tsx
+  116:55  warning  React Hook useEffect has a missing dependency: 'fetchCategories'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  133:42  warning  '_event' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\configuracoes\page.tsx
+   82:54   error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+   83:58   error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  142:50   error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  175:8    warning  React Hook useEffect has a missing dependency: 'loadRatings'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  215:11   warning  'WEEKDAYS' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  216:91   error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  240:113  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  247:142  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  248:141  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+  549:205  error    Unexpected any. Specify a different type                                                                        @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\contas\page.tsx
+  13:26  warning  'formatDate' is defined but never used                                                                                          @typescript-eslint/no-unused-vars
+  62:24  error    React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  69:29  error    React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  87:23  error    React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  93:5   error    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render    react-hooks/rules-of-hooks
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\cozinha\page.tsx
+   3:46  warning  'useCallback' is defined but never used                                                                         @typescript-eslint/no-unused-vars
+  12:10  warning  'formatRelativeTime' is defined but never used                                                                  @typescript-eslint/no-unused-vars
+  83:8   warning  React Hook useEffect has a missing dependency: 'fetchOrders'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\cupons\page.tsx
+  13:26  warning  'formatDate' is defined but never used                                                                           @typescript-eslint/no-unused-vars
+  52:76  warning  React Hook useEffect has a missing dependency: 'fetchCoupons'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\entregas\page.tsx
+  64:8  warning  React Hook useEffect has a missing dependency: 'fetchOrders'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\estoque\page.tsx
+  49:82  warning  React Hook useEffect has a missing dependency: 'fetchIngredients'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\fidelidade\page.tsx
+  41:28  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  42:26  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  43:27  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  44:30  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  46:23  error  React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  52:5   error  React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render    react-hooks/rules-of-hooks
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\fluxo-caixa\page.tsx
+  44:11  warning  'toast' is assigned a value but never used                                                                                      @typescript-eslint/no-unused-vars
+  60:37  error    React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  71:23  error    React Hook "useCallback" is called conditionally. React Hooks must be called in the exact same order in every component render  react-hooks/rules-of-hooks
+  79:5   error    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render    react-hooks/rules-of-hooks
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\funcionarios\page.tsx
+  54:33  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\funcionarios\page.tsx:54:33
+  52 |     }, [user]);
+  53 |
+> 54 |     useEffect(() => { if (user) fetchEmployees(); }, [user, fetchEmployees]);
+     |                                 ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  55 |     const handleAddClick = () => { const regularEmployees = employees.filter(e => !e.is_fixed); if (!isWithinLimit('employees', regularEmployees.length)) { setShowUpgradeModal(true); return; } resetForm(); setShowModal(true); };
+  56 |
+  57 |     const handleSave = async () => {  react-hooks/set-state-in-effect
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\historico\page.tsx
+   5:8   warning  'MainLayout' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+  33:62  warning  React Hook useEffect has a missing dependency: 'fetchLogs'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\pedidos\[id]\page.tsx
+   5:40  warning  'FiPhone' is defined but never used                                                                                   @typescript-eslint/no-unused-vars
+   5:49  warning  'FiMapPin' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  31:70  warning  React Hook useEffect has a missing dependency: 'fetchOrderDetails'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\pedidos\novo\page.tsx
+   92:19  warning  'setNotes' is assigned a value but never used                                                                             @typescript-eslint/no-unused-vars
+  124:8   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array              react-hooks/exhaustive-deps
+  190:28  error    Unexpected any. Specify a different type                                                                                  @typescript-eslint/no-explicit-any
+  191:25  error    Unexpected any. Specify a different type                                                                                  @typescript-eslint/no-explicit-any
+  197:36  error    Unexpected any. Specify a different type                                                                                  @typescript-eslint/no-explicit-any
+  198:33  error    Unexpected any. Specify a different type                                                                                  @typescript-eslint/no-explicit-any
+  354:18  warning  'err' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+  389:8   warning  React Hook useEffect has a missing dependency: 'searchLoyaltyCustomer'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  534:54  error    'fetchError' is never reassigned. Use 'const' instead                                                                     prefer-const
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\pedidos\page.tsx
+  184:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  502:85  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  511:85  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\produtos\page.tsx
+  221:8   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  250:42  warning  '_event' is defined but never used                                                                            @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\(authenticated)\relatorios\page.tsx
+   22:5   warning  'LineChart' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+   23:5   warning  'Line' is defined but never used                                                                                    @typescript-eslint/no-unused-vars
+  115:7   warning  'CHART_COLORS' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  257:8   warning  React Hook useEffect has a missing dependency: 'fetchReportData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  514:11  warning  'categoryData' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  522:11  warning  'deliveryData' is assigned a value but never used                                                                   @typescript-eslint/no-unused-vars
+  545:11  warning  'handleExportPDF' is assigned a value but never used                                                                @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\acesso\[token]\[pagina]\page.tsx
+  15:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\acesso\[token]\[pagina]\view\page.tsx
+  49:8  warning  React Hook useEffect has a missing dependency: 'fetchOrders'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\actions\store.ts
+  4:10  warning  'Database' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\admin\clients\page.tsx
+  131:39  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  140:25  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  228:25  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+  390:11  warning  'totalMRR' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  460:25  error    Unexpected any. Specify a different type       @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\admin\dashboard\page.tsx
+  7:5  warning  'LineChart' is defined but never used  @typescript-eslint/no-unused-vars
+  8:5  warning  'Line' is defined but never used       @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\admin\finance\page.tsx
+  82:45  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\admin\layout.tsx
+  26:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\admin\layout.tsx:26:9
+  24 |
+  25 |         const authenticated = isSuperAdminAuthenticated();
+> 26 |         setIsAuthenticated(authenticated);
+     |         ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  27 |
+  28 |         if (!authenticated) {
+  29 |             router.replace('/admin/login');  react-hooks/set-state-in-effect
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\admin\plans\page.tsx
+  10:5  warning  'FiPlus' is defined but never used      @typescript-eslint/no-unused-vars
+  11:5  warning  'FiEdit2' is defined but never used     @typescript-eslint/no-unused-vars
+  12:5  warning  'FiTrash2' is defined but never used    @typescript-eslint/no-unused-vars
+  14:5  warning  'FiX' is defined but never used         @typescript-eslint/no-unused-vars
+  15:5  warning  'FiSave' is defined but never used      @typescript-eslint/no-unused-vars
+  16:5  warning  'FiActivity' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\admin\support\page.tsx
+   16:5    warning  'FiPaperclip' is defined but never used                                                                     @typescript-eslint/no-unused-vars
+   80:8    warning  React Hook useCallback has a missing dependency: 'error'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  585:113  error    Unexpected any. Specify a different type                                                                    @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\api\debug\force-sync\route.ts
+  58:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  78:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\api\debug\supabase\route.ts
+  42:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\api\pix\create-subscription\route.ts
+   74:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   95:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  142:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  143:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  145:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  146:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  170:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  200:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\api\stripe\change-plan\route.ts
+  60:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  77:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\api\stripe\checkout\route.ts
+  59:30  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\api\stripe\portal\route.ts
+   4:10  warning  'cookies' is defined but never used       @typescript-eslint/no-unused-vars
+   6:28  warning  'req' is defined but never used           @typescript-eslint/no-unused-vars
+  42:64  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\api\stripe\reverse-sync\route.ts
+   48:17  warning  'type' is assigned a value but never used  @typescript-eslint/no-unused-vars
+   62:21  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+   69:27  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+   96:31  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  109:22  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+  121:21  error    Unexpected any. Specify a different type   @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\api\stripe\sync\route.ts
+   32:28  warning  'req' is defined but never used           @typescript-eslint/no-unused-vars
+  110:18  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  117:18  warning  'invoiceError' is defined but never used  @typescript-eslint/no-unused-vars
+  119:54  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  133:62  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  134:60  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:86  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  137:18  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  154:75  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\api\stripe\webhook\route.ts
+   97:21  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  103:11  warning  'subscription' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  151:43  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  161:41  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  173:45  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  173:90  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  174:43  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  174:86  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  182:26  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  186:52  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  187:72  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  190:40  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  209:26  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  301:79  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  309:54  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  310:52  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  328:26  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  362:83  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  365:60  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  370:30  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  373:56  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  374:76  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  377:44  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  388:68  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  389:66  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  392:30  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  421:34  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  434:52  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  453:99  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  461:78  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  462:76  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  463:83  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+  464:34  error    Unexpected any. Specify a different type           @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\avaliar\[token]\RatingClient.tsx
+  22:40  warning  React Hook useEffect has a missing dependency: 'fetchOrder'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\menu\[slug]\MenuClient.tsx
+   13:8   warning  'StarRating' is defined but never used                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   94:54  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  106:8   warning  React Hook useEffect has missing dependencies: 'fetchMenuData' and 'settings'. Either include them or remove the dependency array                                                                                                                                                        react-hooks/exhaustive-deps
+  122:8   warning  React Hook useEffect has a missing dependency: 'lookupCustomer'. Either include it or remove the dependency array                                                                                                                                                                        react-hooks/exhaustive-deps
+  131:8   warning  React Hook useEffect has a missing dependency: 'checkStoreStatus'. Either include it or remove the dependency array                                                                                                                                                                      react-hooks/exhaustive-deps
+  262:52  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  892:58  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  892:58  warning  img elements must have an alt prop, either with meaningful text, or an empty string for decorative images                                                                                                                                                                                jsx-a11y/alt-text
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\termos\page.tsx
+  18:226  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  18:237  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\app\vendas\page.tsx
+  7:5   warning  'FiCheck' is defined but never used       @typescript-eslint/no-unused-vars
+  7:14  warning  'FiX' is defined but never used           @typescript-eslint/no-unused-vars
+  7:34  warning  'FiChevronUp' is defined but never used   @typescript-eslint/no-unused-vars
+  8:5   warning  'FiUsers' is defined but never used       @typescript-eslint/no-unused-vars
+  8:22  warning  'FiTag' is defined but never used         @typescript-eslint/no-unused-vars
+  8:29  warning  'FiPackage' is defined but never used     @typescript-eslint/no-unused-vars
+  8:40  warning  'FiCreditCard' is defined but never used  @typescript-eslint/no-unused-vars
+  8:54  warning  'FiSmartphone' is defined but never used  @typescript-eslint/no-unused-vars
+  8:68  warning  'FiSettings' is defined but never used    @typescript-eslint/no-unused-vars
+  9:20  warning  'FiShield' is defined but never used      @typescript-eslint/no-unused-vars
+  9:30  warning  'FiHeadphones' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\admin\DataTable.tsx
+  11:5  warning  'FiMoreVertical' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\auth\PinPadModal.tsx
+   60:8   warning  React Hook useEffect has a missing dependency: 'blockTimeRemaining'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  100:18  warning  'err' is defined but never used                                                                                        @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\auth\RouteGuard.tsx
+   3:39  warning  'useState' is defined but never used                      @typescript-eslint/no-unused-vars
+  51:33  warning  'subscriptionLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\layout\Sidebar.tsx
+  3:1   warning  Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element')
+  4:1   warning  Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element')
+  5:47  warning  'useLayoutEffect' is defined but never used                                                   @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\menu\StoreReviewsModal.tsx
+   4:15  warning  'FiStar' is defined but never used                               @typescript-eslint/no-unused-vars
+  85:45  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  85:62  error    `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\pix\PixPaymentModal.tsx
+  61:41  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\pix\PixPaymentModal.tsx:61:41
+  59 |                         merchantCity={PIX_CONFIG.merchantCity}
+  60 |                         amount={amount}
+> 61 |                         orderId={`SUB-${Date.now()}`}
+     |                                         ^^^^^^^^^^ Cannot call impure function
+  62 |                     />
+  63 |
+  64 |                     <div className="flex gap-3 px-4 py-3 bg-warning/10 border border-warning/30 rounded-lg my-4">  react-hooks/purity
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\pix\PixQRCode.tsx
+  46:8  warning  React Hook useEffect has a missing dependency: 'generateQRCode'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\reports\RelatorioPDFCompleto.tsx
+    2:50  warning  'Font' is defined but never used          @typescript-eslint/no-unused-vars
+   11:16  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   16:16  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  155:39  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  171:50  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  171:67  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  199:39  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\reports\UsageExample.tsx
+   4:8   warning  'dynamic' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  15:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\reports\UsageExample.tsx:15:9
+  13 |
+  14 |     useEffect(() => {
+> 15 |         setIsClient(true);
+     |         ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  16 |     }, []);
+  17 |
+  18 |     // Exemplo de dados gerados dinamicamente do seu dashboard  react-hooks/set-state-in-effect
+  82:29  warning  'blob' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  82:35  warning  'url' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  82:49  warning  'error' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\settings\OpeningHoursScheduler.tsx
+  2:19  warning  'FiPlus' is defined but never used        @typescript-eslint/no-unused-vars
+  2:27  warning  'FiTrash2' is defined but never used      @typescript-eslint/no-unused-vars
+  8:69  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\settings\SupportTab.tsx
+    5:5    warning  'FiMessageSquare' is defined but never used                                                                      @typescript-eslint/no-unused-vars
+    6:14   warning  'FiCheckCircle' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+    6:29   warning  'FiAlertCircle' is defined but never used                                                                        @typescript-eslint/no-unused-vars
+   93:8    warning  React Hook useEffect has a missing dependency: 'fetchTickets'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  436:123  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\ui\ImageUpload.tsx
+  200:23  error    Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  222:18  warning  'err' is defined but never used                                                                                         @typescript-eslint/no-unused-vars
+  227:8   warning  React Hook useCallback has a missing dependency: 'deleteFromStorage'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\components\ui\LazyCharts.tsx
+   4:25  warning  'Suspense' is defined but never used      @typescript-eslint/no-unused-vars
+  19:84  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:84  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  35:83  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  43:83  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  51:94  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\contexts\AuthContext.tsx
+   4:10  warning  'useRouter' is defined but never used                                                                                 @typescript-eslint/no-unused-vars
+  76:8   warning  React Hook useEffect has a missing dependency: 'fetchUserSettings'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\contexts\EmployeeContext.tsx
+  46:23  warning  'error' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  67:13  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\contexts\EmployeeContext.tsx:67:13
+  65 |
+  66 |         if (storedLocked === 'true') {
+> 67 |             setIsLocked(true);
+     |             ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  68 |         }
+  69 |
+  70 |         // Restore from memory ref (not storage for security)  react-hooks/set-state-in-effect
+  77:8   warning  React Hook useEffect has a missing dependency: 'checkAdminExistence'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\contexts\KeyboardShortcutsContext.tsx
+   26:7   warning  'globalShortcuts' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+   39:11  warning  'pathname' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   55:9   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\contexts\KeyboardShortcutsContext.tsx:55:9
+  53 |             { key: 'Escape', description: 'Fechar Modal/Menu', action: () => setShowHelp(false), scope: 'global' },
+  54 |         ];
+> 55 |         setShortcuts(baseShortcuts);
+     |         ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  56 |     }, [router]);
+  57 |
+  58 |     const registerShortcut = useCallback((shortcut: Shortcut) => {  react-hooks/set-state-in-effect
+  322:8   warning  React Hook useEffect has missing dependencies: 'registerShortcut', 'shortcut', and 'unregisterShortcut'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\contexts\OfflineContext.tsx
+  5:67  warning  'getOfflineStatus' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\contexts\SidebarContext.tsx
+  37:13  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\contexts\SidebarContext.tsx:37:13
+  35 |         const stored = localStorage.getItem(STORAGE_KEY);
+  36 |         if (stored !== null) {
+> 37 |             setCollapsedState(stored === 'true');
+     |             ^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  38 |         }
+  39 |         setIsHydrated(true);
+  40 |     }, []);  react-hooks/set-state-in-effect
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\contexts\SubscriptionContext.tsx
+  144:8  warning  React Hook useEffect has a missing dependency: 'fetchSubscription'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\lib\pix.ts
+  16:11  warning  'PixConfig' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\lib\print.ts
+   4:10  warning  'createRoot' is defined but never used            @typescript-eslint/no-unused-vars
+   5:8   warning  'React' is defined but never used                 @typescript-eslint/no-unused-vars
+   6:8   warning  'OrderReceipt' is defined but never used          @typescript-eslint/no-unused-vars
+   7:8   warning  'KitchenReceipt' is defined but never used        @typescript-eslint/no-unused-vars
+  47:10  warning  'createPrintContainer' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\lib\rateLimiter.ts
+  113:9  error  'entry' is never reassigned. Use 'const' instead  prefer-const
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\lib\stripe.ts
+  21:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\lib\telegram.ts
+  64:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\lib\whatsapp.ts
+  187:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\src\utils\supabase\middleware.ts
+  20:58  warning  'options' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\supabase\functions\stripe-sync\index.ts
+   1:1   error    Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+  67:17  warning  'type' is assigned a value but never used                      @typescript-eslint/no-unused-vars
+  87:21  error    Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+
+C:\Users\grego\OneDrive\Área de Trabalho\Nova pasta (6)\Ligeirinho hotdog\supabase\functions\stripe-webhook\index.ts
+    1:1   error    Do not use "@ts-nocheck" because it alters compilation errors  @typescript-eslint/ban-ts-comment
+   47:46  error    Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+   48:15  warning  'subscription' is assigned a value but never used              @typescript-eslint/no-unused-vars
+   48:51  error    Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+   90:21  error    'finalPlanType' is never reassigned. Use 'const' instead       prefer-const
+  113:50  error    Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+  154:50  error    Unexpected any. Specify a different type                       @typescript-eslint/no-explicit-any
+
+✖ 306 problems (177 errors, 129 warnings)
+  3 errors and 2 warnings potentially fixable with the `--fix` option.
+

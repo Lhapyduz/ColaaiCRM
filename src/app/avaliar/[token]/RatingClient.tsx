@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { FiCheck, FiAlertCircle } from 'react-icons/fi';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import StarRating from '@/components/ui/StarRating';
 import { formatCurrency } from '@/hooks/useFormatters';
@@ -40,7 +41,7 @@ export default function RatingClient({ token }: { token: string }) {
         try {
             const { data: orderData } = await supabase.from('orders').select('id, user_id, customer_name').eq('rating_token', token).single();
             if (!orderData) { setError('Pedido não encontrado'); return; }
-            
+
             // Insert into store_ratings instead of ratings
             const { error: ratingError } = await supabase.from('store_ratings').insert({
                 user_id: orderData.user_id,
@@ -65,7 +66,7 @@ export default function RatingClient({ token }: { token: string }) {
             <div className="w-full max-w-md bg-bg-card border border-border rounded-xl overflow-hidden">
                 {/* Header */}
                 <div className="bg-primary/10 p-6 text-center">
-                    <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-bg-card flex items-center justify-center overflow-hidden">{order?.user_settings?.logo_url ? <img src={order.user_settings.logo_url} alt="" className="w-full h-full object-contain" /> : <span className="text-4xl">🌭</span>}</div>
+                    <div className="relative w-20 h-20 mx-auto mb-4 rounded-full bg-bg-card flex items-center justify-center overflow-hidden">{order?.user_settings?.logo_url ? <Image src={order.user_settings.logo_url} alt="" fill className="object-contain" sizes="80px" /> : <span className="text-4xl">🌭</span>}</div>
                     <h1 className="text-xl font-bold">{order?.user_settings?.app_name}</h1>
                 </div>
 

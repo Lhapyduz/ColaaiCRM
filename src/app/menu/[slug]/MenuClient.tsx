@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { FiShoppingBag, FiMinus, FiPlus, FiX, FiMessageCircle, FiUser, FiPhone, FiTag, FiCheck, FiGift, FiStar, FiClock } from 'react-icons/fi';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -375,7 +376,7 @@ export default function MenuClient({
     if (loading) return <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /><p className="text-text-muted">Carregando cardápio...</p></div>;
     if (notFound) return <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 text-center p-4"><span className="text-6xl mb-4">🔍</span><h1 className="text-2xl font-bold">Cardápio não encontrado</h1><p className="text-text-muted">O link que você acessou não existe ou foi removido.</p></div>;
 
-    const CartItemComponent = ({ item, index }: { item: CartItem; index: number }) => { const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0); const itemTotal = (item.product.price + addonTotal) * item.quantity; return (<div className="flex gap-3 pb-3 border-b border-border last:border-0"><div className="w-14 h-14 rounded-lg bg-bg-tertiary flex items-center justify-center overflow-hidden shrink-0">{item.product.image_url ? <img src={item.product.image_url} alt="" className="w-full h-full object-cover" /> : <span>🍽️</span>}</div><div className="flex-1 min-w-0"><div className="flex justify-between gap-2"><span className="font-medium truncate">{item.product.name}</span><span className="text-primary font-medium shrink-0">{formatCurrency(itemTotal)}</span></div>{item.addons.length > 0 && <span className="text-xs text-text-muted">{item.addons.map(a => a.name).join(', ')}</span>}<div className="flex items-center gap-2 mt-2"><button className="w-7 h-7 rounded-full bg-bg-tertiary flex items-center justify-center hover:bg-primary hover:text-white transition-all" onClick={() => updateQuantity(index, -1)}><FiMinus size={14} /></button><span className="w-6 text-center font-medium">{item.quantity}</span><button className="w-7 h-7 rounded-full bg-bg-tertiary flex items-center justify-center hover:bg-primary hover:text-white transition-all" onClick={() => updateQuantity(index, 1)}><FiPlus size={14} /></button></div></div></div>); };
+    const CartItemComponent = ({ item, index }: { item: CartItem; index: number }) => { const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0); const itemTotal = (item.product.price + addonTotal) * item.quantity; return (<div className="flex gap-3 pb-3 border-b border-border last:border-0"><div className="relative w-14 h-14 rounded-lg bg-bg-tertiary flex items-center justify-center overflow-hidden shrink-0">{item.product.image_url ? <Image src={item.product.image_url} alt="" fill className="object-cover" sizes="56px" /> : <span>🍽️</span>}</div><div className="flex-1 min-w-0"><div className="flex justify-between gap-2"><span className="font-medium truncate">{item.product.name}</span><span className="text-primary font-medium shrink-0">{formatCurrency(itemTotal)}</span></div>{item.addons.length > 0 && <span className="text-xs text-text-muted">{item.addons.map(a => a.name).join(', ')}</span>}<div className="flex items-center gap-2 mt-2"><button className="w-7 h-7 rounded-full bg-bg-tertiary flex items-center justify-center hover:bg-primary hover:text-white transition-all" onClick={() => updateQuantity(index, -1)}><FiMinus size={14} /></button><span className="w-6 text-center font-medium">{item.quantity}</span><button className="w-7 h-7 rounded-full bg-bg-tertiary flex items-center justify-center hover:bg-primary hover:text-white transition-all" onClick={() => updateQuantity(index, 1)}><FiPlus size={14} /></button></div></div></div>); };
 
     return (
         <div className="min-h-screen bg-bg-primary font-sans text-text-primary selection:bg-primary/30">
@@ -389,7 +390,7 @@ export default function MenuClient({
                 <div className="max-w-3xl mx-auto space-y-6">
                     <div className="relative w-28 h-28 mx-auto rounded-full bg-bg-card border-4 border-bg-card shadow-xl shadow-black/20 overflow-hidden flex items-center justify-center group transition-transform hover:scale-105 duration-500">
                         {settings?.logo_url ? (
-                            <img src={settings.logo_url} alt={settings.app_name} className="w-full h-full object-cover" />
+                            <Image src={settings.logo_url} alt={settings.app_name} fill className="object-cover" sizes="112px" priority />
                         ) : (
                             <span className="text-5xl">🍔</span>
                         )}
@@ -504,10 +505,12 @@ export default function MenuClient({
                                     >
                                         <div className="relative h-48 overflow-hidden">
                                             {product.image_url ? (
-                                                <img
+                                                <Image
                                                     src={product.image_url}
                                                     alt={product.name}
-                                                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+                                                    fill
+                                                    className="object-cover transform group-hover:scale-110 transition-transform duration-500"
+                                                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-5xl bg-bg-tertiary">

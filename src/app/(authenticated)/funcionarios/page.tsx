@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiUser, FiUsers, FiShield, FiPhone, FiMail, FiToggleLeft, FiToggleRight, FiLock } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -41,9 +41,17 @@ export default function FuncionariosPage() {
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [form, setForm] = useState({ name: '', email: '', phone: '', role: 'attendant' as Employee['role'], pin_code: '', hourly_rate: 0, is_active: true });
 
-    useEffect(() => { if (user) fetchEmployees(); }, [user]);
 
-    const fetchEmployees = async () => { if (!user) return; setLoading(true); const { data, error } = await supabase.from('employees').select('*').eq('user_id', user.id).order('name'); if (!error && data) setEmployees(data); setLoading(false); };
+
+    const fetchEmployees = useCallback(async () => {
+        if (!user) return;
+        setLoading(true);
+        const { data, error } = await supabase.from('employees').select('*').eq('user_id', user.id).order('name');
+        if (!error && data) setEmployees(data);
+        setLoading(false);
+    }, [user]);
+
+    useEffect(() => { if (user) fetchEmployees(); }, [user, fetchEmployees]);
     const handleAddClick = () => { const regularEmployees = employees.filter(e => !e.is_fixed); if (!isWithinLimit('employees', regularEmployees.length)) { setShowUpgradeModal(true); return; } resetForm(); setShowModal(true); };
 
     const handleSave = async () => {

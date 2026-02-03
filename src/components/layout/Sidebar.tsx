@@ -1,7 +1,9 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
+/* eslint-disable @next/next/no-img-element */
 import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -381,12 +383,16 @@ export default function Sidebar() {
                 <div className="p-5 border-b border-border">
                     <Link href="/dashboard" className="flex items-center gap-3 no-underline">
                         {userSettings?.logo_url ? (
-                            <img
-                                src={userSettings.logo_url}
-                                alt=""
-                                aria-hidden="true"
-                                className="w-10 h-10 rounded-xl object-cover"
-                            />
+                            <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0">
+                                <Image
+                                    src={userSettings.logo_url}
+                                    alt=""
+                                    aria-hidden="true"
+                                    fill
+                                    className="object-cover"
+                                    sizes="40px"
+                                />
+                            </div>
                         ) : (
                             <span className="text-[2rem]">🌭</span>
                         )}

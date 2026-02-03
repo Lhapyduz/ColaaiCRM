@@ -4,6 +4,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import Cropper, { Area } from 'react-easy-crop';
 import imageCompression from 'browser-image-compression';
 import { FiCamera, FiX, FiUpload, FiRefreshCw, FiCheck } from 'react-icons/fi';
+import NextImage from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
@@ -196,8 +197,9 @@ export default function ImageUpload({
             const newUrl = await uploadToStorage(compressedBlob);
             onChange(newUrl);
             setPreview(newUrl);
-        } catch (err: any) {
-            setError(err.message || 'Erro ao processar imagem');
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao processar imagem';
+            setError(errorMessage);
             setPreview(value);
         } finally {
             setUploading(false);
@@ -260,7 +262,7 @@ export default function ImageUpload({
                     </div>
                 ) : preview ? (
                     <>
-                        <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                        <NextImage src={preview} alt="Preview" fill className="object-cover" unoptimized={preview.startsWith('data:')} />
                         <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-2 opacity-0 hover:opacity-100 transition-opacity duration-200">
                             <button
                                 type="button"
@@ -303,7 +305,7 @@ export default function ImageUpload({
                         <div className="px-5 py-4 border-b border-border">
                             <h3 className="m-0 text-lg font-semibold text-text-primary">Recortar Imagem</h3>
                         </div>
-                        <div className="relative h-[350px] bg-black max-[480px]:h-[280px]">
+                        <div className="relative h-[350px] bg-black max-[480px]:h-sidebar">
                             <Cropper
                                 image={imageToCrop}
                                 crop={crop}

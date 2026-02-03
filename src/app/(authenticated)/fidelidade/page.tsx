@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiGift, FiUsers, FiPlus, FiEdit2, FiTrash2, FiSearch, FiStar, FiSettings, FiTrendingUp, FiToggleLeft, FiToggleRight, FiTag, FiShoppingBag, FiDollarSign } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -34,15 +34,24 @@ export default function FidelidadePage() {
     const [rewardForm, setRewardForm] = useState({ name: '', description: '', points_cost: 100, reward_type: 'discount_percent' as LoyaltyReward['reward_type'], reward_value: 10, min_order_value: 0 });
     const toast = useToast();
 
-    useEffect(() => { if (user && canAccess('loyalty')) fetchData(); }, [user, canAccess]);
+
 
     if (!canAccess('loyalty')) return <UpgradePrompt feature="Programa de Fidelidade" requiredPlan="Avançado" currentPlan={plan} fullPage />;
 
-    const fetchData = async () => { setLoading(true); await Promise.all([fetchCustomers(), fetchRewards(), fetchSettings(), fetchAppSettings()]); setLoading(false); };
-    const fetchCustomers = async () => { if (!user) return; const { data, error } = await supabase.from('customers').select('*').eq('user_id', user.id).gt('total_orders', 0).order('total_points', { ascending: false }); if (!error && data) setCustomers(data); };
-    const fetchRewards = async () => { if (!user) return; const { data, error } = await supabase.from('loyalty_rewards').select('*').eq('user_id', user.id).order('points_cost', { ascending: true }); if (!error && data) setRewards(data); };
-    const fetchSettings = async () => { if (!user) return; const { data, error } = await supabase.from('loyalty_settings').select('*').eq('user_id', user.id).single(); if (error?.code === 'PGRST116') { const { data: newSettings } = await supabase.from('loyalty_settings').insert({ user_id: user.id, points_per_real: 1, min_points_to_redeem: 100, points_expiry_days: 365, tier_bronze_min: 0, tier_silver_min: 500, tier_gold_min: 2000, tier_platinum_min: 5000, silver_multiplier: 1.25, gold_multiplier: 1.50, platinum_multiplier: 2.00, is_active: true }).select().single(); if (newSettings) setSettings(newSettings); } else if (data) setSettings(data); };
-    const fetchAppSettings = async () => { if (!user) return; const { data, error } = await supabase.from('app_settings').select('*').eq('user_id', user.id).single(); if (error?.code === 'PGRST116') { const { data: newSettings } = await supabase.from('app_settings').insert({ user_id: user.id, loyalty_enabled: true, coupons_enabled: true }).select().single(); if (newSettings) setAppSettings(newSettings); } else if (data) setAppSettings(data); };
+    const fetchCustomers = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from('customers').select('*').eq('user_id', user.id).gt('total_orders', 0).order('total_points', { ascending: false }); if (!error && data) setCustomers(data); }, [user]);
+    const fetchRewards = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from('loyalty_rewards').select('*').eq('user_id', user.id).order('points_cost', { ascending: true }); if (!error && data) setRewards(data); }, [user]);
+    const fetchSettings = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from('loyalty_settings').select('*').eq('user_id', user.id).single(); if (error?.code === 'PGRST116') { const { data: newSettings } = await supabase.from('loyalty_settings').insert({ user_id: user.id, points_per_real: 1, min_points_to_redeem: 100, points_expiry_days: 365, tier_bronze_min: 0, tier_silver_min: 500, tier_gold_min: 2000, tier_platinum_min: 5000, silver_multiplier: 1.25, gold_multiplier: 1.50, platinum_multiplier: 2.00, is_active: true }).select().single(); if (newSettings) setSettings(newSettings); } else if (data) setSettings(data); }, [user]);
+    const fetchAppSettings = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from('app_settings').select('*').eq('user_id', user.id).single(); if (error?.code === 'PGRST116') { const { data: newSettings } = await supabase.from('app_settings').insert({ user_id: user.id, loyalty_enabled: true, coupons_enabled: true }).select().single(); if (newSettings) setAppSettings(newSettings); } else if (data) setAppSettings(data); }, [user]);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        await Promise.all([fetchCustomers(), fetchRewards(), fetchSettings(), fetchAppSettings()]);
+        setLoading(false);
+    }, [fetchCustomers, fetchRewards, fetchSettings, fetchAppSettings]);
+
+    useEffect(() => {
+        if (user && canAccess('loyalty')) fetchData();
+    }, [user, canAccess, fetchData]);
 
     const toggleLoyalty = async () => { if (!appSettings || !user) return; const newValue = !appSettings.loyalty_enabled; await supabase.from('app_settings').update({ loyalty_enabled: newValue, updated_at: new Date().toISOString() }).eq('id', appSettings.id); setAppSettings({ ...appSettings, loyalty_enabled: newValue }); };
     const toggleCoupons = async () => { if (!appSettings || !user) return; const newValue = !appSettings.coupons_enabled; await supabase.from('app_settings').update({ coupons_enabled: newValue, updated_at: new Date().toISOString() }).eq('id', appSettings.id); setAppSettings({ ...appSettings, coupons_enabled: newValue }); };
@@ -55,8 +64,19 @@ export default function FidelidadePage() {
 
     const getTierIcon = (tier: string) => tier === 'platinum' ? '💎' : tier === 'gold' ? '🥇' : tier === 'silver' ? '🥈' : '🥉';
     const getTierColor = (tier: string) => tier === 'platinum' ? '#a855f7' : tier === 'gold' ? '#f59e0b' : tier === 'silver' ? '#94a3b8' : '#d97706';
-    const filteredCustomers = customers.filter(c => { const searchLower = searchTerm.toLowerCase(); const searchDigits = searchTerm.replace(/\D/g, ''); return c.name.toLowerCase().includes(searchLower) || c.phone.includes(searchDigits) || c.phone.includes(searchTerm); });
-    const stats = { totalCustomers: customers.length, totalPoints: customers.reduce((sum, c) => sum + (c.total_points || 0), 0), avgPoints: customers.length ? Math.round(customers.reduce((sum, c) => sum + (c.total_points || 0), 0) / customers.length) : 0, totalSavings: customers.reduce((sum, c) => sum + (c.total_discount_savings || 0), 0) };
+
+    const filteredCustomers = React.useMemo(() => customers.filter(c => {
+        const searchLower = searchTerm.toLowerCase();
+        const searchDigits = searchTerm.replace(/\D/g, '');
+        return c.name.toLowerCase().includes(searchLower) || c.phone.includes(searchDigits) || c.phone.includes(searchTerm);
+    }), [customers, searchTerm]);
+
+    const stats = React.useMemo(() => ({
+        totalCustomers: customers.length,
+        totalPoints: customers.reduce((sum, c) => sum + (c.total_points || 0), 0),
+        avgPoints: customers.length ? Math.round(customers.reduce((sum, c) => sum + (c.total_points || 0), 0) / customers.length) : 0,
+        totalSavings: customers.reduce((sum, c) => sum + (c.total_discount_savings || 0), 0)
+    }), [customers]);
 
     if (appSettings && !appSettings.loyalty_enabled) {
         return (

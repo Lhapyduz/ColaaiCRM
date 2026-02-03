@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Transpile ESM packages
+  transpilePackages: ['@react-pdf/renderer'],
   // Image optimization configuration
   images: {
     remotePatterns: [
@@ -14,11 +16,29 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  // Security headers
+  // Static assets caching headers
   async headers() {
     return [
       {
-        // Apply to all routes
+        source: '/fonts/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/images/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, must-revalidate',
+          },
+        ],
+      },
+      {
+        // Security headers (applied to all routes)
         source: '/:path*',
         headers: [
           {
@@ -45,6 +65,8 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  compress: true,
+  poweredByHeader: false,
 };
 
 export default nextConfig;

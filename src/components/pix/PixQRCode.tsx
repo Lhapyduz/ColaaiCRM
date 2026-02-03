@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FiCopy, FiCheck, FiRefreshCw } from 'react-icons/fi';
+import Image from 'next/image';
 import { generatePixQRCode, generatePixCode, PixPayload } from '@/lib/pix';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
@@ -114,8 +115,8 @@ export default function PixQRCode({
                         <span className="text-2xl font-bold text-[#32BCAD]">{formatCurrency(amount)}</span>
                     </div>
 
-                    <div className="p-4 bg-white rounded-md mb-5">
-                        <img src={qrCodeUrl} alt="QR Code PIX" className="block w-[200px] h-[200px]" />
+                    <div className="relative p-4 bg-white rounded-md mb-5 w-[200px] h-[200px]">
+                        <Image src={qrCodeUrl} alt="QR Code PIX" fill className="object-contain" unoptimized />
                     </div>
 
                     <div className="w-full p-4 bg-bg-tertiary rounded-md mb-4">

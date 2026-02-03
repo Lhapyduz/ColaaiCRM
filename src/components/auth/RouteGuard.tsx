@@ -49,58 +49,43 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     const { user, loading: authLoading } = useAuth();
     const { activeEmployee, hasPermission, isLocked, loading: employeeLoading } = useEmployee();
     const { isBlocked, loading: subscriptionLoading } = useSubscription();
-    const [authorized, setAuthorized] = useState(true); // Default to true to prevent flash
-    const [isInitialCheck, setIsInitialCheck] = useState(true); // Only show loading on initial load
-
+    const isReady = !authLoading && !employeeLoading;
     const isPathAllowedWhenExpired = ALLOWED_WHEN_EXPIRED.some(route => pathname.startsWith(route));
 
-    useEffect(() => {
-        // Don't check if still loading auth/employee
-        if (authLoading || employeeLoading) return;
-
-        if (!user) {
-            router.replace('/login');
-            return;
-        }
-
-        if (isLocked) {
-            setIsInitialCheck(false);
-            setAuthorized(false);
-            return;
-        }
+    // Derive authorization state directly during render
+    const checkAuthorization = () => {
+        if (!user) return false;
+        if (isLocked) return false;
 
         const permission = requiredPermission || ROUTE_PERMISSIONS[pathname];
 
-        if (!permission) {
-            setAuthorized(true);
-            setIsInitialCheck(false);
-            return;
-        }
+        // If no permission required, authorized
+        if (!permission) return true;
 
-        if (!activeEmployee) {
-            setAuthorized(true);
-            setIsInitialCheck(false);
-            return;
-        }
+        // If no employee active (owner), authorized
+        if (!activeEmployee) return true;
 
+        // Check role specific routes
         const roleSpecific = ROLE_SPECIFIC_ROUTES[pathname];
-        if (roleSpecific) {
-            if (roleSpecific.includes(activeEmployee.role)) {
-                setAuthorized(true);
-                setIsInitialCheck(false);
-                return;
-            }
+        if (roleSpecific && roleSpecific.includes(activeEmployee.role)) {
+            return true;
         }
 
-        const canAccess = hasPermission(permission);
-        setAuthorized(canAccess);
-        setIsInitialCheck(false);
+        // Check permission
+        return hasPermission(permission);
+    };
 
-    }, [user, authLoading, employeeLoading, activeEmployee, isLocked, pathname, requiredPermission, hasPermission, router]);
+    const isAuthorized = checkAuthorization();
 
-    // Only show loading on initial page load, not on subsequent navigations
-    // This prevents the "flash" when clicking sidebar items
-    if (isInitialCheck && (authLoading || employeeLoading || subscriptionLoading)) {
+    useEffect(() => {
+        // Redirection logic only
+        if (isReady && !user) {
+            router.replace('/login');
+        }
+    }, [isReady, user, router]);
+
+    // Loading state
+    if (!isReady) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-text-secondary">
                 <div className="w-10 h-10 border-[3px] border-border border-t-primary rounded-full animate-spin" />
@@ -128,7 +113,7 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     }
 
     // Not authorized
-    if (!authorized) {
+    if (!isAuthorized) {
         return (
             <div className="flex items-center justify-center min-h-[70vh] p-8">
                 <div className="text-center max-w-[400px] p-12 bg-bg-card rounded-2xl border border-border shadow-lg">

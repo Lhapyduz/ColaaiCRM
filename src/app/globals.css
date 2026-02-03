@@ -5,7 +5,11 @@
 /* Tailwind CSS v4 */
 @import "tailwindcss";
 
+/* Diretorias de busca para o Tailwind */
+@source "../../src/**/*.{ts,tsx,js,jsx,css}";
+
 /* Tailwind CSS v4 Theme Configuration */
+/* @tailwind theme */
 @theme {
   /* Font families */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
@@ -277,7 +281,7 @@
   --sidebar-width: 280px;
   --sidebar-collapsed: 80px;
   --header-height: 70px;
-  
+
   /* Dynamic Components */
   --sidebar-bg: var(--bg-secondary);
 }

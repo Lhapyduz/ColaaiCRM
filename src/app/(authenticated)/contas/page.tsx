@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiCalendar, FiDollarSign, FiArrowUp, FiArrowDown, FiCheck, FiAlertCircle, FiClock } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -53,22 +53,20 @@ export default function ContasPage() {
     const hasAccess = canAccess('bills');
     const toast = useToast();
 
-    useEffect(() => { if (user && hasAccess) fetchData(); }, [user, hasAccess]);
+
 
     if (!hasAccess) {
         return <UpgradePrompt feature="Contas a Pagar/Receber" requiredPlan="Avançado" currentPlan={plan} fullPage />;
     }
 
-    const fetchData = async () => { setLoading(true); await Promise.all([fetchBills(), fetchCategories()]); setLoading(false); };
-
-    const fetchBills = async () => {
+    const fetchBills = useCallback(async () => {
         if (!user) return;
         try { await supabase.rpc('update_overdue_bills'); } catch { }
         const { data, error } = await supabase.from('bills').select('*').eq('user_id', user.id).order('due_date', { ascending: true });
         if (!error && data) setBills(data);
-    };
+    }, [user]);
 
-    const fetchCategories = async () => {
+    const fetchCategories = useCallback(async () => {
         if (!user) return;
         const { data, error } = await supabase.from('bill_categories').select('*').eq('user_id', user.id);
         if (!error && data) setCategories(data);
@@ -84,7 +82,17 @@ export default function ContasPage() {
             for (const cat of defaults) await supabase.from('bill_categories').insert({ user_id: user.id, ...cat });
             fetchCategories();
         }
-    };
+    }, [user]);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        await Promise.all([fetchBills(), fetchCategories()]);
+        setLoading(false);
+    }, [fetchBills, fetchCategories]);
+
+    useEffect(() => {
+        if (user && hasAccess) fetchData();
+    }, [user, hasAccess, fetchData]);
 
     const handleSave = async () => {
         if (!user) return;

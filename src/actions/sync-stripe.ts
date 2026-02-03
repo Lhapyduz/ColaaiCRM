@@ -16,7 +16,7 @@ export async function syncStripeData() {
         let startingAfter: string | undefined = undefined;
 
         while (hasMore) {
-            const paginatedSubscriptions = await stripe.subscriptions.list({
+            const paginatedSubscriptions: any = await stripe.subscriptions.list({
                 limit: 100,
                 status: 'all',
                 expand: ['data.plan.product'],

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FiLock, FiAlertCircle, FiDelete, FiCoffee, FiTruck } from 'react-icons/fi';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { verifyPin, isLegacyPin, hashPin } from '@/lib/pinSecurity';
 import { checkRateLimit, recordFailedAttempt, recordSuccessfulLogin, formatBlockTime } from '@/lib/rateLimiter';
@@ -84,7 +85,7 @@ export default function PublicAccessPage() {
             <div className="bg-bg-card border border-border rounded-xl p-8 w-full max-w-[360px] relative overflow-hidden">
                 {/* Header */}
                 <div className="text-center mb-6">
-                    {establishment?.logo_url ? <img src={establishment.logo_url} alt="" className="h-16 mx-auto mb-4 object-contain" /> : <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center"><PageIcon size={32} className="text-primary" /></div>}
+                    {establishment?.logo_url ? <div className="relative h-16 w-full mx-auto mb-4"><Image src={establishment.logo_url} alt="" fill className="object-contain" sizes="(max-width: 768px) 100vw, 360px" /></div> : <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/20 flex items-center justify-center"><PageIcon size={32} className="text-primary" /></div>}
                     <h1 className="text-xl font-bold">{establishment?.app_name}</h1>
                     <p className="flex items-center justify-center gap-2 text-text-muted mt-1"><PageIcon size={18} /> {pageConfig?.title}</p>
                 </div>

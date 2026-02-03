@@ -20,7 +20,17 @@ export const metadata: Metadata = {
   title: "Cola Aí - CRM para Lanches",
   description: "Sistema completo de gestão para negócios de lanches, hotdogs, porções e bebidas.",
   keywords: "crm, lanches, hotdog, gestão, pedidos, entregas",
+  alternates: {
+    canonical: '/',
+  },
+  other: {
+    'dns-prefetch': [
+      'https://koxmxvutlxlikeszwyir.supabase.co',
+      'https://js.stripe.com',
+    ],
+  },
 };
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,6 +38,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://koxmxvutlxlikeszwyir.supabase.co" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://js.stripe.com" crossOrigin="anonymous" />
+      </head>
       <body>
         <ErrorBoundary>
           <AuthProvider>

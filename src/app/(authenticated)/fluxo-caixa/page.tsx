@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiTrendingUp, FiTrendingDown, FiCalendar, FiRefreshCw } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -51,21 +51,13 @@ export default function FluxoCaixaPage() {
         setDateTo(to.toISOString().split('T')[0]);
     }, []);
 
-    useEffect(() => { if (user && dateFrom && dateTo && hasAccess) fetchData(); }, [user, dateFrom, dateTo, hasAccess]);
+
 
     if (!hasAccess) {
         return <UpgradePrompt feature="Fluxo de Caixa" requiredPlan="Avançado" currentPlan={plan} fullPage />;
     }
 
-    const fetchData = async () => {
-        if (!user) return;
-        setLoading(true);
-        const { data, error } = await supabase.from('cash_flow').select('*').eq('user_id', user.id).gte('transaction_date', dateFrom).lte('transaction_date', dateTo).order('transaction_date', { ascending: false });
-        if (!error && data) { setEntries(data); calculateDailySummaries(data); }
-        setLoading(false);
-    };
-
-    const calculateDailySummaries = (data: CashFlowEntry[]) => {
+    const calculateDailySummaries = useCallback((data: CashFlowEntry[]) => {
         const summaryMap = new Map<string, { income: number; expense: number }>();
         data.forEach(entry => {
             if (!summaryMap.has(entry.transaction_date)) summaryMap.set(entry.transaction_date, { income: 0, expense: 0 });
@@ -74,7 +66,19 @@ export default function FluxoCaixaPage() {
         });
         const summaries: DailySummary[] = Array.from(summaryMap.entries()).map(([date, { income, expense }]) => ({ date, income, expense, balance: income - expense })).sort((a, b) => b.date.localeCompare(a.date));
         setDailySummaries(summaries);
-    };
+    }, []);
+
+    const fetchData = useCallback(async () => {
+        if (!user) return;
+        setLoading(true);
+        const { data, error } = await supabase.from('cash_flow').select('*').eq('user_id', user.id).gte('transaction_date', dateFrom).lte('transaction_date', dateTo).order('transaction_date', { ascending: false });
+        if (!error && data) { setEntries(data); calculateDailySummaries(data); }
+        setLoading(false);
+    }, [user, dateFrom, dateTo, calculateDailySummaries]);
+
+    useEffect(() => {
+        if (user && dateFrom && dateTo && hasAccess) fetchData();
+    }, [user, dateFrom, dateTo, hasAccess, fetchData]);
 
     const setPeriodDates = (p: 'week' | 'month' | 'year') => {
         const now = new Date();

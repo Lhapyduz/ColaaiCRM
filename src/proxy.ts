@@ -2,8 +2,12 @@ import { type NextRequest } from 'next/server'
 import { updateSession } from '@/utils/supabase/middleware'
 
 export async function proxy(request: NextRequest) {
-    console.log('[Proxy] Executing for:', request.nextUrl.pathname);
-    return await updateSession(request)
+    try {
+        return await updateSession(request);
+    } catch (error) {
+        console.error('[Proxy] Error in proxy execution:', error);
+        throw error;
+    }
 }
 
 export const config = {
