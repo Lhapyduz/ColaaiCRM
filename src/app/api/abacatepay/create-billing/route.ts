@@ -96,26 +96,22 @@ export async function POST(req: NextRequest) {
             // Don't fail - the webhook will handle it
         }
 
-        // Extract PIX data - handle different response formats from AbacatePay
-        // Using 'any' to handle varying response shapes from the API
-        const billingAny = billing as any;
-        const pixData = billingAny.pix || billingAny.pixQrCode || billingAny.qrCode || null;
-        const qrCodePayload = pixData?.qrCode || pixData?.payload || billingAny.pixQrCode?.payload || billing.url || null;
-
-        console.log('[AbacatePay] pixData:', pixData);
-        console.log('[AbacatePay] qrCodePayload:', qrCodePayload);
+        // AbacatePay retorna apenas a URL de pagamento (data.url)
+        // O QR Code é gerado no frontend a partir dessa URL
+        // O cliente pode escanear o QR para ir à página de pagamento do AbacatePay
 
         return NextResponse.json({
             success: true,
             billingId: billing.id,
-            billingUrl: billing.url,
+            billingUrl: billing.url, // URL da página de pagamento do AbacatePay
             status: billing.status,
-            pix: pixData ? {
-                qrCode: qrCodePayload,
-                qrCodeBase64: pixData.qrCodeBase64 || pixData.encodedImage || pixData.base64 || null,
-                expiresAt: pixData.expiresAt || null,
-            } : null,
-            // Fallback: if no PIX data, send the billing URL so we can generate QR from it
+            // Use billingUrl como código do QR Code
+            // Quando escaneado, leva à página de pagamento com PIX
+            pix: {
+                qrCode: billing.url,
+                qrCodeBase64: null,
+                expiresAt: null,
+            },
             fallbackQrCode: billing.url,
             amount: priceInCents / 100,
         });
