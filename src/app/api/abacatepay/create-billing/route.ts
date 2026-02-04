@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
             customer: {
                 name: user.user_metadata?.full_name || user.email.split('@')[0],
                 email: user.email,
+                cellphone: user.user_metadata?.phone || '00000000000', // Campo obrigatório pela API
             },
             metadata: {
                 userId: user.id,

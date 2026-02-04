@@ -12,6 +12,7 @@ export interface AbacatepayCustomer {
     email: string;
     name: string;
     taxId?: string;
+    cellphone: string;
 }
 
 export interface AbacatepayProduct {
@@ -45,6 +46,7 @@ export interface CreateBillingParams {
     customer?: {
         name: string;
         email: string;
+        cellphone: string;
         taxId?: string;
     };
     metadata?: Record<string, string>;
