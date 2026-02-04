@@ -3,10 +3,9 @@
 
 const ABACATEPAY_API_URL = 'https://api.abacatepay.com/v1';
 
-// Use dev key in development, prod key in production
-const API_KEY = process.env.NODE_ENV === 'production'
-    ? process.env.ABACATEPAY_API_KEY_PROD
-    : process.env.ABACATEPAY_API_KEY_DEV;
+// Use prod key if available, otherwise fall back to dev key
+const API_KEY = process.env.ABACATEPAY_API_KEY_PROD || process.env.ABACATEPAY_API_KEY_DEV;
+
 
 export interface AbacatepayCustomer {
     id: string;
