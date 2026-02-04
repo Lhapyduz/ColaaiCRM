@@ -21,6 +21,7 @@ interface BillingData {
         qrCodeBase64: string;
         expiresAt: string;
     };
+    fallbackQrCode?: string;
     status: string;
 }
 
@@ -64,6 +65,7 @@ export default function AbacatepayPixModal({
                 billingId: data.billingId,
                 billingUrl: data.billingUrl,
                 pix: data.pix,
+                fallbackQrCode: data.fallbackQrCode,
                 status: data.status,
             });
         } catch (err: any) {
@@ -102,10 +104,11 @@ export default function AbacatepayPixModal({
     }, [billing, paymentConfirmed, checkPaymentStatus]);
 
     const copyPixCode = async () => {
-        if (!billing?.pix?.qrCode) return;
+        const codeToCopy = billing?.pix?.qrCode || billing?.fallbackQrCode;
+        if (!codeToCopy) return;
 
         try {
-            await navigator.clipboard.writeText(billing.pix.qrCode);
+            await navigator.clipboard.writeText(codeToCopy);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch (err) {
@@ -189,10 +192,11 @@ export default function AbacatepayPixModal({
                         <>
                             {/* QR Code */}
                             <div className="flex flex-col items-center mb-6">
-                                {billing.pix?.qrCode ? (
+                                {/* Try pix.qrCode first, then fallbackQrCode (billingUrl) */}
+                                {(billing.pix?.qrCode || billing.fallbackQrCode) ? (
                                     <div className="p-4 bg-white rounded-xl">
                                         <QRCodeSVG
-                                            value={billing.pix.qrCode}
+                                            value={billing.pix?.qrCode || billing.fallbackQrCode || ''}
                                             size={200}
                                             level="M"
                                             includeMargin={false}
@@ -210,8 +214,8 @@ export default function AbacatepayPixModal({
                                 ) : null}
                             </div>
 
-                            {/* PIX Copy-Paste */}
-                            {billing.pix?.qrCode && (
+                            {/* PIX Copy-Paste - show if we have QR code data */}
+                            {(billing.pix?.qrCode || billing.fallbackQrCode) && (
                                 <div className="mb-6">
                                     <p className="text-sm text-text-secondary text-center mb-2">
                                         Ou copie o código PIX:

@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
         }
 
         console.log('[AbacatePay] Billing created:', billing.id, 'Status:', billing.status);
+        console.log('[AbacatePay] Full billing response:', JSON.stringify(billing, null, 2));
 
         // Save pending subscription in Supabase
         const now = new Date();
@@ -95,12 +96,27 @@ export async function POST(req: NextRequest) {
             // Don't fail - the webhook will handle it
         }
 
+        // Extract PIX data - handle different response formats from AbacatePay
+        // Using 'any' to handle varying response shapes from the API
+        const billingAny = billing as any;
+        const pixData = billingAny.pix || billingAny.pixQrCode || billingAny.qrCode || null;
+        const qrCodePayload = pixData?.qrCode || pixData?.payload || billingAny.pixQrCode?.payload || billing.url || null;
+
+        console.log('[AbacatePay] pixData:', pixData);
+        console.log('[AbacatePay] qrCodePayload:', qrCodePayload);
+
         return NextResponse.json({
             success: true,
             billingId: billing.id,
             billingUrl: billing.url,
             status: billing.status,
-            pix: billing.pix,
+            pix: pixData ? {
+                qrCode: qrCodePayload,
+                qrCodeBase64: pixData.qrCodeBase64 || pixData.encodedImage || pixData.base64 || null,
+                expiresAt: pixData.expiresAt || null,
+            } : null,
+            // Fallback: if no PIX data, send the billing URL so we can generate QR from it
+            fallbackQrCode: billing.url,
             amount: priceInCents / 100,
         });
 
