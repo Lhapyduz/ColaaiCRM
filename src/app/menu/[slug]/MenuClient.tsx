@@ -120,28 +120,29 @@ export default function MenuClient({
         let isDown = false;
         let startX: number;
         let scrollLeft: number;
-        let moveDistance = 0;
+        let animationFrame: number | null = null;
 
         const onMouseDown = (e: MouseEvent) => {
             isDown = true;
-            slider.classList.add('active');
+            slider.style.cursor = 'grabbing';
             startX = e.pageX - slider.offsetLeft;
             scrollLeft = slider.scrollLeft;
-            moveDistance = 0;
             isDraggingRef.current = false;
-            setIsDraggingCarousel(false);
         };
 
         const onMouseLeave = () => {
             isDown = false;
-            slider.classList.remove('active');
+            slider.style.cursor = 'grab';
+            if (animationFrame) cancelAnimationFrame(animationFrame);
         };
 
         const onMouseUp = () => {
             isDown = false;
-            slider.classList.remove('active');
-            // Se houve arraste, manter isDraggingCarousel como true por um instante para bloquear o clique
+            slider.style.cursor = 'grab';
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+            // Se houve arraste, bloquear clique momentaneamente
             if (isDraggingRef.current) {
+                setIsDraggingCarousel(true);
                 setTimeout(() => {
                     setIsDraggingCarousel(false);
                     isDraggingRef.current = false;
@@ -152,16 +153,20 @@ export default function MenuClient({
         const onMouseMove = (e: MouseEvent) => {
             if (!isDown) return;
             e.preventDefault();
+
             const x = e.pageX - slider.offsetLeft;
             const walk = (x - startX) * 2.5;
             const dist = Math.abs(x - startX);
 
-            if (dist > 5 && !isDraggingRef.current) {
+            if (dist > 5) {
                 isDraggingRef.current = true;
-                setIsDraggingCarousel(true); // Atualiza apenas uma vez quando o drag começa de fato
             }
 
-            slider.scrollLeft = scrollLeft - walk;
+            // Usar requestAnimationFrame para performance otimizada
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+            animationFrame = requestAnimationFrame(() => {
+                slider.scrollLeft = scrollLeft - walk;
+            });
         };
 
         slider.addEventListener('mousedown', onMouseDown);
