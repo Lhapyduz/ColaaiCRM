@@ -57,12 +57,12 @@ const testimonials = [
 ];
 
 const highlights = [
-    { icon: <FiShoppingBag />, title: 'Gestão de Pedidos', description: 'Controle centralizado de todas as suas vendas.' },
-    { icon: <GiCookingPot />, title: 'Tela de Cozinha', description: 'Sincronia perfeita entre atendimento e preparo.' },
-    { icon: <FiTruck />, title: 'Delivery e Retirada', description: 'Organize suas entregas sem dor de cabeça.' },
-    { icon: <FiBarChart2 />, title: 'Relatórios Inteligentes', description: 'Dados reais para tomar decisões melhores.' },
-    { icon: <FiGift />, title: 'Fidelidade Digital', description: 'Faça os clientes voltarem sempre.' },
-    { icon: <FiZap />, title: 'Previsão com IA', description: 'Antecipe a demanda do dia com inteligência.' }
+    { icon: <FiShoppingBag />, title: 'Gestão Sem Papel', description: 'Elimine os "rabiscos" e comandas perdidas. Organize tudo em segundos.' },
+    { icon: <GiCookingPot />, title: 'Cozinha em Sincronia', description: 'O pedido cai na cozinha no exato momento que você digita no balcão.' },
+    { icon: <FiTruck />, title: 'Delivery Inteligente', description: 'Controle de entregas por bairros e motoboys sem dor de cabeça.' },
+    { icon: <FiBarChart2 />, title: 'Lucro no Bolso', description: 'Saiba exatamente quanto ganhou no dia com relatórios automáticos de caixa.' },
+    { icon: <FiGift />, title: 'Fidelize seu Cliente', description: 'Crie cupons e programas de pontos para fazer o cliente pedir de novo.' },
+    { icon: <FiZap />, title: 'PIX Automático', description: 'Receba o pagamento e o sistema confirma sozinho. Menos tempo conferindo tela.' }
 ];
 
 export default function VendasPage() {
@@ -133,39 +133,39 @@ export default function VendasPage() {
                             />
                         </motion.div>
 
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-bg-tertiary border border-border rounded-full text-xs font-mono mb-8 text-primary">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-bg-tertiary border border-border rounded-full text-xs font-mono mb-8 text-primary uppercase tracking-wider">
                             <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                             </span>
-                            SISTEMA ESPECIALIZADO EM LANCHONETES
+                            Para quem cansou da bagunça no balcão
                         </div>
                         <h1 className="text-5xl md:text-7xl font-bold leading-[1.1] mb-6 tracking-tight">
-                            Venda mais.<br />
-                            <span className="text-transparent bg-clip-text bg-linear-to-r from-primary to-accent">Sem chaos.</span>
+                            Sua lanchonete <br />
+                            <span className="text-transparent bg-clip-text bg-linear-to-r from-primary to-accent">nas suas mãos.</span>
                         </h1>
                         <p className="text-xl md:text-2xl text-text-secondary mb-10 max-w-lg leading-relaxed">
-                            O sistema operacional completo para lanchonetes modernas. Pedidos, entregas e fidelidade em uma única tela.
+                            Chega de perder pedidos no papel ou se estressar no horário de pico. O Cola Aí organiza seu balcão, agiliza a cozinha e automatiza seu PIX.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4">
                             <Link href="/assinatura" className="group px-8 py-4 bg-primary text-white rounded-xl font-bold text-lg hover:bg-primary-hover transition-all shadow-[0_10px_40px_-10px_rgba(255,107,53,0.5)] hover:shadow-[0_20px_60px_-15px_rgba(255,107,53,0.6)] hover:-translate-y-1 flex items-center justify-center gap-2">
-                                Testar Grátis
+                                Quero Testar Grátis Agora
                                 <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
                             </Link>
                             <button className="px-8 py-4 bg-bg-tertiary text-text-primary rounded-xl font-bold text-lg border border-border hover:border-text-secondary transition-all flex items-center justify-center gap-2">
                                 <FiPlay className="fill-current" />
-                                Ver Demo
+                                Ver como funciona
                             </button>
                         </div>
                         <div className="mt-12 flex items-center gap-8 text-sm font-medium text-text-muted">
                             <div className="flex -space-x-3">
                                 {[1, 2, 3, 4].map(i => (
                                     <div key={i} className="w-10 h-10 rounded-full border-2 border-bg-primary bg-zinc-800 flex items-center justify-center text-xs overflow-hidden">
-                                        {i === 4 ? '+500' : '👤'}
+                                        {i === 4 ? '+37' : '👤'}
                                     </div>
                                 ))}
                             </div>
-                            <p>Junte-se a +500 lanchonetes</p>
+                            <p>Junte-se a +37 lanchonetes</p>
                         </div>
                     </motion.div>
 
@@ -319,7 +319,7 @@ export default function VendasPage() {
                     <h2 className="text-3xl font-bold text-center mb-16">Quem usa, recomenda</h2>
                     <div className="grid md:grid-cols-3 gap-8">
                         {testimonials.map((t, i) => (
-                            <div key={i} className="bg-bg-card p-8 rounded-2xl border border-border relative">
+                            <div key={i} className="bg-bg-card p-8 rounded-4xl border border-border relative">
                                 <span className="text-6xl absolute top-4 right-6 opacity-10 font-serif">&quot;</span>
                                 <div className="flex gap-1 mb-6">
                                     {[...Array(5)].map((_, j) => (
