@@ -195,6 +195,8 @@ export default function MenuClient({
     const [showProductRatingModal, setShowProductRatingModal] = useState(false);
     const [showReviewsModal, setShowReviewsModal] = useState(false);
     const [storeReviews, setStoreReviews] = useState<any[]>([]);
+    const [showProductDetail, setShowProductDetail] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [ratingProduct, setRatingProduct] = useState<Product | null>(null);
 
     // Upsell States
@@ -445,7 +447,32 @@ export default function MenuClient({
         }
     };
     const addToCart = (product: Product, addons: SelectedAddon[]) => {
-        setCart(prev => [...prev, { product, quantity: 1, notes: '', addons }]);
+        setCart(prev => {
+            // Verificar se já existe um item idêntico no carrinho
+            const existingItemIndex = prev.findIndex(item => {
+                if (item.product.id !== product.id) return false;
+                if (item.addons.length !== addons.length) return false;
+
+                // Comparar IDs dos adicionais (ordenados para garantir consistência)
+                const existingAddonIds = item.addons.map(a => a.id).sort();
+                const newAddonIds = addons.map(a => a.id).sort();
+
+                return existingAddonIds.every((id, index) => id === newAddonIds[index]);
+            });
+
+            if (existingItemIndex > -1) {
+                // Se existe, incrementa a quantidade do item existente
+                const newCart = [...prev];
+                newCart[existingItemIndex] = {
+                    ...newCart[existingItemIndex],
+                    quantity: newCart[existingItemIndex].quantity + 1
+                };
+                return newCart;
+            }
+
+            // Se não existe, adiciona como novo item
+            return [...prev, { product, quantity: 1, notes: '', addons }];
+        });
     };
 
     const removeFromCart = (index: number) => {
@@ -813,21 +840,33 @@ export default function MenuClient({
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                                 {getProductsByCategory(category.id).map((product) => {
                                     const price = getProductPrice(product);
+                                    const rating = productRatings[product.id];
 
                                     // Design Horizontal para todos os itens (padronizado)
                                     return (
                                         <div
                                             key={product.id}
-                                            onClick={() => handleAddToCart(product)}
-                                            className="bg-[#1E1E1E] p-4 rounded-xl shadow-sm border border-gray-800 flex justify-between gap-4 hover:bg-bg-tertiary transition cursor-pointer"
+                                            onClick={() => { setSelectedProduct(product); setShowProductDetail(true); }}
+                                            className="bg-[#1E1E1E] p-4 rounded-xl shadow-sm border border-gray-800 flex justify-between gap-4 hover:bg-bg-tertiary hover:border-primary/30 transition-all cursor-pointer group"
                                         >
                                             <div className="flex flex-col justify-between flex-1">
                                                 <div>
-                                                    <h3 className="text-lg font-semibold text-white mb-1">{product.name}</h3>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-primary transition-colors">{product.name}</h3>
+                                                        {product.promo_enabled && (
+                                                            <span className="shrink-0 bg-red-500/10 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-500/20">PROMO</span>
+                                                        )}
+                                                    </div>
                                                     <p className="text-sm text-gray-400 leading-relaxed line-clamp-2">{product.description}</p>
+                                                    {rating && (
+                                                        <div className="flex items-center gap-1 mt-2">
+                                                            <FiStar className="text-yellow-400 fill-current" size={12} />
+                                                            <span className="text-xs text-gray-400">{rating.average.toFixed(1)} ({rating.count})</span>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="mt-4 flex items-center gap-3">
-                                                    <span className="text-[#10B981] font-bold">{formatCurrency(price)}</span>
+                                                <div className="mt-3 flex items-center gap-3">
+                                                    <span className="text-[#10B981] font-bold text-lg">{formatCurrency(price)}</span>
                                                     {product.promo_enabled && (
                                                         <span className="text-xs text-gray-500 line-through">{formatCurrency(product.price)}</span>
                                                     )}
@@ -841,7 +880,13 @@ export default function MenuClient({
                                                         <span className="material-icons">restaurant</span>
                                                     </div>
                                                 )}
-                                                <button className="absolute bottom-1 right-1 bg-black p-1 rounded-full shadow text-primary border border-white/10">
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                                                    <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-primary/90 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">Ver detalhes</span>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleAddToCart(product); }}
+                                                    className="absolute bottom-1 right-1 bg-black/80 p-1.5 rounded-full shadow text-primary border border-white/10 hover:bg-primary hover:text-white transition-all z-10"
+                                                >
                                                     <FiPlus className="text-sm" />
                                                 </button>
                                             </div>
@@ -1233,6 +1278,158 @@ export default function MenuClient({
                     </div>
                 )
             }
+
+            {/* Product Detail Modal - Stitch Style */}
+            <AnimatePresence>
+                {showProductDetail && selectedProduct && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/90 backdrop-blur-md z-60 flex items-center justify-center p-4"
+                        onClick={() => { setShowProductDetail(false); setSelectedProduct(null); }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 50 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 50 }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="w-full max-w-2xl bg-[#121212] rounded-[32px] overflow-hidden max-h-[90vh] flex flex-col shadow-2xl border border-white/10"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Header Image */}
+                            <div className="relative h-56 sm:h-72 shrink-0 bg-[#1A1A1A]">
+                                {selectedProduct.image_url ? (
+                                    <Image
+                                        src={selectedProduct.image_url}
+                                        alt={selectedProduct.name}
+                                        fill
+                                        className="object-cover"
+                                        sizes="(max-width: 768px) 100vw, 600px"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <span className="material-icons text-primary text-6xl">restaurant</span>
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 bg-linear-to-t from-[#121212] via-transparent to-black/30" />
+
+                                {/* Close Button */}
+                                <button
+                                    onClick={() => { setShowProductDetail(false); setSelectedProduct(null); }}
+                                    className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-md flex items-center justify-center text-white border border-white/10 hover:bg-white/20 transition-colors"
+                                >
+                                    <FiX />
+                                </button>
+
+                                {/* Promo Badge */}
+                                {selectedProduct.promo_enabled && (
+                                    <div className="absolute top-4 left-4 bg-red-500 text-white text-xs font-black px-3 py-1.5 rounded-full uppercase tracking-wide shadow-lg animate-pulse">
+                                        🔥 Promoção
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 overflow-y-auto">
+                                <div className="p-6 sm:p-8 space-y-6">
+                                    {/* Title & Rating */}
+                                    <div className="space-y-3">
+                                        <h2 className="text-2xl sm:text-3xl font-black text-white leading-tight">
+                                            {selectedProduct.name}
+                                        </h2>
+
+                                        {productRatings[selectedProduct.id] && (
+                                            <button
+                                                onClick={() => openProductRating(selectedProduct, { stopPropagation: () => { } } as React.MouseEvent)}
+                                                className="flex items-center gap-2 bg-yellow-500/10 text-yellow-400 px-3 py-1.5 rounded-full border border-yellow-500/20 hover:bg-yellow-500/20 transition-colors"
+                                            >
+                                                <FiStar className="fill-current" size={14} />
+                                                <span className="text-sm font-bold">
+                                                    {productRatings[selectedProduct.id].average.toFixed(1)} ({productRatings[selectedProduct.id].count} avaliações)
+                                                </span>
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Description */}
+                                    {selectedProduct.description && (
+                                        <div className="space-y-2">
+                                            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">Sobre este produto</h3>
+                                            <p className="text-gray-300 leading-relaxed text-base">
+                                                {selectedProduct.description}
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Price Section */}
+                                    <div className="bg-[#1A1A1A] rounded-2xl p-5 border border-white/5 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-gray-400 font-medium">Preço</span>
+                                            <div className="text-right">
+                                                <span className="text-[#10B981] font-black text-3xl">
+                                                    {formatCurrency(getProductPrice(selectedProduct))}
+                                                </span>
+                                                {selectedProduct.promo_enabled && selectedProduct.promo_value && (
+                                                    <div className="flex items-center gap-2 justify-end mt-1">
+                                                        <span className="text-gray-500 line-through text-sm">
+                                                            {formatCurrency(selectedProduct.price)}
+                                                        </span>
+                                                        <span className="bg-red-500/10 text-red-400 text-xs font-bold px-2 py-0.5 rounded-full">
+                                                            -{selectedProduct.promo_type === 'percentage'
+                                                                ? `${selectedProduct.promo_value}%`
+                                                                : formatCurrency(selectedProduct.promo_value)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Category Info */}
+                                    {(() => {
+                                        const category = categories.find(c => c.id === selectedProduct.category_id);
+                                        return category ? (
+                                            <div className="flex items-center gap-2 text-gray-400 text-sm">
+                                                <span className="text-xl">{category.icon || '📦'}</span>
+                                                <span>Categoria: <span className="text-white font-medium">{category.name}</span></span>
+                                            </div>
+                                        ) : null;
+                                    })()}
+                                </div>
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="p-6 sm:p-8 bg-[#1A1A1A] border-t border-white/5 space-y-3">
+                                <button
+                                    onClick={() => {
+                                        handleAddToCart(selectedProduct);
+                                        setShowProductDetail(false);
+                                        setSelectedProduct(null);
+                                    }}
+                                    className="w-full py-4 bg-primary text-white rounded-2xl font-black text-lg shadow-xl shadow-primary/20 hover:bg-orange-500 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                                >
+                                    <FiPlus size={20} />
+                                    Adicionar ao Pedido • {formatCurrency(getProductPrice(selectedProduct))}
+                                </button>
+
+                                {!productRatings[selectedProduct.id] && (
+                                    <button
+                                        onClick={() => {
+                                            setShowProductDetail(false);
+                                            openProductRating(selectedProduct, { stopPropagation: () => { } } as React.MouseEvent);
+                                        }}
+                                        className="w-full py-3 bg-transparent text-gray-400 hover:text-yellow-400 rounded-xl font-medium text-sm transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <FiStar size={16} />
+                                        Avaliar este produto
+                                    </button>
+                                )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Other Modals */}
             {
