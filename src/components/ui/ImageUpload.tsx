@@ -75,9 +75,9 @@ export default function ImageUpload({
     onChange,
     bucket = 'product-images',
     folder = '',
-    maxSizeMB = 0.1,
-    maxWidthOrHeight = 800,
-    quality = 0.8,
+    maxSizeMB = 0.06, // Reduzido para 60KB - economia de ~40% no storage
+    maxWidthOrHeight = 600, // Reduzido de 800 para 600 - suficiente para cards
+    quality = 0.75, // Ligeiramente menor para economizar mais
     placeholder = 'Adicionar foto',
     disabled = false,
     aspectRatio = 1

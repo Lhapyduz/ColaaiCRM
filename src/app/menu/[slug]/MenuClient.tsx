@@ -98,6 +98,24 @@ export default function MenuClient({
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [couponCode, setCouponCode] = useState('');
+
+    // Persistence Cache: Salva dados iniciais no localStorage para visitas rápidas
+    useEffect(() => {
+        if (settings?.user_id && products.length > 0 && categories.length > 0) {
+            const cacheKeyProducts = `public_products_${settings.user_id}`;
+            const cacheKeyCategories = `public_categories_${settings.user_id}`;
+
+            // Salva no cache com expiração de 30 minutos para o cliente final
+            const cacheData = (data: any) => ({
+                data,
+                timestamp: Date.now(),
+                userId: settings.user_id
+            });
+
+            localStorage.setItem(cacheKeyProducts, JSON.stringify(cacheData(products)));
+            localStorage.setItem(cacheKeyCategories, JSON.stringify(cacheData(categories)));
+        }
+    }, [settings?.user_id, products, categories]);
     const [couponError, setCouponError] = useState('');
     const [couponLoading, setCouponLoading] = useState(false);
     const [loyaltyEnabled, setLoyaltyEnabled] = useState(initialAppSettings?.loyalty_enabled ?? false);

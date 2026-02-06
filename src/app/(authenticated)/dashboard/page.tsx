@@ -182,25 +182,14 @@ export default function DashboardPage() {
         if (user) {
             fetchDashboardData();
 
-            // Subscribe to real-time updates for orders
-            const subscription = supabase
-                .channel('dashboard-realtime')
-                .on(
-                    'postgres_changes',
-                    {
-                        event: '*',
-                        schema: 'public',
-                        table: 'orders',
-                        filter: `user_id=eq.${user.id}`
-                    },
-                    () => {
-                        fetchDashboardData();
-                    }
-                )
-                .subscribe();
+            // Polling a cada 30 segundos em vez de Realtime
+            // Economia: ~90% das mensagens Realtime do Supabase
+            const pollingInterval = setInterval(() => {
+                fetchDashboardData();
+            }, 30000); // 30 segundos
 
             return () => {
-                subscription.unsubscribe();
+                clearInterval(pollingInterval);
             };
         }
     }, [user, fetchDashboardData]);

@@ -40,6 +40,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
+import { useProductsCache, useCategoriesCache } from '@/hooks/useDataCache';
 
 interface Category {
     id: string;
@@ -178,11 +179,38 @@ function SortableProductCard({
 export default function ProdutosPage() {
     const { user } = useAuth();
     const { getLimit, isWithinLimit } = useSubscription();
+
+    // Novo sistema de cache: Economia de ~50% nas consultas
+    const {
+        products: cachedProducts,
+        loading: productsLoading,
+        refetch: refetchProducts
+    } = useProductsCache();
+
+    const {
+        categories: cachedCategories,
+        loading: categoriesLoading,
+        refetch: refetchCategories
+    } = useCategoriesCache();
+
     const [categories, setCategories] = useState<Category[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
+
+    // Sincronizar estado local com cache
+    useEffect(() => {
+        if (cachedProducts) setProducts(cachedProducts);
+    }, [cachedProducts]);
+
+    useEffect(() => {
+        if (cachedCategories) setCategories(cachedCategories);
+    }, [cachedCategories]);
+
+    useEffect(() => {
+        setLoading(productsLoading || categoriesLoading);
+    }, [productsLoading, categoriesLoading]);
 
     const [showProductModal, setShowProductModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -230,7 +258,8 @@ export default function ProdutosPage() {
     }, [isDragging]);
 
     useEffect(() => {
-        if (user) fetchData();
+        // useProductsCache e useCategoriesCache já lidam com o fetch inicial
+        // e monitoram a mudança de usuário.
     }, [user]);
 
     const fetchData = async () => {
@@ -359,7 +388,7 @@ export default function ProdutosPage() {
                 await supabase.from('product_addon_groups').insert(selectedAddonGroups.map(groupId => ({ product_id: productId, group_id: groupId })));
             }
             toast.success(editingProduct ? 'Produto atualizado!' : 'Produto criado!');
-            fetchData();
+            refetchProducts(); // Invalida o cache
             closeProductModal();
         } catch (error) {
             console.error('Error saving product:', error);
@@ -381,7 +410,7 @@ export default function ProdutosPage() {
             }
             await supabase.from('products').delete().eq('id', id);
             toast.success('Produto excluído!');
-            fetchData();
+            refetchProducts(); // Invalida o cache
         } catch (error) {
             console.error('Error deleting product:', error);
             toast.error('Erro ao excluir produto');
@@ -391,7 +420,7 @@ export default function ProdutosPage() {
     const toggleAvailability = async (product: Product) => {
         try {
             await supabase.from('products').update({ available: !product.available }).eq('id', product.id);
-            fetchData();
+            refetchProducts(); // Invalida o cache
         } catch (error) {
             console.error('Error toggling availability:', error);
         }
