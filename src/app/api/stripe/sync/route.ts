@@ -130,9 +130,9 @@ export async function POST(req: NextRequest) {
                 status: mappedStatus,
                 plan_type: planType,
                 trial_ends_at: stripeSub.trial_end ? new Date(stripeSub.trial_end * 1000).toISOString() : null,
-                current_period_start: new Date((stripeSub as any).current_period_start * 1000).toISOString(),
-                current_period_end: new Date((stripeSub as any).current_period_end * 1000).toISOString(),
-                stripe_current_period_end: nextInvoiceDate || new Date((stripeSub as any).current_period_end * 1000).toISOString(),
+                current_period_start: (stripeSub as any).current_period_start ? new Date((stripeSub as any).current_period_start * 1000).toISOString() : new Date().toISOString(),
+                current_period_end: (stripeSub as any).current_period_end ? new Date((stripeSub as any).current_period_end * 1000).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                stripe_current_period_end: nextInvoiceDate || ((stripeSub as any).current_period_end ? new Date((stripeSub as any).current_period_end * 1000).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()),
                 billing_period: 'monthly'
             } as any, { onConflict: 'user_id' });
 

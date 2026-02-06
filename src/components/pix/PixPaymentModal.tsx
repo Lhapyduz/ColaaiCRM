@@ -3,29 +3,49 @@
 import React, { useState } from 'react';
 import { FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import PixQRCode from './PixQRCode';
-import { PIX_CONFIG, PLAN_PRICES, PlanPriceKey } from '@/lib/pix-config';
+import { PIX_CONFIG, PLAN_PRICES, PlanPriceKey, BillingPeriod, getPlanPrice } from '@/lib/pix-config';
 
 interface PixPaymentModalProps {
     planType: PlanPriceKey;
     planName: string;
+    billingPeriod: BillingPeriod;
     onClose: () => void;
-    onPaymentConfirmed: () => void;
-    isLoading?: boolean;
 }
 
 export default function PixPaymentModal({
     planType,
     planName,
-    onClose,
-    onPaymentConfirmed,
-    isLoading = false
+    billingPeriod,
+    onClose
 }: PixPaymentModalProps) {
     const [confirmed, setConfirmed] = useState(false);
-    const amount = PLAN_PRICES[planType];
+    const [isLoading, setIsLoading] = useState(false);
+    const amount = getPlanPrice(planType, billingPeriod);
 
-    const handleConfirmPayment = () => {
-        setConfirmed(true);
-        onPaymentConfirmed();
+    const handleConfirmPayment = async () => {
+        setIsLoading(true);
+        try {
+            const response = await fetch('/api/pix/notify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    planType,
+                    amount,
+                    billingPeriod
+                })
+            });
+
+            if (response.ok) {
+                setConfirmed(true);
+            } else {
+                alert('Falha ao enviar notificação. Tente novamente.');
+            }
+        } catch (error) {
+            console.error('Error notifying payment:', error);
+            alert('Erro de conexão. Tente novamente.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (

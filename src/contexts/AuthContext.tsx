@@ -34,7 +34,7 @@ interface AuthContextType {
     userSettings: UserSettings | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-    signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
+    signUp: (email: string, password: string, name: string, fingerprintHash?: string) => Promise<{ error: Error | null }>;
     signOut: () => Promise<void>;
     updateSettings: (settings: Partial<UserSettings>) => Promise<{ error: Error | null }>;
     previewSettings: (settings: Partial<UserSettings>) => void;
@@ -170,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const signUp = async (email: string, password: string, name: string) => {
+    const signUp = async (email: string, password: string, name: string, fingerprintHash?: string) => {
         try {
             const { data, error } = await supabase.auth.signUp({
                 email,
@@ -200,6 +200,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     { user_id: data.user.id, name: 'Bebidas', icon: '🥤', color: '#0984e3' },
                     { user_id: data.user.id, name: 'Combos', icon: '🍔', color: '#00b894' }
                 ]);
+
+                // Create trial subscription (3 days)
+                const now = new Date();
+                const trialEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // +3 dias
+
+                await supabase.from('subscriptions').insert({
+                    user_id: data.user.id,
+                    plan_type: 'Profissional', // Trial dá acesso completo
+                    status: 'trial',
+                    billing_period: 'monthly',
+                    trial_ends_at: trialEnd.toISOString(),
+                    current_period_start: now.toISOString(),
+                    current_period_end: trialEnd.toISOString(),
+                    created_from_fingerprint: fingerprintHash || null,
+                });
+
+                // Register fingerprint usage (if provided)
+                if (fingerprintHash) {
+                    try {
+                        await fetch('/api/fingerprint/register', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                fingerprintHash,
+                                userId: data.user.id,
+                                userAgent: navigator.userAgent,
+                            }),
+                        });
+                    } catch (fpError) {
+                        console.warn('[SignUp] Failed to register fingerprint:', fpError);
+                        // Não bloqueia o cadastro se falhar
+                    }
+                }
             }
 
             return { error: null };

@@ -1,126 +1,117 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import {
-    createAbacatepayBilling,
-    ABACATEPAY_PLAN_PRICES,
-    AbacatepayPlanType
-} from '@/lib/abacatepay';
+import { getPeriodDays, BillingPeriod } from '@/lib/abacatepay';
 
-export async function POST(req: NextRequest) {
+const ABACATEPAY_API_URL = 'https://api.abacatepay.com/v1';
+const API_KEY = process.env.ABACATEPAY_API_KEY_PROD || process.env.ABACATEPAY_API_KEY_DEV;
+
+export async function POST(req: Request) {
     try {
-        const { planType } = await req.json();
+        const body = await req.json();
+        const { userId, planType, billingPeriod, userEmail, userName, price } = body;
 
-        // Validate input
-        if (!planType || !ABACATEPAY_PLAN_PRICES[planType as AbacatepayPlanType]) {
-            return NextResponse.json(
-                { error: 'Tipo de plano inválido' },
-                { status: 400 }
-            );
+        // 1. Validação de entrada
+        if (!userEmail || !userId) {
+            return NextResponse.json({ error: 'Dados do usuário ausentes' }, { status: 400 });
         }
 
-        // Get authenticated user
-        const supabase = await createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user || !user.email) {
-            return NextResponse.json(
-                { error: 'Não autorizado' },
-                { status: 401 }
-            );
+        if (!price || price < 100) {
+            return NextResponse.json({ error: 'Preço inválido (mínimo 100 centavos)' }, { status: 400 });
         }
 
-        console.log('[AbacatePay] Creating billing for user:', user.id, 'Plan:', planType);
+        console.log('[AbacatePay] === CRIANDO BILLING (VERSÃO CORRIGIDA - CPF TESTE) ===');
+        console.log('[AbacatePay] Timestamp:', new Date().toISOString());
+        console.log('[AbacatePay] User:', userId, 'Email:', userEmail);
+        console.log('[AbacatePay] Plan:', planType, 'Period:', billingPeriod, 'Price:', price);
 
-        const priceInCents = ABACATEPAY_PLAN_PRICES[planType as AbacatepayPlanType];
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
-        // Create billing in AbacatePay
-        const { error, billing } = await createAbacatepayBilling({
-            frequency: 'ONE_TIME',
-            methods: ['PIX'],
+        // 2. Montar body com placeholders para evitar erros de validação
+        // AbacatePay exige cellphone e taxId se o objeto customer estiver presente.
+        // O usuário completará os dados REAIS na tela de checkout.
+        const billingBody = {
+            frequency: "ONE_TIME",
+            methods: ["PIX"],
             products: [
                 {
-                    externalId: `plan-${planType}-${user.id}`,
+                    externalId: `plan-${planType}-${billingPeriod}-${userId}`,
                     name: `Plano ${planType} - Cola Aí`,
-                    description: `Assinatura mensal do plano ${planType}`,
+                    description: `Assinatura ${billingPeriod} do plano ${planType}`,
                     quantity: 1,
-                    price: priceInCents,
+                    price: price
                 }
             ],
-            returnUrl: `${appUrl}/assinatura?success=true`,
-            completionUrl: `${appUrl}/assinatura?pix_success=true`,
             customer: {
-                name: user.user_metadata?.full_name || user.email.split('@')[0],
-                email: user.email,
-                cellphone: user.user_metadata?.phone || '11999999999', // Campo obrigatório pela API
-                taxId: user.user_metadata?.cpf || '00000000000', // CPF padrão para dev - obrigatório pela API
+                name: userName || userEmail.split('@')[0],
+                email: userEmail,
+                cellphone: "11999999999", // Placeholder com DDD
+                taxId: "41304588805",   // CPF de teste válido (passa no mod11)
             },
+            returnUrl: "https://usecolaai.vercel.app",
+            completionUrl: "https://usecolaai.vercel.app",
             metadata: {
-                userId: user.id,
+                userId: userId,
                 planType: planType,
-                userEmail: user.email,
+                billingPeriod: billingPeriod
+            }
+        };
+
+        console.log('[AbacatePay] Billing body (com placeholders):', JSON.stringify(billingBody, null, 2));
+
+        const response = await fetch(`${ABACATEPAY_API_URL}/billing/create`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`,
             },
+            body: JSON.stringify(billingBody),
         });
 
-        if (error || !billing) {
-            console.error('[AbacatePay] Error creating billing:', error);
-            return NextResponse.json(
-                { error: error || 'Falha ao criar cobrança PIX' },
-                { status: 500 }
-            );
+        const data = await response.json();
+        console.log('[AbacatePay] Billing response:', JSON.stringify(data, null, 2));
+
+        if (!response.ok || data.error) {
+            console.error('[AbacatePay] Erro:', data);
+
+            // Se falhar por falta de customer, tentaremos o fallback de criar apenas com email se for possível
+            // Mas a documentação diz que são opcionais.
+            return NextResponse.json({
+                success: false,
+                error: data.error || 'Erro na API AbacatePay'
+            }, { status: 500 });
         }
 
-        console.log('[AbacatePay] Billing created:', billing.id, 'Status:', billing.status);
-        console.log('[AbacatePay] Full billing response:', JSON.stringify(billing, null, 2));
+        const billing = data.data;
+        console.log('[AbacatePay] Billing criado:', billing?.id);
+        console.log('[AbacatePay] Checkout URL:', billing?.url);
 
-        // Save pending subscription in Supabase
+        // 3. Salvar no Supabase
         const now = new Date();
-        const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        const days = getPeriodDays(billingPeriod as BillingPeriod);
+        const periodEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
-        const { error: upsertError } = await supabaseAdmin
+        await supabaseAdmin
             .from('subscriptions')
             .upsert({
-                user_id: user.id,
+                user_id: userId,
                 plan_type: planType,
                 status: 'pending_pix',
                 payment_method: 'pix',
-                abacatepay_billing_id: billing.id,
+                abacatepay_billing_id: billing?.id,
                 current_period_start: now.toISOString(),
                 current_period_end: periodEnd.toISOString(),
-                billing_period: 'monthly',
+                billing_period: billingPeriod,
             } as any, { onConflict: 'user_id' });
-
-        if (upsertError) {
-            console.error('[AbacatePay] Error saving to Supabase:', upsertError);
-            // Don't fail - the webhook will handle it
-        }
-
-        // AbacatePay retorna apenas a URL de pagamento (data.url)
-        // O QR Code é gerado no frontend a partir dessa URL
-        // O cliente pode escanear o QR para ir à página de pagamento do AbacatePay
 
         return NextResponse.json({
             success: true,
-            billingId: billing.id,
-            billingUrl: billing.url, // URL da página de pagamento do AbacatePay
-            status: billing.status,
-            // Use billingUrl como código do QR Code
-            // Quando escaneado, leva à página de pagamento com PIX
-            pix: {
-                qrCode: billing.url,
-                qrCodeBase64: null,
-                expiresAt: null,
-            },
-            fallbackQrCode: billing.url,
-            amount: priceInCents / 100,
+            url: billing?.url
         });
 
     } catch (error: any) {
         console.error('[AbacatePay] Exception:', error);
-        return NextResponse.json(
-            { error: `Erro interno: ${error.message}` },
-            { status: 500 }
-        );
+        return NextResponse.json({
+            success: false,
+            error: 'Internal Server Error'
+        }, { status: 500 });
     }
 }

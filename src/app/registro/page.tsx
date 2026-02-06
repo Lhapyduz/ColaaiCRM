@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, FormEvent } from 'react';
+import React, { useState, FormEvent, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FiMail, FiLock, FiUser, FiArrowRight } from 'react-icons/fi';
+import { FiMail, FiLock, FiUser, FiArrowRight, FiAlertCircle } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFingerprint } from '@/hooks/useFingerprint';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 
@@ -15,8 +16,39 @@ export default function RegistroPage() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [trialBlocked, setTrialBlocked] = useState(false);
+    const [trialBlockReason, setTrialBlockReason] = useState('');
+
     const { signUp } = useAuth();
+    const { fingerprint, loading: fingerprintLoading } = useFingerprint();
     const router = useRouter();
+
+    // Verificar elegibilidade para trial quando fingerprint estiver pronto
+    useEffect(() => {
+        async function checkTrialEligibility() {
+            if (!fingerprint || fingerprintLoading) return;
+
+            try {
+                const response = await fetch('/api/fingerprint/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fingerprintHash: fingerprint }),
+                });
+
+                const data = await response.json();
+
+                if (!data.canTrial) {
+                    setTrialBlocked(true);
+                    setTrialBlockReason(data.reason || 'Este dispositivo não é elegível para trial.');
+                }
+            } catch (err) {
+                console.warn('[Registro] Failed to verify trial eligibility:', err);
+                // Fail-open: permite cadastro em caso de erro
+            }
+        }
+
+        checkTrialEligibility();
+    }, [fingerprint, fingerprintLoading]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -35,11 +67,12 @@ export default function RegistroPage() {
         setLoading(true);
 
         try {
-            const { error } = await signUp(email, password, name);
+            const { error } = await signUp(email, password, name, fingerprint || undefined);
             if (error) {
                 setError('Erro ao criar conta. Tente outro email.');
             } else {
-                router.push('/assinatura');
+                // Redireciona para assinatura (trial já foi criado)
+                router.push('/assinatura?trial=new');
             }
         } catch {
             setError('Ocorreu um erro. Tente novamente.');
@@ -74,6 +107,17 @@ export default function RegistroPage() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                            {trialBlocked && (
+                                <div className="px-4 py-3 bg-warning/10 border border-warning/30 rounded-md text-warning text-sm flex items-start gap-2">
+                                    <FiAlertCircle className="text-lg shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-medium">Trial não disponível</p>
+                                        <p className="opacity-80">{trialBlockReason}</p>
+                                        <p className="mt-1">Você pode criar uma conta, mas precisará escolher um plano pago.</p>
+                                    </div>
+                                </div>
+                            )}
+
                             {error && (
                                 <div className="px-4 py-3 bg-error/10 border border-error/30 rounded-md text-error text-sm text-center">
                                     {error}

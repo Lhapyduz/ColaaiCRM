@@ -1,18 +1,21 @@
 // AbacatePay Configuration and Utilities
 // Handles PIX payment creation and management via AbacatePay API
 
+import { BillingPeriod, PlanPriceKey, getPlanPriceCents, getPeriodDays } from './pix-config';
+
 const ABACATEPAY_API_URL = 'https://api.abacatepay.com/v1';
 
 // Use prod key if available, otherwise fall back to dev key
 const API_KEY = process.env.ABACATEPAY_API_KEY_PROD || process.env.ABACATEPAY_API_KEY_DEV;
 
-
 export interface AbacatepayCustomer {
     id: string;
-    email: string;
-    name: string;
-    taxId?: string;
-    cellphone: string;
+    metadata: {
+        name: string;
+        email: string;
+        cellphone: string;
+        taxId: string;
+    };
 }
 
 export interface AbacatepayProduct {
@@ -39,16 +42,11 @@ export interface AbacatepayBilling {
 
 export interface CreateBillingParams {
     frequency: 'ONE_TIME' | 'MULTIPLE_PAYMENTS';
-    methods: ('PIX')[];
+    methods: ('PIX' | 'CARD')[];
     products: AbacatepayProduct[];
     returnUrl: string;
-    completionUrl?: string;
-    customer?: {
-        name: string;
-        email: string;
-        cellphone: string;
-        taxId?: string;
-    };
+    completionUrl: string;
+    customerId: string; // Agora obrigatório - deve ser obtido antes
     metadata?: Record<string, string>;
 }
 
@@ -57,23 +55,138 @@ export interface CreateBillingResponse {
     billing: AbacatepayBilling | null;
 }
 
+// ============ CUSTOMER FUNCTIONS ============
+
+/**
+ * Lista todos os clientes e busca por email
+ */
+export async function findCustomerByEmail(email: string): Promise<AbacatepayCustomer | null> {
+    try {
+        console.log('[AbacatePay] Searching for customer by email:', email);
+
+        const response = await fetch(`${ABACATEPAY_API_URL}/customer/list`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`,
+            },
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            console.error('[AbacatePay] Error listing customers:', data);
+            return null;
+        }
+
+        const customers: AbacatepayCustomer[] = data.data || [];
+        const found = customers.find(c => c.metadata?.email === email);
+
+        if (found) {
+            console.log('[AbacatePay] Customer found:', found.id);
+        } else {
+            console.log('[AbacatePay] Customer not found for email:', email);
+        }
+
+        return found || null;
+    } catch (error: any) {
+        console.error('[AbacatePay] Exception finding customer:', error);
+        return null;
+    }
+}
+
+/**
+ * Cria um novo cliente na AbacatePay
+ */
+export async function createCustomer(params: {
+    name: string;
+    email: string;
+    cellphone?: string;
+    taxId?: string;
+}): Promise<{ customer: AbacatepayCustomer | null; error: string | null }> {
+    try {
+        console.log('[AbacatePay] Creating new customer:', params.email);
+
+        const response = await fetch(`${ABACATEPAY_API_URL}/customer/create`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${API_KEY}`,
+            },
+            body: JSON.stringify({
+                name: params.name,
+                email: params.email,
+                cellphone: params.cellphone || '(00) 00000-0000',
+                taxId: params.taxId || '000.000.000-00',
+            }),
+        });
+
+        const data = await response.json();
+        console.log('[AbacatePay] Create customer response:', JSON.stringify(data, null, 2));
+
+        if (!response.ok || data.error) {
+            return { customer: null, error: data.error || 'Failed to create customer' };
+        }
+
+        return { customer: data.data, error: null };
+    } catch (error: any) {
+        console.error('[AbacatePay] Exception creating customer:', error);
+        return { customer: null, error: error.message };
+    }
+}
+
+/**
+ * Obtém ou cria um cliente - fluxo principal
+ */
+export async function getOrCreateCustomer(params: {
+    name: string;
+    email: string;
+}): Promise<{ customerId: string | null; error: string | null }> {
+    // 1. Tentar encontrar cliente existente
+    const existingCustomer = await findCustomerByEmail(params.email);
+
+    if (existingCustomer) {
+        return { customerId: existingCustomer.id, error: null };
+    }
+
+    // 2. Criar novo cliente
+    const { customer, error } = await createCustomer({
+        name: params.name,
+        email: params.email,
+    });
+
+    if (error || !customer) {
+        return { customerId: null, error: error || 'Failed to create customer' };
+    }
+
+    return { customerId: customer.id, error: null };
+}
+
+// ============ BILLING FUNCTIONS ============
+
 /**
  * Creates a PIX billing in AbacatePay
  */
 export async function createAbacatepayBilling(params: CreateBillingParams): Promise<CreateBillingResponse> {
     try {
+        console.log('[AbacatePay] Request params:', JSON.stringify(params, null, 2));
+
         const response = await fetch(`${ABACATEPAY_API_URL}/billing/create`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'Authorization': `Bearer ${API_KEY}`,
             },
             body: JSON.stringify(params),
         });
 
         const data = await response.json();
+        console.log('[AbacatePay] Response:', JSON.stringify(data, null, 2));
 
-        if (!response.ok) {
+        // AbacatePay retorna HTTP 200 mesmo em erros, verificar campo success
+        if (!response.ok || data.success === false || data.error) {
             console.error('[AbacatePay] Error creating billing:', data);
             return { error: data.error || 'Failed to create billing', billing: null };
         }
@@ -90,9 +203,10 @@ export async function createAbacatepayBilling(params: CreateBillingParams): Prom
  */
 export async function getAbacatepayBilling(billingId: string): Promise<AbacatepayBilling | null> {
     try {
-        const response = await fetch(`${ABACATEPAY_API_URL}/billing/${billingId}`, {
+        const response = await fetch(`${ABACATEPAY_API_URL}/billing/get?id=${billingId}`, {
             method: 'GET',
             headers: {
+                'Accept': 'application/json',
                 'Authorization': `Bearer ${API_KEY}`,
             },
         });
@@ -118,6 +232,7 @@ export async function listAbacatepayBillings(): Promise<AbacatepayBilling[]> {
         const response = await fetch(`${ABACATEPAY_API_URL}/billing/list`, {
             method: 'GET',
             headers: {
+                'Accept': 'application/json',
                 'Authorization': `Bearer ${API_KEY}`,
             },
         });
@@ -135,11 +250,6 @@ export async function listAbacatepayBillings(): Promise<AbacatepayBilling[]> {
     }
 }
 
-// Plan prices in cents for AbacatePay (they use cents)
-export const ABACATEPAY_PLAN_PRICES = {
-    Basico: 4900,      // R$ 49,00
-    'Avançado': 7900,  // R$ 79,00
-    Profissional: 14900, // R$ 149,00
-} as const;
-
-export type AbacatepayPlanType = keyof typeof ABACATEPAY_PLAN_PRICES;
+// Re-export types and helpers from pix-config
+export { getPlanPriceCents, getPeriodDays };
+export type { PlanPriceKey, BillingPeriod };

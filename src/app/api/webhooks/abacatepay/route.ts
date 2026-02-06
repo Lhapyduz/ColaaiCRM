@@ -9,15 +9,19 @@ function verifyWebhookSignature(payload: string, signature: string, secret: stri
         return true; // Allow in dev mode without secret
     }
 
-    const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(payload)
-        .digest('hex');
+    try {
+        const expectedSignature = crypto
+            .createHmac('sha256', secret)
+            .update(payload)
+            .digest('hex');
 
-    return crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature)
-    );
+        return crypto.timingSafeEqual(
+            Buffer.from(signature),
+            Buffer.from(expectedSignature)
+        );
+    } catch {
+        return false;
+    }
 }
 
 // Create fixed ADM employee if not exists
@@ -64,6 +68,13 @@ async function createFixedAdmEmployee(userId: string): Promise<void> {
     }
 }
 
+// Calculate period end based on billing period
+function calculatePeriodEnd(billingPeriod?: string): Date {
+    const now = new Date();
+    const days = billingPeriod === 'annual' ? 365 : 30;
+    return new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.text();
@@ -89,19 +100,21 @@ export async function POST(req: NextRequest) {
 
             const userId = metadata.userId;
             const planType = metadata.planType;
+            const billingPeriod = metadata.billingPeriod || 'monthly';
             const billingId = billing.id;
 
             console.log('[AbacatePay Webhook] Processing paid billing:', {
                 billingId,
                 userId,
                 planType,
+                billingPeriod,
             });
 
             if (!userId) {
                 // Try to find user by billing ID
                 const { data: existingSub } = await supabaseAdmin
                     .from('subscriptions')
-                    .select('user_id, plan_type')
+                    .select('user_id, plan_type, billing_period')
                     .eq('abacatepay_billing_id', billingId)
                     .maybeSingle();
 
@@ -110,7 +123,7 @@ export async function POST(req: NextRequest) {
 
                     // Activate subscription
                     const now = new Date();
-                    const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                    const periodEnd = calculatePeriodEnd(existingSub.billing_period);
 
                     const { error: updateError } = await supabaseAdmin
                         .from('subscriptions')
@@ -133,7 +146,7 @@ export async function POST(req: NextRequest) {
             } else {
                 // Activate subscription with metadata
                 const now = new Date();
-                const periodEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                const periodEnd = calculatePeriodEnd(billingPeriod);
 
                 const { error: upsertError } = await supabaseAdmin
                     .from('subscriptions')
@@ -145,13 +158,13 @@ export async function POST(req: NextRequest) {
                         abacatepay_billing_id: billingId,
                         current_period_start: now.toISOString(),
                         current_period_end: periodEnd.toISOString(),
-                        billing_period: 'monthly',
+                        billing_period: billingPeriod,
                     } as any, { onConflict: 'user_id' });
 
                 if (upsertError) {
                     console.error('[AbacatePay Webhook] Error upserting subscription:', upsertError);
                 } else {
-                    console.log('[AbacatePay Webhook] Subscription activated for user:', userId);
+                    console.log('[AbacatePay Webhook] Subscription activated for user:', userId, 'Period:', billingPeriod);
                     await createFixedAdmEmployee(userId);
                 }
             }
