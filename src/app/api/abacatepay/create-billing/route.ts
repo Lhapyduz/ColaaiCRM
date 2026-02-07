@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getPeriodDays, BillingPeriod } from '@/lib/abacatepay';
+import { getStripeCustomer } from '@/lib/stripe';
 
 const ABACATEPAY_API_URL = 'https://api.abacatepay.com/v1';
 const API_KEY = process.env.ABACATEPAY_API_KEY_PROD || process.env.ABACATEPAY_API_KEY_DEV;
@@ -19,12 +20,23 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Preço inválido (mínimo 100 centavos)' }, { status: 400 });
         }
 
-        console.log('[AbacatePay] === CRIANDO BILLING (VERSÃO CORRIGIDA - CPF TESTE) ===');
+        console.log('[AbacatePay] === CRIANDO BILLING COM STRIPE CUSTOMER ===');
         console.log('[AbacatePay] Timestamp:', new Date().toISOString());
         console.log('[AbacatePay] User:', userId, 'Email:', userEmail);
         console.log('[AbacatePay] Plan:', planType, 'Period:', billingPeriod, 'Price:', price);
 
-        // 2. Montar body com placeholders para evitar erros de validação
+        // 2. Criar ou reutilizar cliente no Stripe (mesma lógica do cartão de crédito)
+        let stripeCustomerId: string | null = null;
+        try {
+            const stripeCustomer = await getStripeCustomer(userId, userEmail, userName);
+            stripeCustomerId = stripeCustomer.id;
+            console.log('[AbacatePay] Stripe customer (criado/reutilizado):', stripeCustomerId);
+        } catch (stripeError: any) {
+            console.error('[AbacatePay] Erro ao criar/buscar cliente Stripe:', stripeError.message);
+            // Continua mesmo se falhar - o PIX funciona sem Stripe, mas é bom ter o cliente
+        }
+
+        // 3. Montar body com placeholders para evitar erros de validação
         // AbacatePay exige cellphone e taxId se o objeto customer estiver presente.
         // O usuário completará os dados REAIS na tela de checkout.
         const billingBody = {
@@ -84,23 +96,30 @@ export async function POST(req: Request) {
         console.log('[AbacatePay] Billing criado:', billing?.id);
         console.log('[AbacatePay] Checkout URL:', billing?.url);
 
-        // 3. Salvar no Supabase
+        // 4. Salvar no Supabase (com stripe_customer_id se disponível)
         const now = new Date();
         const days = getPeriodDays(billingPeriod as BillingPeriod);
         const periodEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
+        const subscriptionData: any = {
+            user_id: userId,
+            plan_type: planType,
+            status: 'pending_pix',
+            payment_method: 'pix',
+            abacatepay_billing_id: billing?.id,
+            current_period_start: now.toISOString(),
+            current_period_end: periodEnd.toISOString(),
+            billing_period: billingPeriod,
+        };
+
+        // Adiciona stripe_customer_id se foi criado/encontrado
+        if (stripeCustomerId) {
+            subscriptionData.stripe_customer_id = stripeCustomerId;
+        }
+
         await supabaseAdmin
             .from('subscriptions')
-            .upsert({
-                user_id: userId,
-                plan_type: planType,
-                status: 'pending_pix',
-                payment_method: 'pix',
-                abacatepay_billing_id: billing?.id,
-                current_period_start: now.toISOString(),
-                current_period_end: periodEnd.toISOString(),
-                billing_period: billingPeriod,
-            } as any, { onConflict: 'user_id' });
+            .upsert(subscriptionData, { onConflict: 'user_id' });
 
         return NextResponse.json({
             success: true,
