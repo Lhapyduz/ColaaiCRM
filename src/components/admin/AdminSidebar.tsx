@@ -11,7 +11,6 @@ import {
     FiDollarSign,
     FiMessageSquare,
     FiActivity,
-    FiSettings,
     FiLogOut,
     FiShield,
     FiPackage
@@ -90,13 +89,6 @@ export default function AdminSidebar() {
 
             {/* Bottom Section */}
             <div className="p-4 border-t border-gray-800 space-y-1">
-                <Link
-                    href="/admin/settings"
-                    className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all"
-                >
-                    <FiSettings size={20} />
-                    <span className="font-medium">Configurações</span>
-                </Link>
                 <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"

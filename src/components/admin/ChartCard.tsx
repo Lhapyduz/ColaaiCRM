@@ -71,7 +71,7 @@ export default function ChartCard({
             </div>
 
             {/* Chart Content */}
-            <div className="p-6 pt-4">
+            <div className="p-6 pt-4 min-h-px min-w-px">
                 {children}
             </div>
         </div>

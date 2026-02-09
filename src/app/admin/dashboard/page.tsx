@@ -60,13 +60,12 @@ export default function AdminDashboardPage() {
                 // Fetch subscription data
                 const { data: subscriptions } = await supabase
                     .from('subscriptions_cache')
-                    .select('amount_cents, status, plan_name, last_synced_at'); // Fix: use amount_cents
+                    .select('amount_cents, status, plan_name');
 
                 interface SubscriptionRow {
                     amount_cents: number | null;
                     status: string;
                     plan_name: string;
-                    last_synced_at: string;
                 }
 
                 // Calculate metrics

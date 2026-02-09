@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiTrendingUp, FiTrendingDown, FiCalendar, FiRefreshCw } from 'react-icons/fi';
+import { FiTrendingUp, FiTrendingDown, FiCalendar, FiRefreshCw, FiDollarSign, FiShoppingBag, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
@@ -30,6 +30,17 @@ interface DailySummary {
     balance: number;
 }
 
+interface CategoryDetail {
+    name: string;
+    count: number;
+}
+
+interface DailyCategoryInfo {
+    date: string;
+    itemCount: number;
+    categories: CategoryDetail[];
+}
+
 export default function FluxoCaixaPage() {
     const { user } = useAuth();
     const { canAccess, plan } = useSubscription();
@@ -39,6 +50,12 @@ export default function FluxoCaixaPage() {
     const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+
+    // Novos estados para receita de pedidos e categorias
+    const [ordersRevenue, setOrdersRevenue] = useState(0);
+    const [loadingRevenue, setLoadingRevenue] = useState(false);
+    const [showCategoryDetails, setShowCategoryDetails] = useState(true);
+    const [dailyCategoryInfo, setDailyCategoryInfo] = useState<DailyCategoryInfo[]>([]);
 
     const hasAccess = canAccess('cashFlow');
     const toast = useToast();
@@ -51,7 +68,104 @@ export default function FluxoCaixaPage() {
         setDateTo(to.toISOString().split('T')[0]);
     }, []);
 
+    // Função para buscar receita de pedidos pagos
+    const fetchOrdersRevenue = useCallback(async () => {
+        if (!user || !dateFrom || !dateTo) return;
+        setLoadingRevenue(true);
+        try {
+            const startDate = new Date(`${dateFrom}T00:00:00`);
+            const endDate = new Date(`${dateTo}T23:59:59.999`);
 
+            const { data: orders, error } = await supabase
+                .from('orders')
+                .select('id, total, payment_status, status, created_at')
+                .eq('user_id', user.id)
+                .eq('payment_status', 'paid')
+                .neq('status', 'cancelled')
+                .gte('created_at', startDate.toISOString())
+                .lte('created_at', endDate.toISOString());
+
+            if (error) throw error;
+
+            const totalRevenue = orders?.reduce((sum, order) => sum + order.total, 0) || 0;
+            setOrdersRevenue(totalRevenue);
+
+            // Buscar detalhes de categorias por dia
+            if (orders && orders.length > 0) {
+                const orderIds = orders.map(o => o.id);
+
+                const { data: orderItems } = await supabase
+                    .from('order_items')
+                    .select('order_id, product_id, quantity')
+                    .in('order_id', orderIds);
+
+                if (orderItems && orderItems.length > 0) {
+                    const productIds = [...new Set(orderItems.map(item => item.product_id).filter(Boolean))];
+
+                    const { data: products } = await supabase
+                        .from('products')
+                        .select('id, category_id')
+                        .in('id', productIds);
+
+                    const categoryIds = [...new Set(products?.map(p => p.category_id).filter(Boolean) || [])];
+
+                    const { data: categories } = await supabase
+                        .from('categories')
+                        .select('id, name')
+                        .in('id', categoryIds);
+
+                    // Mapear produtos para categorias
+                    const productCategoryMap = new Map<string, string>();
+                    products?.forEach(p => {
+                        if (p.category_id) {
+                            const cat = categories?.find(c => c.id === p.category_id);
+                            if (cat) productCategoryMap.set(p.id, cat.name);
+                        }
+                    });
+
+                    // Agrupar por data
+                    const dailyMap = new Map<string, { itemCount: number; categories: Map<string, number> }>();
+
+                    orders.forEach(order => {
+                        const date = order.created_at.split('T')[0];
+                        if (!dailyMap.has(date)) {
+                            dailyMap.set(date, { itemCount: 0, categories: new Map() });
+                        }
+
+                        const orderItemsForOrder = orderItems?.filter(item => item.order_id === order.id) || [];
+                        orderItemsForOrder.forEach(item => {
+                            const info = dailyMap.get(date)!;
+                            info.itemCount += item.quantity;
+
+                            const catName = productCategoryMap.get(item.product_id || '') || 'Outros';
+                            info.categories.set(catName, (info.categories.get(catName) || 0) + item.quantity);
+                        });
+                    });
+
+                    const categoryInfo: DailyCategoryInfo[] = Array.from(dailyMap.entries())
+                        .map(([date, info]) => ({
+                            date,
+                            itemCount: info.itemCount,
+                            categories: Array.from(info.categories.entries())
+                                .map(([name, count]) => ({ name, count }))
+                                .sort((a, b) => b.count - a.count)
+                        }))
+                        .sort((a, b) => b.date.localeCompare(a.date));
+
+                    setDailyCategoryInfo(categoryInfo);
+                }
+            } else {
+                setDailyCategoryInfo([]);
+            }
+
+            toast.success('Receita de pedidos importada!');
+        } catch (error) {
+            console.error('Erro ao buscar receita:', error);
+            toast.error('Erro ao importar receita de pedidos');
+        } finally {
+            setLoadingRevenue(false);
+        }
+    }, [user, dateFrom, dateTo, toast]);
 
     if (!hasAccess) {
         return <UpgradePrompt feature="Fluxo de Caixa" requiredPlan="Avançado" currentPlan={plan} fullPage />;
@@ -89,6 +203,9 @@ export default function FluxoCaixaPage() {
         setPeriod(p);
         setDateFrom(from.toISOString().split('T')[0]);
         setDateTo(now.toISOString().split('T')[0]);
+        // Reset orders revenue when period changes
+        setOrdersRevenue(0);
+        setDailyCategoryInfo([]);
     };
 
     const formatDateShort = (date: string) => new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
@@ -97,10 +214,18 @@ export default function FluxoCaixaPage() {
     const expense = entries.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
     const totals = { income, expense, balance: income - expense };
 
+    // Total combinado: entradas + receita de pedidos
+    const totalCombined = totals.income + ordersRevenue;
+
     const categoryBreakdown = (type: 'income' | 'expense') => {
         const categories = new Map<string, number>();
         entries.filter(e => e.type === type).forEach(e => categories.set(e.category, (categories.get(e.category) || 0) + e.amount));
         return Array.from(categories.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    };
+
+    // Helper para obter info de categoria de um dia específico
+    const getCategoryInfoForDate = (date: string) => {
+        return dailyCategoryInfo.find(info => info.date === date);
     };
 
     return (
@@ -111,6 +236,14 @@ export default function FluxoCaixaPage() {
                     <p className="text-text-secondary">Acompanhe entradas e saídas</p>
                 </div>
                 <div className="flex gap-3">
+                    <Button
+                        variant="outline"
+                        leftIcon={<FiDollarSign />}
+                        onClick={fetchOrdersRevenue}
+                        isLoading={loadingRevenue}
+                    >
+                        Importar Receita
+                    </Button>
                     <Button variant="outline" leftIcon={<FiRefreshCw />} onClick={fetchData}>Atualizar</Button>
                 </div>
             </div>
@@ -131,10 +264,18 @@ export default function FluxoCaixaPage() {
             </div>
 
             {/* Summary Grid */}
-            <div className="grid grid-cols-3 gap-4 mb-6 max-md:grid-cols-1">
+            <div className="grid grid-cols-4 gap-4 mb-6 max-md:grid-cols-1 max-lg:grid-cols-2">
                 <Card className="flex items-center gap-4 p-6!">
                     <div className="w-12 h-12 flex items-center justify-center rounded-md text-2xl bg-[#27ae60]/10 text-[#27ae60]"><FiTrendingUp /></div>
                     <div className="flex flex-col"><span className="text-[0.8125rem] text-text-muted mb-1">Entradas</span><span className="text-2xl font-bold text-[#27ae60]">{formatCurrency(totals.income)}</span></div>
+                </Card>
+                <Card className="flex items-center gap-4 p-6!">
+                    <div className="w-12 h-12 flex items-center justify-center rounded-md text-2xl bg-primary/10 text-primary"><FiShoppingBag /></div>
+                    <div className="flex flex-col">
+                        <span className="text-[0.8125rem] text-text-muted mb-1">Receita de Pedidos</span>
+                        <span className="text-2xl font-bold text-primary">{formatCurrency(ordersRevenue)}</span>
+                        {ordersRevenue > 0 && <span className="text-xs text-text-muted mt-0.5">Total: {formatCurrency(totalCombined)}</span>}
+                    </div>
                 </Card>
                 <Card className="flex items-center gap-4 p-6!">
                     <div className="w-12 h-12 flex items-center justify-center rounded-md text-2xl bg-error/10 text-error"><FiTrendingDown /></div>
@@ -148,16 +289,43 @@ export default function FluxoCaixaPage() {
             <div className="grid grid-cols-[2fr_1fr] gap-6 mb-6 max-[1024px]:grid-cols-1">
                 {/* Daily Summary */}
                 <Card className="max-h-[400px] overflow-y-auto">
-                    <h2 className="text-base font-semibold mb-4">Resumo Diário</h2>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-base font-semibold">Resumo Diário</h2>
+                        {dailyCategoryInfo.length > 0 && (
+                            <button
+                                onClick={() => setShowCategoryDetails(!showCategoryDetails)}
+                                className="flex items-center gap-2 text-sm text-text-secondary hover:text-primary transition-colors"
+                                title={showCategoryDetails ? 'Ocultar categorias' : 'Mostrar categorias'}
+                            >
+                                {showCategoryDetails ? <FiToggleRight className="text-primary text-xl" /> : <FiToggleLeft className="text-xl" />}
+                                <span className="max-md:hidden">Categorias</span>
+                            </button>
+                        )}
+                    </div>
                     {loading ? <div className="p-8 text-center text-text-secondary">Carregando...</div> : dailySummaries.length === 0 ? <div className="p-8 text-center text-text-muted">Nenhuma movimentação no período</div> : (
                         <div className="flex flex-col">
-                            {dailySummaries.map(day => (
-                                <div key={day.date} className="flex items-center justify-between py-3 border-b border-border last:border-b-0">
-                                    <span className="font-medium min-w-[100px]">{formatDateShort(day.date)}</span>
-                                    <div className="flex gap-4"><span className="text-sm text-[#27ae60]">+{formatCurrency(day.income)}</span><span className="text-sm text-error">-{formatCurrency(day.expense)}</span></div>
-                                    <span className={cn('font-semibold min-w-[100px] text-right', day.balance >= 0 ? 'text-[#27ae60]' : 'text-error')}>{day.balance >= 0 ? '+' : ''}{formatCurrency(day.balance)}</span>
-                                </div>
-                            ))}
+                            {dailySummaries.map(day => {
+                                const categoryInfo = getCategoryInfoForDate(day.date);
+                                return (
+                                    <div key={day.date} className="py-3 border-b border-border last:border-b-0">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-medium min-w-[100px]">{formatDateShort(day.date)}</span>
+                                            <div className="flex gap-4"><span className="text-sm text-[#27ae60]">+{formatCurrency(day.income)}</span><span className="text-sm text-error">-{formatCurrency(day.expense)}</span></div>
+                                            <span className={cn('font-semibold min-w-[100px] text-right', day.balance >= 0 ? 'text-[#27ae60]' : 'text-error')}>{day.balance >= 0 ? '+' : ''}{formatCurrency(day.balance)}</span>
+                                        </div>
+                                        {showCategoryDetails && categoryInfo && categoryInfo.itemCount > 0 && (
+                                            <div className="mt-2 pl-4 text-xs text-text-muted flex flex-wrap gap-2 items-center">
+                                                <span className="font-medium text-text-secondary">{categoryInfo.itemCount} {categoryInfo.itemCount === 1 ? 'item' : 'itens'} vendido{categoryInfo.itemCount === 1 ? '' : 's'}:</span>
+                                                {categoryInfo.categories.map((cat, idx) => (
+                                                    <span key={cat.name} className="bg-bg-tertiary px-2 py-0.5 rounded-full">
+                                                        {cat.name}: {cat.count}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </Card>

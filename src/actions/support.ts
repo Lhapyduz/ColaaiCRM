@@ -132,45 +132,48 @@ export async function adminGetTickets() {
 
     try {
         // Admin uses service role to bypass RLS
-        // We join user_settings directly via the tenant_id field mapping
-        // We also join user_emails view to get the real email
+        // Join user_settings via FK (tenant_id -> user_settings.user_id)
         const { data, error } = await supabaseAdmin
             .from('support_tickets')
             .select(`
                 *,
-                tenant_settings:user_settings(app_name),
-                tenant_auth:user_emails(email)
+                tenant_settings:user_settings(app_name)
             `)
             .order('created_at', { ascending: false });
 
         if (error) {
             console.error('[adminGetTickets] Supabase Error:', error);
-            // If the join still fails, try fetching without joins as a fallback
-            if (error.message.includes('relationship')) {
-                const { data: simpleData, error: simpleError } = await supabaseAdmin
-                    .from('support_tickets')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-
-                if (simpleError) throw simpleError;
-                return simpleData;
-            }
             throw new Error(`Database error: ${error.message}`);
         }
 
         if (!data) return [];
 
-        // Transform to include store name and email easier
+        // Fetch emails for all unique tenant_ids via auth admin API
+        const uniqueTenantIds = [...new Set(data.map((t: any) => t.tenant_id))];
+        const emailMap: Record<string, string> = {};
+
+        await Promise.all(
+            uniqueTenantIds.map(async (tenantId: string) => {
+                try {
+                    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(tenantId);
+                    if (userData?.user?.email) {
+                        emailMap[tenantId] = userData.user.email;
+                    }
+                } catch {
+                    // Silently skip if user not found
+                }
+            })
+        );
+
+        // Transform to include store name and email
         return data.map((ticket: any) => ({
             ...ticket,
-            // Handle cases where joins might return null (e.g. user deleted)
             store_name: ticket.tenant_settings?.app_name || 'Desconhecido',
-            tenant_email: ticket.tenant_auth?.email || 'Email não disponível'
+            tenant_email: emailMap[ticket.tenant_id] || 'Email não disponível'
         }));
     } catch (err) {
         console.error('[adminGetTickets] Unexpected Error:', err);
-        // Return empty array instead of crashing layout, but log error
-        throw err; // Let page handle it or rethrow as friendly error
+        throw err;
     }
 }
 
