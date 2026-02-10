@@ -19,9 +19,16 @@ export default function RecuperarSenhaPage() {
         setLoading(true);
         try {
             const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/redefinir-senha` });
-            if (error) setError('Erro ao enviar email. Verifique se o email está correto.');
-            else setSuccess(true);
-        } catch { setError('Ocorreu um erro. Tente novamente.'); }
+            if (error) {
+                console.error('Erro na recuperação de senha:', error);
+                setError(error.message || 'Erro ao enviar email. Verifique se o email está correto.');
+            } else {
+                setSuccess(true);
+            }
+        } catch (err) {
+            console.error('Erro inesperado na recuperação de senha:', err);
+            setError('Ocorreu um erro inesperado. Tente novamente.');
+        }
         finally { setLoading(false); }
     };
 

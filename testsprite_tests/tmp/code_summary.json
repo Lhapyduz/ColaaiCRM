@@ -1,0 +1,69 @@
+{
+    "tech_stack": [
+        "TypeScript",
+        "Next.js",
+        "Supabase",
+        "Tailwind CSS",
+        "Stripe",
+        "AbacatePay",
+        "Framer Motion"
+    ],
+    "features": [
+        {
+            "name": "Autenticação",
+            "description": "Sistema de login, registro e recuperação de senha.",
+            "files": [
+                "src/app/login",
+                "src/app/registro",
+                "src/app/recuperar-senha",
+                "src/app/redefinir-senha",
+                "src/lib/supabase.ts"
+            ]
+        },
+        {
+            "name": "Dashboard Admin",
+            "description": "Gestão financeira, clientes e controle de assinaturas.",
+            "files": [
+                "src/app/admin/dashboard",
+                "src/app/admin/finance",
+                "src/app/admin/clients",
+                "src/components/admin"
+            ]
+        },
+        {
+            "name": "Cardápio Online",
+            "description": "Catálogo de produtos, sistema de pedidos e venda sugestiva (upsell).",
+            "files": [
+                "src/app/menu",
+                "src/components/menu",
+                "src/lib/salesPrediction.ts"
+            ]
+        },
+        {
+            "name": "Pagamentos PIX",
+            "description": "Integração com AbacatePay e Stripe para pagamentos via PIX e geração de QR code.",
+            "files": [
+                "src/lib/pix.ts",
+                "src/lib/abacatepay.ts",
+                "src/components/pix"
+            ]
+        },
+        {
+            "name": "Funcionalidade Offline",
+            "description": "Armazenamento local e sincronização de dados offline.",
+            "files": [
+                "src/lib/offlineStorage.ts",
+                "src/lib/offlineSync.ts"
+            ]
+        },
+        {
+            "name": "Comunicação e Impressão",
+            "description": "Integração com WhatsApp, Telegram e sistema de impressão de pedidos.",
+            "files": [
+                "src/lib/whatsapp.ts",
+                "src/lib/telegram.ts",
+                "src/lib/print.ts"
+            ]
+        }
+    ]
+}

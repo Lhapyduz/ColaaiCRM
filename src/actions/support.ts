@@ -103,34 +103,43 @@ export async function getTicketMessages(ticketId: string) {
 
 // Helper to ensure user is admin and return their ID
 async function ensureAdmin() {
+    console.log('[ensureAdmin] Starting admin check...');
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError) {
+        console.error('[ensureAdmin] Auth error:', authError);
+    }
 
     if (!user) {
-        console.error('[ensureAdmin] No user session found');
+        console.error('[ensureAdmin] No user session found. This usually happens on Vercel if cookies are not being sent or user is not logged in via Supabase Auth.');
         throw new Error('Unauthorized');
     }
 
-    const { data: adminRecord, error } = await supabaseAdmin
+    console.log(`[ensureAdmin] User ${user.id} (${user.email}) found. Checking admin_users table...`);
+
+    const { data: adminRecord, error: dbError } = await supabaseAdmin
         .from('admin_users')
         .select('*')
         .eq('user_id', user.id)
         .single();
 
-    if (error || !adminRecord) {
-        console.warn(`[ensureAdmin] Access denied for user ${user.id} (${user.email}). Not found in admin_users table.`);
+    if (dbError || !adminRecord) {
+        console.warn(`[ensureAdmin] Access denied for user ${user.id} (${user.email}). Not found in admin_users table. Error:`, dbError);
         throw new Error('Forbidden');
     }
 
+    console.log('[ensureAdmin] Access granted.');
     return user;
 }
 
 // Admin Actions (Using Service Role Client or Super Admin logic)
 
 export async function adminGetTickets() {
-    await ensureAdmin();
-
+    console.log('[adminGetTickets] Initiating ticket fetch...');
     try {
+        await ensureAdmin();
+
         // Admin uses service role to bypass RLS
         // Join user_settings via FK (tenant_id -> user_settings.user_id)
         const { data, error } = await supabaseAdmin
@@ -142,11 +151,13 @@ export async function adminGetTickets() {
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('[adminGetTickets] Supabase Error:', error);
+            console.error('[adminGetTickets] Supabase Query Error:', error);
             throw new Error(`Database error: ${error.message}`);
         }
 
         if (!data) return [];
+
+        console.log(`[adminGetTickets] Found ${data.length} tickets. Fetching tenant emails...`);
 
         // Fetch emails for all unique tenant_ids via auth admin API
         const uniqueTenantIds = [...new Set(data.map((t: any) => t.tenant_id))];
@@ -155,12 +166,15 @@ export async function adminGetTickets() {
         await Promise.all(
             uniqueTenantIds.map(async (tenantId: string) => {
                 try {
-                    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(tenantId);
+                    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(tenantId);
+                    if (userError) {
+                        console.error(`[adminGetTickets] Error fetching user ${tenantId}:`, userError);
+                    }
                     if (userData?.user?.email) {
                         emailMap[tenantId] = userData.user.email;
                     }
-                } catch {
-                    // Silently skip if user not found
+                } catch (err) {
+                    console.error(`[adminGetTickets] Unexpected error fetching user ${tenantId}:`, err);
                 }
             })
         );
@@ -172,7 +186,7 @@ export async function adminGetTickets() {
             tenant_email: emailMap[ticket.tenant_id] || 'Email não disponível'
         }));
     } catch (err) {
-        console.error('[adminGetTickets] Unexpected Error:', err);
+        console.error('[adminGetTickets] Global catch:', err);
         throw err;
     }
 }

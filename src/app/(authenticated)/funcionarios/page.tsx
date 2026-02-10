@@ -56,15 +56,15 @@ export default function FuncionariosPage() {
 
     const handleSave = async () => {
         if (!user) return;
-        if (editingEmployee?.is_fixed) { await supabase.from('employees').update({ pin_code: form.pin_code || null }).eq('id', editingEmployee.id); setShowModal(false); resetForm(); fetchEmployees(); return; }
+        if (editingEmployee?.is_fixed) { await supabase.from('employees').update({ pin_code: form.pin_code || null }).eq('id', editingEmployee.id).eq('user_id', user.id); setShowModal(false); resetForm(); fetchEmployees(); return; }
         const employeeData = { user_id: user.id, name: form.name, email: form.email || null, phone: form.phone || null, role: form.role, pin_code: form.pin_code || null, hourly_rate: form.hourly_rate || null, is_active: form.is_active, permissions: DEFAULT_PERMISSIONS[form.role] };
-        if (editingEmployee) await supabase.from('employees').update(employeeData).eq('id', editingEmployee.id);
+        if (editingEmployee) await supabase.from('employees').update(employeeData).eq('id', editingEmployee.id).eq('user_id', user.id);
         else await supabase.from('employees').insert(employeeData);
         setShowModal(false); resetForm(); fetchEmployees();
     };
 
-    const handleToggleActive = async (employee: Employee) => { await supabase.from('employees').update({ is_active: !employee.is_active }).eq('id', employee.id); fetchEmployees(); };
-    const handleDelete = async (employee: Employee) => { if (employee.is_fixed) { alert('Este funcionário é fixo e não pode ser removido.'); return; } if (!confirm('Excluir este funcionário?')) return; await supabase.from('employees').delete().eq('id', employee.id); fetchEmployees(); };
+    const handleToggleActive = async (employee: Employee) => { if (!user) return; await supabase.from('employees').update({ is_active: !employee.is_active }).eq('id', employee.id).eq('user_id', user.id); fetchEmployees(); };
+    const handleDelete = async (employee: Employee) => { if (!user) return; if (employee.is_fixed) { alert('Este funcionário é fixo e não pode ser removido.'); return; } if (!confirm('Excluir este funcionário?')) return; await supabase.from('employees').delete().eq('id', employee.id).eq('user_id', user.id); fetchEmployees(); };
     const resetForm = () => { setForm({ name: '', email: '', phone: '', role: 'attendant', pin_code: '', hourly_rate: 0, is_active: true }); setEditingEmployee(null); };
     const openEdit = (employee: Employee) => { setEditingEmployee(employee); setForm({ name: employee.name, email: employee.email || '', phone: employee.phone || '', role: employee.role, pin_code: employee.pin_code || '', hourly_rate: employee.hourly_rate || 0, is_active: employee.is_active }); setShowModal(true); };
     const getRoleInfo = (role: string) => ROLES.find(r => r.value === role) || ROLES[4];

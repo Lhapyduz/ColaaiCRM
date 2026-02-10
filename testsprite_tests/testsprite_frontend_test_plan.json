@@ -1,0 +1,637 @@
+[
+  {
+    "id": "TC001",
+    "title": "Successful user registration",
+    "description": "Verify that a new user can register successfully with valid input data.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page"
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid email address, username, and password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm that the registration is successful and user is redirected or shown a success message"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User registration with invalid email format",
+    "description": "Verify the system rejects registration with an improperly formatted email address.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page"
+      },
+      {
+        "type": "action",
+        "description": "Enter an invalid email format, e.g., 'useratexample.com'"
+      },
+      {
+        "type": "action",
+        "description": "Fill other required fields with valid data"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Check that an appropriate error message about invalid email format is displayed and registration is prevented"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Login success with valid credentials",
+    "description": "Verify that users can login successfully when providing correct credentials.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Enter valid username/email and password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify successful login and redirection to the dashboard or home page"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Login failure with invalid credentials",
+    "description": "Verify that login fails and appropriate error is shown when credentials are incorrect.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page"
+      },
+      {
+        "type": "action",
+        "description": "Enter incorrect username/email or password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm failure message is shown, and user remains on login page"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Password recovery workflow",
+    "description": "Verify that the password recovery process initiates and completes properly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the password recovery page"
+      },
+      {
+        "type": "action",
+        "description": "Enter a registered email address"
+      },
+      {
+        "type": "action",
+        "description": "Submit the recovery request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that a password reset email or link is sent"
+      },
+      {
+        "type": "action",
+        "description": "Use the reset link to set a new password"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that password is reset successfully and user can login with the new password"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Admin Dashboard access control",
+    "description": "Verify that only authenticated admin users can access the Admin Dashboard and unauthorized access is prevented.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to access the Admin Dashboard URL without logging in"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify redirection to login page or access denied message"
+      },
+      {
+        "type": "action",
+        "description": "Login as a non-admin user if applicable"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access the Admin Dashboard again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied or restricted according to permissions"
+      },
+      {
+        "type": "action",
+        "description": "Login as an authorized admin user"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm access to Admin Dashboard with all appropriate features visible"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Admin Dashboard financial data accuracy and realtime update",
+    "description": "Verify that financial data including daily and monthly sales, cash flow and client subscriptions are shown accurately and update in real time.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as an admin user and navigate to the finance section of the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify displayed financial data matches backend data for sales, cash flow and subscriptions"
+      },
+      {
+        "type": "action",
+        "description": "Simulate new order or payment received externally"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that financial figures update in real time without page reload"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Manage menu categories and products CRUD operations",
+    "description": "Verify the creation, reading, updating and deletion of menu categories and products including image upload with cropping and compression.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as admin and navigate to menu management"
+      },
+      {
+        "type": "action",
+        "description": "Create a new product category"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new category is saved and displayed correctly"
+      },
+      {
+        "type": "action",
+        "description": "Add a new product with image upload, use crop and compression features"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify product and image save correctly and appear in the product list"
+      },
+      {
+        "type": "action",
+        "description": "Edit the product details and images"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm changes persist and reflect immediately"
+      },
+      {
+        "type": "action",
+        "description": "Delete a product and category"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify they are removed from the list and backend data"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Order management with Kanban drag-and-drop board",
+    "description": "Verify order statuses can be updated via drag-and-drop on the Kanban board and state changes persist correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as admin and open order management Kanban board"
+      },
+      {
+        "type": "action",
+        "description": "Drag an order card from 'pending' to 'preparing'"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order status updates visually and backend data reflects the new status"
+      },
+      {
+        "type": "action",
+        "description": "Drag the order card across multiple statuses up to 'delivered'"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updates complete successfully without lag or errors"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Customer digital menu browsing and ordering with upsell suggestions",
+    "description": "Verify customers can browse the product catalog, add products to basket, see upsell suggestions, and proceed to checkout.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the public digital menu via slug/link"
+      },
+      {
+        "type": "action",
+        "description": "Browse products by categories (snacks, drinks, desserts)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify products and categories are displayed correctly"
+      },
+      {
+        "type": "action",
+        "description": "Add multiple items to the shopping cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify cart updates totals including delivery fees correctly"
+      },
+      {
+        "type": "action",
+        "description": "Observe upsell suggestions for added products"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify upsell suggestions appear relevant and can be added to cart"
+      },
+      {
+        "type": "action",
+        "description": "Proceed to checkout"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order summary is accurate before sending order"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Order checkout via WhatsApp formatted message",
+    "description": "Verify that checkout sends the customer's order details formatted as a WhatsApp message to the snack bar correctly.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Complete adding items in cart and proceed to checkout"
+      },
+      {
+        "type": "action",
+        "description": "Trigger order sending via WhatsApp"
+      },
+      {
+        "type": "assertion",
+        "description": "Check that WhatsApp opens or launches with a properly formatted message containing order details, customer info, and totals"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "PIX payment processing with AbacatePay integration",
+    "description": "Verify that payments via PIX through AbacatePay complete successfully with QR code generation and display.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Select PIX payment option during checkout"
+      },
+      {
+        "type": "action",
+        "description": "Generate PIX QR code via AbacatePay API"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify QR code is displayed accurately and is scannable"
+      },
+      {
+        "type": "action",
+        "description": "Simulate payment completion"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify payment status updates and is confirmed to both customer and admin"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "PIX payment processing with Stripe integration",
+    "description": "Verify PIX payment completion with Stripe API and correct QR code generation.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Select PIX payment via Stripe during checkout"
+      },
+      {
+        "type": "action",
+        "description": "Generate Stripe PIX QR code"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm QR code is valid and visible to customer"
+      },
+      {
+        "type": "action",
+        "description": "Simulate successful payment notification from Stripe"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm payment success is displayed and order status updated"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Offline data caching and synchronization for customers",
+    "description": "Verify the digital menu and order system caches data locally for offline use and automatically synchronizes when connectivity returns.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Load the digital menu with network online"
+      },
+      {
+        "type": "action",
+        "description": "Go offline and continue browsing menu and adding items to cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify local cached data is used and user can make orders without errors"
+      },
+      {
+        "type": "action",
+        "description": "Restore internet connectivity"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm local order data auto-synchronizes to backend and UI updates accordingly"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Offline data caching and synchronization for Admin Dashboard",
+    "description": "Verify that admin users can perform management tasks offline and data syncs properly when online.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as admin with network online and load dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Go offline and perform CRUD operations on menu and orders"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify operations succeed locally with UI updates"
+      },
+      {
+        "type": "action",
+        "description": "Reconnect to internet"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all offline changes synchronize with backend without data conflicts"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Order notifications via WhatsApp integration",
+    "description": "Verify that order notifications are sent correctly via WhatsApp to the snack bar as formatted messages.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Complete an order checkout triggering WhatsApp notification"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that order details are sent accurately as a WhatsApp message to the designated phone number"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Order notifications via Telegram integration",
+    "description": "Verify that order notifications are sent correctly via Telegram with correct formatting and content.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger an order notification to Telegram from the admin or system"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm the Telegram message is delivered with full order details and correct formatting"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "QR code generation for physical tables or counters",
+    "description": "Verify that QR codes can be generated and downloaded for tables/counters enabling easy customer menu access.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as admin and navigate to QR code generation section"
+      },
+      {
+        "type": "action",
+        "description": "Generate QR codes for a set of tables or counters"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify QR codes are generated correctly linking to the respective digital menus"
+      },
+      {
+        "type": "action",
+        "description": "Download or export QR codes"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm QR codes are downloadable in expected formats and test scans successfully"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "User and store branding customization",
+    "description": "Verify that admin users can customize UI branding including colors and logos and these reflect in the app immediately.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as admin and access store customization settings"
+      },
+      {
+        "type": "action",
+        "description": "Modify brand colors and upload a new logo"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that UI elements across menus and dashboard update to reflect the new branding colors and logo"
+      },
+      {
+        "type": "action",
+        "description": "Refresh the app or access from a new browser"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm branding settings persist and display correctly"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Security validation of Row Level Security (RLS) in Supabase",
+    "description": "Verify that Supabase RLS policies correctly restrict data access to authorized users only.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to access another user's data using API calls or UI as a logged-in user"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied or restricted according to RLS policies"
+      },
+      {
+        "type": "action",
+        "description": "Access own data with authorized user"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify full access to own data without restrictions"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Real-time order tracking and status update verification",
+    "description": "Verify that order status updates are reflected instantly on both admin and customer views using Supabase Realtime.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Place an order as a customer and observe order status page"
+      },
+      {
+        "type": "action",
+        "description": "Login as admin and update the order status"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the customer's order status updates immediately without page refresh"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "UI/UX responsiveness and brand color adaptation on mobile devices",
+    "description": "Verify the application is fully responsive and adapts brand colors correctly on various mobile screen sizes.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open app on multiple mobile devices and screen resolutions"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm layout adjusts properly without breaking or overflow"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify brand colors and logos appear consistently and correctly across screens"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Error handling on failed data synchronization during offline mode",
+    "description": "Verify system behavior and error handling when data synchronization fails after offline usage.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Work offline and perform changes"
+      },
+      {
+        "type": "action",
+        "description": "Simulate network connectivity restoration with a synchronization error (e.g., server timeout)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify appropriate error message is shown and user can retry synchronization without data loss"
+      }
+    ]
+  }
+]
