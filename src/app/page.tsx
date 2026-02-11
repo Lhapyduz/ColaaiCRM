@@ -1,12 +1,19 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [timedOut, setTimedOut] = useState(false);
+
+  // Safety timeout: redirect to login if auth takes too long
+  useEffect(() => {
+    const timer = setTimeout(() => setTimedOut(true), 8000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -15,8 +22,10 @@ export default function Home() {
       } else {
         router.push('/login');
       }
+    } else if (timedOut) {
+      router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, timedOut]);
 
   return (
     <div style={{

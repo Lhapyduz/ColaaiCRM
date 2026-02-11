@@ -36,7 +36,7 @@ export const ROLE_SPECIFIC_ROUTES: Record<string, string[]> = {
 };
 
 // Routes that are allowed even when subscription is expired
-const ALLOWED_WHEN_EXPIRED = ['/assinatura', '/login', '/registro'];
+const ALLOWED_WHEN_EXPIRED = ['/assinatura', '/login', '/registro', '/configuracoes', '/dashboard'];
 
 interface RouteGuardProps {
     children: ReactNode;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext';
@@ -36,6 +36,19 @@ function MainLayoutContent({ children }: MainLayoutProps) {
 
 export default function MainLayout({ children }: MainLayoutProps) {
     const { loading, userSettings } = useAuth();
+    const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+
+    // Safety timeout: if loading takes more than 10s, force continue
+    useEffect(() => {
+        if (loading) {
+            const timer = setTimeout(() => {
+                setLoadingTimedOut(true);
+            }, 10000);
+            return () => clearTimeout(timer);
+        } else {
+            setLoadingTimedOut(false);
+        }
+    }, [loading]);
 
     // Apply theme settings
     React.useEffect(() => {
@@ -54,7 +67,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         }
     }, [userSettings]);
 
-    if (loading) {
+    if (loading && !loadingTimedOut) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-bg-primary">
                 <div className="flex flex-col items-center gap-4">

@@ -228,11 +228,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         ? Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
         : 0;
 
-    // Check if running in development mode (bypass subscription block for testing)
+    // Check if running locally (bypass subscription block for testing on localhost)
     const isDevelopment = typeof window !== 'undefined' && (
         window.location.hostname === 'localhost' ||
         window.location.hostname === '127.0.0.1'
-    ) && process.env.NODE_ENV === 'development';
+    );
 
     // Check if access should be blocked (trial expired OR subscription expired OR status is expired/cancelled/pending_pix)
     const isBlocked: boolean = isDevelopment ? false : (
