@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 interface Shortcut {
     key: string;
@@ -23,20 +23,8 @@ interface KeyboardShortcutsContextType {
 
 const KeyboardShortcutsContext = createContext<KeyboardShortcutsContextType | undefined>(undefined);
 
-const globalShortcuts: Omit<Shortcut, 'action'>[] = [
-    { key: 'h', alt: true, description: 'Ir para Dashboard', scope: 'global' },
-    { key: 'p', alt: true, description: 'Ir para Pedidos', scope: 'global' },
-    { key: 'c', alt: true, description: 'Ir para Cozinha', scope: 'global' },
-    { key: 'e', alt: true, description: 'Ir para Estoque', scope: 'global' },
-    { key: 'r', alt: true, description: 'Ir para Relatórios', scope: 'global' },
-    { key: 'n', alt: true, description: 'Novo Pedido', scope: 'global' },
-    { key: '/', ctrl: true, description: 'Mostrar Atalhos', scope: 'global' },
-    { key: 'Escape', description: 'Fechar Modal/Menu', scope: 'global' },
-];
-
 export function KeyboardShortcutsProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
-    const pathname = usePathname();
     const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
     const [showHelp, setShowHelp] = useState(false);
 
@@ -45,9 +33,22 @@ export function KeyboardShortcutsProvider({ children }: { children: ReactNode })
         const baseShortcuts: Shortcut[] = [
             { key: 'h', alt: true, description: 'Ir para Dashboard', action: () => router.push('/dashboard'), scope: 'global' },
             { key: 'p', alt: true, description: 'Ir para Pedidos', action: () => router.push('/pedidos'), scope: 'global' },
+            { key: 'g', alt: true, description: 'Ir para Produtos', action: () => router.push('/produtos'), scope: 'global' },
+            { key: 'a', alt: true, description: 'Ir para Adicionais', action: () => router.push('/adicionais'), scope: 'global' },
+            { key: 't', alt: true, description: 'Ir para Categorias', action: () => router.push('/categorias'), scope: 'global' },
             { key: 'c', alt: true, description: 'Ir para Cozinha', action: () => router.push('/cozinha'), scope: 'global' },
+            { key: 'd', alt: true, description: 'Ir para Entregas', action: () => router.push('/entregas'), scope: 'global' },
             { key: 'e', alt: true, description: 'Ir para Estoque', action: () => router.push('/estoque'), scope: 'global' },
+            { key: 'u', alt: true, description: 'Ir para Cupons', action: () => router.push('/cupons'), scope: 'global' },
+            { key: 'f', alt: true, description: 'Ir para Fidelidade', action: () => router.push('/fidelidade'), scope: 'global' },
+            { key: 'x', alt: true, description: 'Ir para Caixa', action: () => router.push('/caixa'), scope: 'global' },
+            { key: 'b', alt: true, description: 'Ir para Contas', action: () => router.push('/contas'), scope: 'global' },
+            { key: 'm', alt: true, description: 'Ir para Fluxo de Caixa', action: () => router.push('/fluxo-caixa'), scope: 'global' },
+            { key: 's', alt: true, description: 'Ir para Funcionários', action: () => router.push('/funcionarios'), scope: 'global' },
             { key: 'r', alt: true, description: 'Ir para Relatórios', action: () => router.push('/relatorios'), scope: 'global' },
+            { key: 'i', alt: true, description: 'Ir para Histórico', action: () => router.push('/historico'), scope: 'global' },
+            { key: 'q', alt: true, description: 'Ir para Assinatura', action: () => router.push('/assinatura'), scope: 'global' },
+            { key: ',', alt: true, description: 'Ir para Configurações', action: () => router.push('/configuracoes'), scope: 'global' },
             { key: 'n', alt: true, description: 'Novo Pedido', action: () => router.push('/pedidos/novo'), scope: 'global' },
             { key: '/', ctrl: true, description: 'Mostrar Atalhos', action: () => setShowHelp(prev => !prev), scope: 'global' },
             { key: 'Escape', description: 'Fechar Modal/Menu', action: () => setShowHelp(false), scope: 'global' },
@@ -319,5 +320,5 @@ export function usePageShortcut(shortcut: Omit<Shortcut, 'scope'>) {
     useEffect(() => {
         registerShortcut({ ...shortcut, scope: 'page' });
         return () => unregisterShortcut(shortcut.key, shortcut.ctrl, shortcut.alt, shortcut.shift);
-    }, [shortcut.key, shortcut.ctrl, shortcut.alt, shortcut.shift]);
+    }, [shortcut, registerShortcut, unregisterShortcut]);
 }

@@ -6,14 +6,12 @@
   "loginUser": "testefinal99@example.com",
   "loginPassword": "test123456",
   "executionArgs": {
-    "projectName": "Ligeirinho hotdog",
+    "projectName": "cola-ai",
     "projectPath": "c:\\Users\\grego\\OneDrive\\Área de Trabalho\\Nova pasta (6)\\Ligeirinho hotdog",
     "testIds": [],
-    "additionalInstruction": "Execute todos os testes frontend definidos no plano, focando na integridade da autenticação e no fluxo de pagamentos PIX. Por favor, gere o relatório em português (PT-BR).",
+    "additionalInstruction": "Realize um escaneamento DAST completo. Procure por vulnerabilidades de segurança como XSS, SQL Injection, Broken Auth, Insecure Direct Object References (IDOR) e erros 500. Teste todos os endpoints da API e fluxos de login.",
     "envs": {
       "API_KEY": "sk-user-HnkkGA2OVIh1pVTXz-loMBCgTJMCxVqgUxK8qPRYjXsuNCINFiGfSfgG2lW46UqQejX8hegK9we6iw2GQo_wBIjJjNCAOyCoCdyNRbx7Kl6TEwGKAmRr4asENVOvmQt8bOg"
     }
-  },
-  "serverPort": 56188,
-  "proxy": "http://1baf6c53-879a-41df-93d8-b005f18acd7a:0Wo17aVnewRnDr5UNQKaZ1cBEmT72IJO@tun.testsprite.com:8080"
+  }
 }

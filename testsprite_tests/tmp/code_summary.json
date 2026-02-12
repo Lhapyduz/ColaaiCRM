@@ -1,68 +1,61 @@
 {
     "tech_stack": [
         "TypeScript",
-        "Next.js",
-        "Supabase",
+        "Next.js 16 (App Router)",
+        "Supabase (Auth, DB, Realtime)",
         "Tailwind CSS",
         "Stripe",
-        "AbacatePay",
-        "Framer Motion"
+        "AbacatePay"
     ],
     "features": [
         {
             "name": "Autenticação",
-            "description": "Sistema de login, registro e recuperação de senha.",
+            "description": "Sistema de login para clientes e administradores usando Supabase Auth.",
             "files": [
-                "src/app/login",
-                "src/app/registro",
-                "src/app/recuperar-senha",
-                "src/app/redefinir-senha",
-                "src/lib/supabase.ts"
+                "src/app/admin/login/page.tsx",
+                "src/middleware.ts"
             ]
         },
         {
-            "name": "Dashboard Admin",
-            "description": "Gestão financeira, clientes e controle de assinaturas.",
+            "name": "Gestão de Pedidos",
+            "description": "Criação, listagem e detalhamento de pedidos de hotdog.",
             "files": [
-                "src/app/admin/dashboard",
-                "src/app/admin/finance",
-                "src/app/admin/clients",
-                "src/components/admin"
+                "src/app/(authenticated)/pedidos/page.tsx",
+                "src/app/(authenticated)/pedidos/novo/page.tsx",
+                "src/app/(authenticated)/pedidos/[id]/page.tsx"
             ]
         },
         {
-            "name": "Cardápio Online",
-            "description": "Catálogo de produtos, sistema de pedidos e venda sugestiva (upsell).",
+            "name": "Admin Dashboard",
+            "description": "Painel administrativo para gestão de clientes, planos e finanças.",
             "files": [
-                "src/app/menu",
-                "src/components/menu",
-                "src/lib/salesPrediction.ts"
+                "src/app/admin/dashboard/page.tsx",
+                "src/app/admin/clients/page.tsx",
+                "src/app/admin/plans/page.tsx"
             ]
         },
         {
-            "name": "Pagamentos PIX",
-            "description": "Integração com AbacatePay e Stripe para pagamentos via PIX e geração de QR code.",
+            "name": "Integração AbacatePay",
+            "description": "API routes e webhooks para processamento de pagamentos via AbacatePay.",
             "files": [
-                "src/lib/pix.ts",
-                "src/lib/abacatepay.ts",
-                "src/components/pix"
+                "src/app/api/abacatepay/create-billing/route.ts",
+                "src/app/api/abacatepay/check-status/route.ts"
             ]
         },
         {
-            "name": "Funcionalidade Offline",
-            "description": "Armazenamento local e sincronização de dados offline.",
+            "name": "Suporte e Chat",
+            "description": "Sistema de tickets de suporte e chat em tempo real.",
             "files": [
-                "src/lib/offlineStorage.ts",
-                "src/lib/offlineSync.ts"
+                "src/app/admin/support/page.tsx",
+                "src/actions/support.ts"
             ]
         },
         {
-            "name": "Comunicação e Impressão",
-            "description": "Integração com WhatsApp, Telegram e sistema de impressão de pedidos.",
+            "name": "Fluxo de Caixa",
+            "description": "Gestão financeira e relatórios de fluxo de caixa.",
             "files": [
-                "src/lib/whatsapp.ts",
-                "src/lib/telegram.ts",
-                "src/lib/print.ts"
+                "src/app/(authenticated)/fluxo-caixa/page.tsx",
+                "src/app/api/fluxo-caixa/route.ts"
             ]
         }
     ]

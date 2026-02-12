@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import {
     FiUpload, FiSave, FiCheck, FiTrash2, FiLink, FiCopy, FiLock,
     FiEye, FiEyeOff, FiMenu, FiDroplet, FiUser, FiDollarSign,
-    FiSettings, FiSmartphone, FiUsers, FiStar, FiMessageSquare, FiSend, FiClock, FiHeadphones
+    FiSettings, FiSmartphone, FiUsers, FiStar, FiMessageSquare, FiSend, FiClock, FiCommand
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { FaWhatsapp } from 'react-icons/fa';
+import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -46,11 +48,14 @@ const colorPresets = [
     { name: 'Cyan', primary: '#00cec9', secondary: '#1e272e' }
 ];
 
-type SettingsTab = 'geral' | 'aparencia' | 'cardapio' | 'pagamento' | 'menu' | 'links' | 'conta' | 'avaliacoes' | 'suporte';
+type SettingsTab = 'geral' | 'aparencia' | 'cardapio' | 'pagamento' | 'menu' | 'links' | 'conta' | 'avaliacoes' | 'suporte' | 'atalhos';
 
-export default function ConfiguracoesPage() {
+function ConfiguracoesContent() {
     const { user, userSettings, updateSettings, signOut, previewSettings } = useAuth();
     const { canAccess } = useSubscription();
+    const { setShowHelp } = useKeyboardShortcuts();
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [activeTab, setActiveTab] = useState<SettingsTab>('geral');
@@ -79,8 +84,8 @@ export default function ConfiguracoesPage() {
     const [openingHours, setOpeningHours] = useState<OpeningHourInput[]>([]);
 
     // Ratings State
-    const [storeRatings, setStoreRatings] = useState<any[]>([]);
-    const [productRatings, setProductRatings] = useState<any[]>([]);
+    const [storeRatings, setStoreRatings] = useState<{ id: string; rating: number; comment?: string; customer_name?: string; created_at: string; hidden?: boolean; reply?: string; user_id: string; products?: { name: string } }[]>([]);
+    const [productRatings, setProductRatings] = useState<{ id: string; rating: number; comment?: string; customer_name?: string; created_at: string; hidden?: boolean; reply?: string; user_id: string; products?: { name: string } }[]>([]);
     const [ratingTab, setRatingTab] = useState<'store' | 'product'>('store');
     const [replyingId, setReplyingId] = useState<string | null>(null);
     const [replyText, setReplyText] = useState('');
@@ -113,7 +118,7 @@ export default function ConfiguracoesPage() {
         { id: 'pagamento' as SettingsTab, label: 'Pagamento', icon: FiDollarSign },
         { id: 'menu' as SettingsTab, label: 'Menu Lateral', icon: FiMenu },
         { id: 'avaliacoes' as SettingsTab, label: 'Avaliações', icon: FiStar },
-        { id: 'suporte' as SettingsTab, label: 'Suporte', icon: FiHeadphones },
+        { id: 'atalhos' as SettingsTab, label: 'Atalhos', icon: FiCommand },
         { id: 'links' as SettingsTab, label: 'Links de Acesso', icon: FiUsers },
         { id: 'conta' as SettingsTab, label: 'Conta', icon: FiUser },
     ];
@@ -137,9 +142,22 @@ export default function ConfiguracoesPage() {
         }
     }, [userSettings]);
 
+    // Auto-selecionar aba via parâmetro URL (ex: ?tab=suporte vindo do sidebar)
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && ['geral', 'aparencia', 'cardapio', 'pagamento', 'menu', 'avaliacoes', 'suporte', 'links', 'conta', 'atalhos'].includes(tab)) {
+            setActiveTab(tab as SettingsTab);
+            // Limpa o parâmetro da URL de forma "limpa" no Next.js
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete('tab');
+            const queryString = params.toString();
+            router.replace(window.location.pathname + (queryString ? `?${queryString}` : ''), { scroll: false });
+        }
+    }, [searchParams, router]);
+
     useEffect(() => {
         if (user?.id) {
-            getOpeningHours(user.id).then((data: any[]) => {
+            getOpeningHours(user.id).then((data) => {
                 if (data && data.length > 0) {
                     setOpeningHours(data.map(h => ({
                         day_of_week: h.day_of_week,
@@ -159,20 +177,20 @@ export default function ConfiguracoesPage() {
         }
     }, [user?.id]);
 
-    const loadRatings = () => {
+    const loadRatings = useCallback(() => {
         if (user?.id) {
             getRecentRatings(user.id).then(data => {
                 setStoreRatings(data.storeRatings);
                 setProductRatings(data.productRatings);
             });
         }
-    };
+    }, [user?.id]);
 
     useEffect(() => {
         if (activeTab === 'avaliacoes') {
             loadRatings();
         }
-    }, [activeTab, user?.id]);
+    }, [activeTab, user?.id, loadRatings]);
 
     const getMenuUrl = () => {
         if (typeof window !== 'undefined' && publicSlug) {
@@ -212,7 +230,7 @@ export default function ConfiguracoesPage() {
         } catch (error) { console.error('Error saving settings:', error); } finally { setSaving(false); }
     };
 
-    const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
     const handleOpeningHourChange = (index: number, field: keyof OpeningHourInput, value: string | boolean) => {
         setOpeningHours(prev => { const newHours = [...prev]; newHours[index] = { ...newHours[index], [field]: value }; return newHours; });
     };
@@ -546,7 +564,7 @@ export default function ConfiguracoesPage() {
                     <div className={styles.tabContent}>
                         <div className={styles.sectionHeader}><h2>Visibilidade do Menu</h2><p>Escolha quais itens aparecem no menu lateral</p></div>
                         <div className={styles.menuActions}><Button variant="outline" onClick={hideUnavailableFeatures} leftIcon={<FiEyeOff />}>Ocultar Itens Fora do Plano</Button><Button variant="outline" onClick={() => setHiddenSidebarItems([])} leftIcon={<FiEye />}>Mostrar Todos</Button></div>
-                        <div className={styles.sidebarItemsGrid}>{SIDEBAR_MENU_ITEMS.map((item) => { const isHidden = hiddenSidebarItems.includes(item.href); const isAvailable = canAccess(item.feature as any); return (<label key={item.href} className={`${styles.sidebarItemOption} ${isHidden ? styles.hidden : ''} ${!isAvailable ? styles.unavailable : ''}`}><input type="checkbox" checked={!isHidden} onChange={() => toggleSidebarItem(item.href)} /><span className={styles.sidebarItemLabel}>{isHidden ? <FiEyeOff size={14} /> : <FiEye size={14} />}{item.label}</span>{!isAvailable && (<span className={styles.planBadge}><FiLock size={10} /> Upgrade</span>)}</label>); })}</div>
+                        <div className={styles.sidebarItemsGrid}>{SIDEBAR_MENU_ITEMS.map((item) => { const isHidden = hiddenSidebarItems.includes(item.href); const isAvailable = canAccess(item.feature); return (<label key={item.href} className={`${styles.sidebarItemOption} ${isHidden ? styles.hidden : ''} ${!isAvailable ? styles.unavailable : ''}`}><input type="checkbox" checked={!isHidden} onChange={() => toggleSidebarItem(item.href)} /><span className={styles.sidebarItemLabel}>{isHidden ? <FiEyeOff size={14} /> : <FiEye size={14} />}{item.label}</span>{!isAvailable && (<span className={styles.planBadge}><FiLock size={10} /> Upgrade</span>)}</label>); })}</div>
                         <div className={styles.saveSection}><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={saveSidebarVisibility} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Visibilidade'}</Button></div>
                     </div>
                 );
@@ -578,7 +596,7 @@ export default function ConfiguracoesPage() {
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => handleToggleRatingVisibility(rating.id, rating.hidden, ratingTab)} className={`p-2 rounded-lg transition-colors ${rating.hidden ? 'bg-error/10 text-error' : 'bg-bg-tertiary text-text-muted hover:text-primary'}`} title={rating.hidden ? 'Mostrar' : 'Ocultar'}>{rating.hidden ? <FiEyeOff size={18} /> : <FiEye size={18} />}</button>
+                                                <button onClick={() => handleToggleRatingVisibility(rating.id, rating.hidden ?? false, ratingTab)} className={`p-2 rounded-lg transition-colors ${rating.hidden ? 'bg-error/10 text-error' : 'bg-bg-tertiary text-text-muted hover:text-primary'}`} title={rating.hidden ? 'Mostrar' : 'Ocultar'}>{rating.hidden ? <FiEyeOff size={18} /> : <FiEye size={18} />}</button>
                                                 <button onClick={() => handleDeleteRating(rating.id, ratingTab)} className="p-2 rounded-lg bg-bg-tertiary text-text-muted hover:bg-error/10 hover:text-error transition-colors" title="Excluir"><FiTrash2 size={18} /></button>
                                             </div>
                                         </div>
@@ -640,9 +658,21 @@ export default function ConfiguracoesPage() {
         <div className={styles.container}>
             <div className={styles.header}><h1 className={styles.title}>Configurações</h1><p className={styles.subtitle}>Personalize seu aplicativo</p></div>
             <div className={styles.settingsLayout}>
-                <div className={styles.tabsSidebar}>{TABS.map((tab) => (<button key={tab.id} className={`${styles.tabButton} ${activeTab === tab.id ? styles.active : ''}`} onClick={() => setActiveTab(tab.id)}><tab.icon /><span>{tab.label}</span></button>))}</div>
+                <div className={styles.tabsSidebar}>{TABS.map((tab) => (<button key={tab.id} className={`${styles.tabButton} ${activeTab === tab.id ? styles.active : ''}`} onClick={() => { if (tab.id === 'atalhos') { setShowHelp(true); } else { setActiveTab(tab.id); } }}><tab.icon /><span>{tab.label}</span></button>))}</div>
                 <Card className={styles.settingsCard}>{renderTabContent()}</Card>
             </div>
         </div>
+    );
+}
+
+export default function ConfiguracoesPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+        }>
+            <ConfiguracoesContent />
+        </Suspense>
     );
 }

@@ -1,8 +1,6 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-/* eslint-disable @next/next/no-img-element */
-import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -42,7 +40,7 @@ import {
     FiPackage,
     FiTag,
     FiPercent,
-    FiCommand,
+    FiHeadphones,
     FiGift,
     FiActivity,
     FiFileText,
@@ -52,7 +50,7 @@ import {
 } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
 import { useAuth } from '@/contexts/AuthContext';
-import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
+
 import { useSidebar } from '@/contexts/SidebarContext';
 import { useEmployee } from '@/contexts/EmployeeContext';
 import PinPadModal from '@/components/auth/PinPadModal';
@@ -173,7 +171,7 @@ export default function Sidebar() {
     const navRef = useRef<HTMLElement>(null);
     const pathname = usePathname();
     const { userSettings, signOut, updateSettings } = useAuth();
-    const { setShowHelp } = useKeyboardShortcuts();
+
 
     // Employee Context
     const { activeEmployee, logoutEmployee, loginWithPin, hasPermission, isLocked, lockScreen, unlockScreen, hasAdmin } = useEmployee();
@@ -538,24 +536,21 @@ export default function Sidebar() {
                         </>
                     )}
 
-                    <button
+                    <Link
+                        href="/configuracoes?tab=suporte"
+                        scroll={false}
                         className={cn(
                             'relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                             'hover:bg-bg-tertiary hover:text-text-primary',
                             'mt-2 border-t border-border pt-3',
                             collapsed && 'justify-center px-3.5'
                         )}
-                        onClick={() => setShowHelp(true)}
-                        title="Atalhos de Teclado (Ctrl + /)"
+                        onClick={closeMobileMenu}
+                        title="Suporte"
                     >
-                        <FiCommand className="text-xl shrink-0" />
-                        {!collapsed && (
-                            <span className="flex items-center justify-between gap-2 flex-1 whitespace-nowrap overflow-hidden">
-                                Atalhos
-                                <kbd className="font-mono text-[0.6875rem] px-1.5 py-0.5 bg-bg-tertiary border border-border rounded text-text-secondary ml-auto">Ctrl+/</kbd>
-                            </span>
-                        )}
-                    </button>
+                        <FiHeadphones className="text-xl shrink-0" />
+                        {!collapsed && <span className="whitespace-nowrap overflow-hidden">Suporte</span>}
+                    </Link>
                 </div>
 
                 {/* Collapse Toggle */}
