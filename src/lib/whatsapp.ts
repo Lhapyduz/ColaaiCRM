@@ -15,42 +15,42 @@ export interface NotificationSettings {
     app_name: string;
 }
 
-// Emoji constants using fromCodePoint for encoding safety
+// Emoji constants using surrogate pairs for maximum compatibility
 export const EMOJIS = {
-    CLIPBOARD: String.fromCodePoint(0x1F4CB),
-    COOK: String.fromCodePoint(0x1F468, 0x200D, 0x1F373),
-    COOK_PAN: String.fromCodePoint(0x1F373),
-    CHECK: String.fromCodePoint(0x2705),
-    TRUCK: String.fromCodePoint(0x1F69A),
-    SCOOTER: String.fromCodePoint(0x1F6F5),
-    CELEBRATION: String.fromCodePoint(0x1F389),
-    HEART: String.fromCodePoint(0x2764, 0xFE0F),
-    CANCEL: String.fromCodePoint(0x274C),
-    BURGER: String.fromCodePoint(0x1F354),
-    FRIES: String.fromCodePoint(0x1F35F),
-    USER: String.fromCodePoint(0x1F464),
-    PHONE: String.fromCodePoint(0x1F4F1),
-    LOCATION: String.fromCodePoint(0x1F4CD),
-    HOUSE: String.fromCodePoint(0x1F3E0),
-    NEIGHBORHOOD: String.fromCodePoint(0x1F3D8, 0xFE0F),
-    STORE: String.fromCodePoint(0x1F3EA),
-    PACKAGE: String.fromCodePoint(0x1F4E6),
-    MEMO: String.fromCodePoint(0x1F4DD),
-    MONEY_BAG: String.fromCodePoint(0x1F4B0),
-    BANKNOTE: String.fromCodePoint(0x1F4B5),
-    CARD: String.fromCodePoint(0x1F4B3),
-    COUPON: String.fromCodePoint(0x1F3F7, 0xFE0F),
-    ZAP: String.fromCodePoint(0x26A1),
-    WAVE: String.fromCodePoint(0x1F44B),
-    SPARKLES: String.fromCodePoint(0x2728),
-    ROCKET: String.fromCodePoint(0x1F680),
-    STAR: String.fromCodePoint(0x2B50),
-    SPEECH: String.fromCodePoint(0x1F4AC),
-    NUMBERS: String.fromCodePoint(0x1F522),
-    MONEY_MOUTH: String.fromCodePoint(0x1F911),
-    CLOCK: String.fromCodePoint(0x23F0),
-    LINK: String.fromCodePoint(0x1F517),
-    EMAIL: String.fromCodePoint(0x1F4E7),
+    CLIPBOARD: '\uD83D\uDCCB',
+    COOK: '\uD83D\uDC68\u200D\uD83C\uDF73',
+    COOK_PAN: '\uD83C\uDF73',
+    CHECK: '\u2705',
+    TRUCK: '\uD83D\uDE9A',
+    SCOOTER: '\uD83D\uDEF5',
+    CELEBRATION: '\uD83C\uDF89',
+    HEART: '\u2764\uFE0F',
+    CANCEL: '\u274C',
+    BURGER: '\uD83C\uDF54',
+    FRIES: '\uD83C\uDF5F',
+    USER: '\uD83D\uDC64',
+    PHONE: '\uD83D\uDCF1',
+    LOCATION: '\uD83D\uDCCD',
+    HOUSE: '\uD83C\uDFE0',
+    NEIGHBORHOOD: '\uD83C\uDFD8\uFE0F',
+    STORE: '\uD83C\uDFEA',
+    PACKAGE: '\uD83D\uDCE6',
+    MEMO: '\uD83D\uDCDD',
+    MONEY_BAG: '\uD83D\uDCB0',
+    BANKNOTE: '\uD83D\uDCB5',
+    CARD: '\uD83D\uDCB3',
+    COUPON: '\uD83C\uDFF7\uFE0F',
+    ZAP: '\u26A1',
+    WAVE: '\uD83D\uDC4B',
+    SPARKLES: '\u2728',
+    ROCKET: '\uD83D\uDE80',
+    STAR: '\u2B50',
+    SPEECH: '\uD83D\uDCAC',
+    NUMBERS: '\uD83D\uDD22',
+    MONEY_MOUTH: '\uD83E\uDD11',
+    CLOCK: '\u23F0',
+    LINK: '\uD83D\uDD17',
+    EMAIL: '\uD83D\uDCE7',
 };
 // Status messages in Portuguese
 const statusMessages: Record<string, { title: string; message: string; emoji: string }> = {
@@ -141,7 +141,8 @@ export function getWhatsAppUrl(phone: string, message: string): string {
         cleanPhone = '55' + cleanPhone;
     }
 
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    // Using api.whatsapp.com for better redirect handling with emojis
+    return `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
 }
 
 export function openWhatsAppNotification(

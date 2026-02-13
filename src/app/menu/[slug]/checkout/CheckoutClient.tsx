@@ -311,7 +311,7 @@ export default function CheckoutClient({ slug, settings, couponsEnabled }: Check
                                     : 'bg-[#121212] border-white/5 text-gray-400 hover:border-white/10'
                                     }`}
                             >
-                                {mode === 'delivery' ? '🚚 Entrega' : '🏪 Retirada'}
+                                {mode === 'delivery' ? `${EMOJIS.TRUCK} Entrega` : `${EMOJIS.STORE} Retirada`}
                             </button>
                         ))}
                     </div>
@@ -389,12 +389,12 @@ export default function CheckoutClient({ slug, settings, couponsEnabled }: Check
 
                 {/* ── 5. Forma de Pagamento ───────────────────── */}
                 <section className="bg-[#1A1A1A] rounded-2xl border border-white/5 p-5 space-y-4">
-                    <h2 className="font-bold text-sm text-gray-400 uppercase tracking-widest">💳 Pagamento</h2>
+                    <h2 className="font-bold text-sm text-gray-400 uppercase tracking-widest">{EMOJIS.CARD} Pagamento</h2>
                     <div className="grid grid-cols-3 gap-3">
                         {([
-                            { key: 'pix' as PaymentMethod, label: 'PIX', icon: '⚡' },
-                            { key: 'card' as PaymentMethod, label: 'Cartão', icon: '💳' },
-                            { key: 'cash' as PaymentMethod, label: 'Dinheiro', icon: '💵' },
+                            { key: 'pix' as PaymentMethod, label: 'PIX', icon: EMOJIS.ZAP },
+                            { key: 'card' as PaymentMethod, label: 'Cartão', icon: EMOJIS.CARD },
+                            { key: 'cash' as PaymentMethod, label: 'Dinheiro', icon: EMOJIS.BANKNOTE },
                         ]).map(({ key, label, icon }) => (
                             <button
                                 key={key}
@@ -439,7 +439,7 @@ export default function CheckoutClient({ slug, settings, couponsEnabled }: Check
 
                 {/* ── 6. Observações ──────────────────────────── */}
                 <section className="bg-[#1A1A1A] rounded-2xl border border-white/5 p-5 space-y-3">
-                    <h2 className="font-bold text-sm text-gray-400 uppercase tracking-widest">📝 Observações</h2>
+                    <h2 className="font-bold text-sm text-gray-400 uppercase tracking-widest">{EMOJIS.MEMO} Observações</h2>
                     <textarea
                         placeholder="Alguma observação sobre o pedido? (opcional)"
                         value={observations} onChange={e => setObservations(e.target.value)}
