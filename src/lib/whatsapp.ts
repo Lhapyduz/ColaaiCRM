@@ -15,37 +15,74 @@ export interface NotificationSettings {
     app_name: string;
 }
 
+// Emoji constants using fromCodePoint for encoding safety
+export const EMOJIS = {
+    CLIPBOARD: String.fromCodePoint(0x1F4CB),
+    COOK: String.fromCodePoint(0x1F468, 0x200D, 0x1F373),
+    COOK_PAN: String.fromCodePoint(0x1F373),
+    CHECK: String.fromCodePoint(0x2705),
+    TRUCK: String.fromCodePoint(0x1F69A),
+    SCOOTER: String.fromCodePoint(0x1F6F5),
+    CELEBRATION: String.fromCodePoint(0x1F389),
+    HEART: String.fromCodePoint(0x2764, 0xFE0F),
+    CANCEL: String.fromCodePoint(0x274C),
+    BURGER: String.fromCodePoint(0x1F354),
+    FRIES: String.fromCodePoint(0x1F35F),
+    USER: String.fromCodePoint(0x1F464),
+    PHONE: String.fromCodePoint(0x1F4F1),
+    LOCATION: String.fromCodePoint(0x1F4CD),
+    HOUSE: String.fromCodePoint(0x1F3E0),
+    NEIGHBORHOOD: String.fromCodePoint(0x1F3D8, 0xFE0F),
+    STORE: String.fromCodePoint(0x1F3EA),
+    PACKAGE: String.fromCodePoint(0x1F4E6),
+    MEMO: String.fromCodePoint(0x1F4DD),
+    MONEY_BAG: String.fromCodePoint(0x1F4B0),
+    BANKNOTE: String.fromCodePoint(0x1F4B5),
+    CARD: String.fromCodePoint(0x1F4B3),
+    COUPON: String.fromCodePoint(0x1F3F7, 0xFE0F),
+    ZAP: String.fromCodePoint(0x26A1),
+    WAVE: String.fromCodePoint(0x1F44B),
+    SPARKLES: String.fromCodePoint(0x2728),
+    ROCKET: String.fromCodePoint(0x1F680),
+    STAR: String.fromCodePoint(0x2B50),
+    SPEECH: String.fromCodePoint(0x1F4AC),
+    NUMBERS: String.fromCodePoint(0x1F522),
+    MONEY_MOUTH: String.fromCodePoint(0x1F911),
+    CLOCK: String.fromCodePoint(0x23F0),
+    LINK: String.fromCodePoint(0x1F517),
+    EMAIL: String.fromCodePoint(0x1F4E7),
+};
 // Status messages in Portuguese
 const statusMessages: Record<string, { title: string; message: string; emoji: string }> = {
     pending: {
         title: 'Pedido Recebido',
         message: 'Seu pedido foi recebido e está aguardando confirmação.',
-        emoji: '📋'
+        emoji: EMOJIS.CLIPBOARD
     },
     preparing: {
         title: 'Em Preparo',
-        message: 'Seu pedido está sendo preparado com carinho! 🍳',
-        emoji: '👨‍🍳'
+        message: `Seu pedido está sendo preparado com carinho! ${EMOJIS.COOK_PAN}`,
+        emoji: EMOJIS.COOK
     },
     ready: {
         title: 'Pedido Pronto',
         message: 'Seu pedido está pronto!',
-        emoji: '✅'
+        emoji: EMOJIS.CHECK
     },
     delivering: {
         title: 'Saiu para Entrega',
-        message: 'Seu pedido saiu para entrega! Em breve estará aí. 🛵',
-        emoji: '🚚'
+        message: `Seu pedido saiu para entrega! Em breve estará aí. ${EMOJIS.SCOOTER}`,
+        emoji: EMOJIS.TRUCK
     },
     delivered: {
         title: 'Pedido Entregue',
-        message: 'Seu pedido foi entregue! Obrigado pela preferência! ❤️',
-        emoji: '🎉'
+        message: `Seu pedido foi entregue! Obrigado pela preferência! ${EMOJIS.HEART}`,
+        emoji: EMOJIS.CELEBRATION
     },
     cancelled: {
         title: 'Pedido Cancelado',
         message: 'Infelizmente seu pedido foi cancelado. Entre em contato para mais informações.',
-        emoji: '❌'
+        emoji: EMOJIS.CANCEL
     }
 };
 
@@ -64,25 +101,29 @@ export function generateWhatsAppMessage(
 ): string {
     const statusInfo = statusMessages[newStatus] || statusMessages.pending;
 
-    let message = `${statusInfo.emoji} *${settings.app_name}*\n\n`;
-    message += `*${statusInfo.title}*\n`;
-    message += `${'─'.repeat(20)}\n\n`;
-    message += `📋 *Pedido #${order.order_number}*\n`;
-    message += `👤 ${order.customer_name}\n`;
-    message += `💰 Total: ${formatCurrency(order.total)}\n\n`;
-    message += `${statusInfo.message}\n`;
+    let message = `${statusInfo.emoji} *${settings.app_name.toUpperCase()}*\n\n`;
+    message += `Olá, *${order.customer_name}*! ${EMOJIS.WAVE}\n`;
+    message += `Status do seu pedido: *${statusInfo.title}*\n`;
+    message += `--------------------\n\n`;
+    message += `${EMOJIS.NUMBERS} *PEDIDO #${order.order_number}*\n`;
+    message += `${EMOJIS.BANKNOTE} *Total:* ${formatCurrency(order.total)}\n\n`;
+
+    message += `${statusInfo.message}\n\n`;
 
     if (newStatus === 'ready' && !order.is_delivery) {
-        message += `\n🏪 *Retire seu pedido no balcão!*`;
+        message += `${EMOJIS.STORE} *RETIRADA:* Já pode vir buscar seu pedido no balcão! Estamos te esperando. ${EMOJIS.SPARKLES}\n`;
     }
 
     if (newStatus === 'delivering' && order.customer_address) {
-        message += `\n📍 Entrega em: ${order.customer_address}`;
+        message += `${EMOJIS.LOCATION} *ENDEREÇO:* ${order.customer_address}\n`;
     }
 
     // Add rating link for delivered orders
     if (newStatus === 'delivered' && order.rating_token && baseUrl) {
-        message += `\n\n⭐ *Avalie seu pedido:*\n${baseUrl}/avaliar/${order.rating_token}`;
+        message += `--------------------\n\n`;
+        message += `${EMOJIS.STAR} *Gostou? Nos avalie!*\n`;
+        message += `Sua opinião é muito importante para nós:\n`;
+        message += `${baseUrl}/avaliar/${order.rating_token}\n`;
     }
 
     return message;
@@ -184,11 +225,12 @@ export async function sendAdminWhatsAppNotification(
                 message: `Failed: ${text}`
             };
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
         console.error('[WhatsApp] Error sending notification:', error);
         return {
             success: false,
-            message: error.message
+            message: errorMsg
         };
     }
 }
@@ -204,14 +246,16 @@ export function formatPixPaymentMessage(data: {
 }): string {
     const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
-    return `💰 *NOVO PAGAMENTO PIX*
+    return `${EMOJIS.MONEY_MOUTH} *NOVO PAGAMENTO PIX* ${EMOJIS.CHECK}
+========================
 
-📋 *Plano:* ${data.planType}
-💵 *Valor:* R$ ${data.amount.toFixed(2).replace('.', ',')}
-📧 *Cliente:* ${data.userEmail || 'N/A'}
-🔗 *Subscription:* ${data.subscriptionId || 'N/A'}
-⏰ *Data:* ${now}
+${EMOJIS.CLIPBOARD} *PLANO:* ${data.planType.toUpperCase()}
+${EMOJIS.BANKNOTE} *VALOR:* *R$ ${data.amount.toFixed(2).replace('.', ',')}*
+${EMOJIS.EMAIL} *CLIENTE:* ${data.userEmail || 'N/A'}
+${EMOJIS.LINK} *ID:* \`${data.subscriptionId || 'N/A'}\`
+${EMOJIS.CLOCK} *DATA:* ${now}
 
-_Confirme o recebimento e ative a assinatura._`;
+========================
+${EMOJIS.ROCKET} _Confirme o recebimento e ative a assinatura no painel._`;
 }
 

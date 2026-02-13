@@ -55,8 +55,6 @@ export default async function MenuPage({ params }: PageProps) {
     const [
         { data: categories },
         { data: products },
-        { data: appSettings },
-        { data: loyaltySettings }
     ] = await Promise.all([
         supabase
             .from('categories')
@@ -69,16 +67,6 @@ export default async function MenuPage({ params }: PageProps) {
             .eq('user_id', settings.user_id)
             .eq('available', true)
             .order('name'),
-        supabase
-            .from('app_settings')
-            .select('loyalty_enabled, coupons_enabled')
-            .eq('user_id', settings.user_id)
-            .single(),
-        supabase
-            .from('loyalty_settings')
-            .select('points_per_real, is_active')
-            .eq('user_id', settings.user_id)
-            .single(),
     ]);
 
     return (
@@ -87,8 +75,6 @@ export default async function MenuPage({ params }: PageProps) {
             initialSettings={settings}
             initialCategories={categories || []}
             initialProducts={products || []}
-            initialAppSettings={appSettings || null}
-            initialLoyaltySettings={loyaltySettings || null}
         />
     );
 }

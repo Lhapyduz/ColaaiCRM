@@ -258,8 +258,18 @@ export default function ProdutosPage() {
     }, [isDragging]);
 
     useEffect(() => {
-        // useProductsCache e useCategoriesCache já lidam com o fetch inicial
-        // e monitoram a mudança de usuário.
+        // useProductsCache e useCategoriesCache já lidam com produtos e categorias.
+        // Precisamos carregar os addon_groups separadamente, pois não estão no cache.
+        if (user) {
+            supabase
+                .from('addon_groups')
+                .select('id, name, description, required')
+                .eq('user_id', user.id)
+                .order('name')
+                .then(({ data }) => {
+                    if (data) setAddonGroups(data);
+                });
+        }
     }, [user]);
 
     const fetchData = async () => {
@@ -489,7 +499,7 @@ export default function ProdutosPage() {
             {/* Product Modal */}
             {showProductModal && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-modal p-6 animate-[fadeIn_0.15s_ease]" onClick={closeProductModal}>
-                    <div className="w-full max-w-[500px] bg-bg-card rounded-xl border border-border p-7 animate-[scaleIn_0.15s_ease]" onClick={(e) => e.stopPropagation()}>
+                    <div className="w-full max-w-[500px] max-h-[90vh] overflow-y-auto bg-bg-card rounded-xl border border-border p-7 animate-[scaleIn_0.15s_ease] scrollbar-thin" onClick={(e) => e.stopPropagation()}>
                         <h2 className="text-xl font-semibold mb-6">{editingProduct ? 'Editar Produto' : 'Novo Produto'}</h2>
 
                         <div className="flex flex-col gap-4 mb-6">
