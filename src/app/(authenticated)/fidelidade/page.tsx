@@ -36,7 +36,6 @@ export default function FidelidadePage() {
 
 
 
-    if (!canAccess('loyalty')) return <UpgradePrompt feature="Programa de Fidelidade" requiredPlan="Avançado" currentPlan={plan} fullPage />;
 
     const fetchCustomers = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from('customers').select('*').eq('user_id', user.id).gt('total_orders', 0).order('total_points', { ascending: false }); if (!error && data) setCustomers(data); }, [user]);
     const fetchRewards = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from('loyalty_rewards').select('*').eq('user_id', user.id).order('points_cost', { ascending: true }); if (!error && data) setRewards(data); }, [user]);
@@ -77,6 +76,8 @@ export default function FidelidadePage() {
         avgPoints: customers.length ? Math.round(customers.reduce((sum, c) => sum + (c.total_points || 0), 0) / customers.length) : 0,
         totalSavings: customers.reduce((sum, c) => sum + (c.total_discount_savings || 0), 0)
     }), [customers]);
+
+    if (!canAccess('loyalty')) return <UpgradePrompt feature="Programa de Fidelidade" requiredPlan="Avançado" currentPlan={plan} fullPage />;
 
     if (appSettings && !appSettings.loyalty_enabled) {
         return (

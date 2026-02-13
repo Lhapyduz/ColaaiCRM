@@ -167,9 +167,6 @@ export default function FluxoCaixaPage() {
         }
     }, [user, dateFrom, dateTo, toast]);
 
-    if (!hasAccess) {
-        return <UpgradePrompt feature="Fluxo de Caixa" requiredPlan="Avançado" currentPlan={plan} fullPage />;
-    }
 
     const calculateDailySummaries = useCallback((data: CashFlowEntry[]) => {
         const summaryMap = new Map<string, { income: number; expense: number }>();
@@ -193,6 +190,10 @@ export default function FluxoCaixaPage() {
     useEffect(() => {
         if (user && dateFrom && dateTo && hasAccess) fetchData();
     }, [user, dateFrom, dateTo, hasAccess, fetchData]);
+
+    if (!hasAccess) {
+        return <UpgradePrompt feature="Fluxo de Caixa" requiredPlan="Avançado" currentPlan={plan} fullPage />;
+    }
 
     const setPeriodDates = (p: 'week' | 'month' | 'year') => {
         const now = new Date();
@@ -316,7 +317,7 @@ export default function FluxoCaixaPage() {
                                         {showCategoryDetails && categoryInfo && categoryInfo.itemCount > 0 && (
                                             <div className="mt-2 pl-4 text-xs text-text-muted flex flex-wrap gap-2 items-center">
                                                 <span className="font-medium text-text-secondary">{categoryInfo.itemCount} {categoryInfo.itemCount === 1 ? 'item' : 'itens'} vendido{categoryInfo.itemCount === 1 ? '' : 's'}:</span>
-                                                {categoryInfo.categories.map((cat, idx) => (
+                                                {categoryInfo.categories.map((cat) => (
                                                     <span key={cat.name} className="bg-bg-tertiary px-2 py-0.5 rounded-full">
                                                         {cat.name}: {cat.count}
                                                     </span>

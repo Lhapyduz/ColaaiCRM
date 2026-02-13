@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency, formatDate } from '@/hooks/useFormatters';
+import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface Bill {
@@ -55,9 +55,6 @@ export default function ContasPage() {
 
 
 
-    if (!hasAccess) {
-        return <UpgradePrompt feature="Contas a Pagar/Receber" requiredPlan="Avançado" currentPlan={plan} fullPage />;
-    }
 
     const fetchBills = useCallback(async () => {
         if (!user) return;
@@ -69,8 +66,10 @@ export default function ContasPage() {
     const fetchCategories = useCallback(async () => {
         if (!user) return;
         const { data, error } = await supabase.from('bill_categories').select('*').eq('user_id', user.id);
-        if (!error && data) setCategories(data);
-        else {
+
+        if (!error && data && data.length > 0) {
+            setCategories(data);
+        } else if (!error) {
             const defaults = [
                 { name: 'Fornecedores', type: 'payable', icon: '📦', color: '#e74c3c' },
                 { name: 'Aluguel', type: 'payable', icon: '🏠', color: '#9b59b6' },
@@ -79,8 +78,14 @@ export default function ContasPage() {
                 { name: 'Vendas', type: 'receivable', icon: '💰', color: '#27ae60' },
                 { name: 'Outros', type: 'both', icon: '📝', color: '#7f8c8d' }
             ];
-            for (const cat of defaults) await supabase.from('bill_categories').insert({ user_id: user.id, ...cat });
-            fetchCategories();
+
+            const insertPromises = defaults.map(cat =>
+                supabase.from('bill_categories').insert({ user_id: user.id, ...cat })
+            );
+            await Promise.all(insertPromises);
+
+            const { data: newData, error: newError } = await supabase.from('bill_categories').select('*').eq('user_id', user.id);
+            if (!newError && newData) setCategories(newData);
         }
     }, [user]);
 
@@ -93,6 +98,10 @@ export default function ContasPage() {
     useEffect(() => {
         if (user && hasAccess) fetchData();
     }, [user, hasAccess, fetchData]);
+
+    if (!hasAccess) {
+        return <UpgradePrompt feature="Contas a Pagar/Receber" requiredPlan="Avançado" currentPlan={plan} fullPage />;
+    }
 
     const handleSave = async () => {
         if (!user) return;
