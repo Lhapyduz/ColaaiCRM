@@ -92,14 +92,14 @@ export default function DashboardPage() {
 
             const { data: orders } = await supabase
                 .from('orders')
-                .select('*')
+                .select('id, order_number, customer_name, total, status, created_at, payment_status, is_delivery')
                 .eq('user_id', user.id)
                 .gte('created_at', today.toISOString())
                 .order('created_at', { ascending: false });
 
             const { data: yesterdayOrders } = await supabase
                 .from('orders')
-                .select('*')
+                .select('total, payment_status, status')
                 .eq('user_id', user.id)
                 .gte('created_at', yesterday.toISOString())
                 .lt('created_at', today.toISOString())

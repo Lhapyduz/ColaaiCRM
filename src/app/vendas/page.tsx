@@ -4,9 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-    FiCheck, FiX, FiChevronDown, FiChevronUp, FiShoppingBag, FiTruck, FiBarChart2,
-    FiUsers, FiGift, FiTag, FiPackage, FiCreditCard, FiSmartphone, FiSettings,
-    FiStar, FiZap, FiShield, FiHeadphones, FiArrowRight, FiPlay
+    FiChevronDown, FiShoppingBag, FiTruck, FiBarChart2,
+    FiGift, FiZap, FiStar, FiArrowRight, FiPlay
 } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
 import { cn } from '@/lib/utils';
@@ -124,7 +123,7 @@ export default function VendasPage() {
                             className="mb-8 block origin-left"
                         >
                             <Image
-                                src="/logo-cola-ai.png"
+                                src="/logo-colaai.webp"
                                 alt="Cola Aí Logo"
                                 width={300}
                                 height={100}

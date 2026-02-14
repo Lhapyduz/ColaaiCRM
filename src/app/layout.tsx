@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Manrope } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { KeyboardShortcutsProvider } from "@/contexts/KeyboardShortcutsContext";
@@ -14,6 +14,13 @@ const inter = Inter({
   subsets: ["latin"],
   display: 'swap',
   variable: '--font-inter'
+});
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ['200', '300', '400', '500', '600', '700', '800'],
+  display: 'swap',
+  variable: '--font-manrope'
 });
 
 export const metadata: Metadata = {
@@ -37,10 +44,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
+    <html lang="pt-BR" className={`${inter.variable} ${manrope.variable}`} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://koxmxvutlxlikeszwyir.supabase.co" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://koxmxvutlxlikeszwyir.supabase.co" />
         <link rel="preconnect" href="https://js.stripe.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://js.stripe.com" />
       </head>
       <body>
         <ErrorBoundary>
