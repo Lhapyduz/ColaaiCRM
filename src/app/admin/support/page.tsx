@@ -119,7 +119,22 @@ export default function SupportPage() {
                 }, (payload) => {
                     const newMsg = payload.new as Message;
                     setMessages(prev => {
+                        // Verifica se a mensagem já existe pelo ID (UUID do Supabase)
                         if (prev.find(m => m.id === newMsg.id)) return prev;
+
+                        // Verifica se existe uma mensagem otimista idêntica (mesmo conteúdo e remetente)
+                        // Mensagens otimistas têm IDs numéricos (Date.now().toString())
+                        const optimisticMatch = prev.find(m =>
+                            m.content === newMsg.content &&
+                            m.sender_role === newMsg.sender_role &&
+                            /^\d+$/.test(m.id)
+                        );
+
+                        if (optimisticMatch) {
+                            // Substitui a mensagem otimista pela real do Supabase
+                            return prev.map(m => m.id === optimisticMatch.id ? newMsg : m);
+                        }
+
                         return [...prev, newMsg];
                     });
                 })
