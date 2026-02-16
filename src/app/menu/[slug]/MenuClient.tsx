@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiShoppingBag, FiMinus, FiPlus, FiX, FiMessageCircle, FiCheck, FiStar, FiClock, FiChevronDown } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import StoreRatingModal from '@/components/menu/StoreRatingModal';
 import ProductRatingModal from '@/components/menu/ProductRatingModal';
 import StoreReviewsModal from '@/components/menu/StoreReviewsModal';
+import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
 
 
 interface Category { id: string; name: string; icon: string; color: string; }
@@ -590,7 +591,7 @@ export default function MenuClient({
                                 className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 -mx-4 px-4 lg:snap-none snap-x snap-mandatory no-scrollbar cursor-grab active:cursor-grabbing select-none"
                                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                             >
-                                {products.filter(p => p.promo_enabled).map((product) => {
+                                {products.filter(p => p.promo_enabled).map((product, index) => {
                                     const price = getProductPrice(product);
                                     return (
                                         <div
@@ -604,8 +605,9 @@ export default function MenuClient({
                                                         src={product.image_url}
                                                         alt={product.name}
                                                         fill
+                                                        priority={index < 2}
                                                         className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                                        sizes="320px"
+                                                        sizes="(max-width: 640px) 100vw, 320px"
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full bg-[#2A2A2A] flex items-center justify-center">
@@ -1077,6 +1079,13 @@ export default function MenuClient({
                     productId={ratingProduct.id}
                     productName={ratingProduct.name}
                     productImage={ratingProduct.image_url}
+                />
+            )}
+            {/* Prompt de Instalação PWA Premium */}
+            {settings && (
+                <PWAInstallPrompt
+                    appName={settings.app_name}
+                    logoUrl={settings.logo_url || undefined}
                 />
             )}
         </div>

@@ -22,14 +22,16 @@ export async function GET(
         name: settings.app_name || 'Cardápio Digital',
         short_name: settings.app_name || 'Cardápio',
         description: `Peça online em ${settings.app_name}!`,
-        start_url: `/menu/${slug}`,
+        start_url: `/menu/${slug}?utm_source=pwa`,
+        scope: `/menu/${slug}/`,
         display: 'standalone',
+        orientation: 'portrait',
         background_color: '#0f0f0f',
         theme_color: settings.primary_color || '#ff6b35',
         icons: [
             {
                 src: settings.logo_url || '/logo-colaai.webp',
-                sizes: 'any',
+                sizes: '192x192',
                 type: 'image/png',
             },
             {

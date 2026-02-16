@@ -1,0 +1,2 @@
+// O conteúdo da imagem será salvo via sistema, este arquivo serve para referência.
+// A imagem enviada pelo usuário será salva como public/icon-512x512.png e public/icon-192x192.png (versão redimensionada).

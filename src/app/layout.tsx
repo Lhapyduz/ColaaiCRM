@@ -27,13 +27,28 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Cola Aí - CRM para Lanches",
+  title: "Cola Aí - Gestão Inteligente",
   description: "Sistema completo de gestão para negócios de lanches, hotdogs, porções e bebidas.",
   keywords: "crm, lanches, hotdog, gestão, pedidos, entregas",
   alternates: {
     canonical: '/',
   },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: "Cola Aí",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   other: {
+    'theme-color': '#ff6b35',
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-title': 'Cola Aí',
+    'msapplication-TileColor': '#0f0f0f',
+    'msapplication-TileImage': '/icon-192x192.png',
+    'msapplication-tap-highlight': 'no',
     'dns-prefetch': [
       'https://koxmxvutlxlikeszwyir.supabase.co',
       'https://js.stripe.com',
@@ -53,6 +68,17 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://koxmxvutlxlikeszwyir.supabase.co" />
         <link rel="preconnect" href="https://js.stripe.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://js.stripe.com" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <meta name="theme-color" content="#ff6b35" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="application-name" content="Cola Aí - Gestão Inteligente" />
+        <meta name="apple-mobile-web-app-title" content="Cola Aí" />
+        <meta name="msapplication-navbutton-color" content="#ff6b35" />
+        <meta name="msapplication-starturl" content="/" />
       </head>
       <body>
         <ErrorBoundary>

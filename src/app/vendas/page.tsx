@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
 import { cn } from '@/lib/utils';
+import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
 import { motion, AnimatePresence } from 'framer-motion';
 import ComparisonTable, { PlanFeature } from '@/components/vendas/ComparisonTable';
 import PricingCard from '@/components/vendas/PricingCard';
@@ -91,7 +92,7 @@ export default function VendasPage() {
             <nav className="relative z-50 flex items-center justify-between px-6 py-6 md:px-12 max-w-7xl mx-auto">
                 <Link href="/" className="flex items-center gap-2">
                     <span className="text-2xl">🌭</span>
-                    <span className="font-bold text-xl tracking-tight">Cola Aí</span>
+                    <span className="font-bold text-xl tracking-tight">Cola Aí - Gestão Inteligente</span>
                 </Link>
                 <div className="flex items-center gap-4">
                     <Link href="/login" className="hidden md:block font-medium text-text-secondary hover:text-text-primary transition-colors">
@@ -131,8 +132,8 @@ export default function VendasPage() {
                             <Image
                                 src="/logo-colaai.webp"
                                 alt="Cola Aí Logo"
-                                width={300}
-                                height={100}
+                                width={1024}
+                                height={471}
                                 className="w-auto h-24 md:h-28 object-contain"
                                 priority
                             />
@@ -457,6 +458,10 @@ export default function VendasPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+            <PWAInstallPrompt
+                appName="Cola Aí - Gestão Inteligente"
+                logoUrl="/logo-colaai.webp"
+            />
         </div>
     );
 }
