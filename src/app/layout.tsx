@@ -8,6 +8,9 @@ import { EmployeeProvider } from "@/contexts/EmployeeContext";
 import { RouteGuard } from "@/components/RouteGuard";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import QueryProvider from "@/components/providers/QueryProvider";
+import PWARegistry from "@/components/providers/PWARegistry";
+import { Toaster } from 'react-hot-toast';
 import "./globals.css";
 
 const inter = Inter({
@@ -53,21 +56,25 @@ export default function RootLayout({
       </head>
       <body>
         <ErrorBoundary>
-          <AuthProvider>
-            <SubscriptionProvider>
-              <OfflineProvider>
-                <EmployeeProvider>
-                  <ToastProvider>
-                    <RouteGuard>
-                      <KeyboardShortcutsProvider>
-                        {children}
-                      </KeyboardShortcutsProvider>
-                    </RouteGuard>
-                  </ToastProvider>
-                </EmployeeProvider>
-              </OfflineProvider>
-            </SubscriptionProvider>
-          </AuthProvider>
+          <QueryProvider>
+            <PWARegistry />
+            <Toaster position="top-center" reverseOrder={false} />
+            <AuthProvider>
+              <SubscriptionProvider>
+                <OfflineProvider>
+                  <EmployeeProvider>
+                    <ToastProvider>
+                      <RouteGuard>
+                        <KeyboardShortcutsProvider>
+                          {children}
+                        </KeyboardShortcutsProvider>
+                      </RouteGuard>
+                    </ToastProvider>
+                  </EmployeeProvider>
+                </OfflineProvider>
+              </SubscriptionProvider>
+            </AuthProvider>
+          </QueryProvider>
         </ErrorBoundary>
       </body>
     </html>

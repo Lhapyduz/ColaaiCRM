@@ -8,6 +8,8 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
 
+import { useQuery } from '@tanstack/react-query';
+import MenuSkeleton from '@/components/menu/MenuSkeleton';
 import { cn } from '@/lib/utils';
 import StoreRatingModal from '@/components/menu/StoreRatingModal';
 import ProductRatingModal from '@/components/menu/ProductRatingModal';
@@ -61,14 +63,91 @@ export default function MenuClient({
     initialCategories = [],
     initialProducts = [],
 }: MenuClientProps) {
-    const router = useRouter();
-    const hasInitialData = initialSettings !== null;
+    // 1. Query principal para dados do cardápio (Settings, Categories, Products)
+    const { data: menuData, isLoading: menuLoading, isError: menuError } = useQuery({
+        queryKey: ['menu-data', slug],
+        queryFn: async () => {
+            const { data: settingsData, error: settingsError } = await supabase
+                .from('user_settings')
+                .select('*')
+                .eq('public_slug', slug)
+                .single();
 
-    const [settings, setSettings] = useState<UserSettings | null>(initialSettings);
-    const [categories, setCategories] = useState<Category[]>(initialCategories);
-    const [products, setProducts] = useState<Product[]>(initialProducts);
-    const [loading, setLoading] = useState(!hasInitialData);
-    const [notFound, setNotFound] = useState(false);
+            if (settingsError || !settingsData) throw new Error('Store not found');
+
+            const [{ data: categoriesData }, { data: productsData }] = await Promise.all([
+                supabase.from('categories').select('*').eq('user_id', settingsData.user_id).order('name'),
+                supabase.from('products').select('*').eq('user_id', settingsData.user_id).eq('available', true).order('name'),
+            ]);
+
+            return {
+                settings: settingsData as UserSettings,
+                categories: (categoriesData || []) as Category[],
+                products: (productsData || []) as Product[]
+            };
+        },
+        initialData: initialSettings ? {
+            settings: initialSettings,
+            categories: initialCategories,
+            products: initialProducts
+        } : undefined,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const settings = menuData?.settings || null;
+    const categories = React.useMemo(() => menuData?.categories || [], [menuData?.categories]);
+    const products = React.useMemo(() => menuData?.products || [], [menuData?.products]);
+
+    // 2. Query para dados extras (Opening Hours, Ratings)
+    const { data: extraData } = useQuery({
+        queryKey: ['extra-data', settings?.user_id],
+        queryFn: async () => {
+            if (!settings?.user_id) return null;
+
+            const [{ data: hours }, { data: sRatings }, { data: pRatings }] = await Promise.all([
+                supabase.from('opening_hours').select('*').eq('user_id', settings.user_id),
+                supabase.from('store_ratings').select('*').eq('user_id', settings.user_id).eq('hidden', false).order('created_at', { ascending: false }),
+                supabase.from('product_ratings').select('rating, product_id').eq('user_id', settings.user_id).eq('hidden', false),
+            ]);
+
+            const storeReviews = sRatings || [];
+            const avgStoreRating = storeReviews.length > 0
+                ? storeReviews.reduce((a, b) => a + b.rating, 0) / storeReviews.length
+                : 0;
+
+            const productRatingsMap: { [key: string]: { average: number; count: number } } = {};
+            if (pRatings && pRatings.length > 0) {
+                const tempMap: { [key: string]: { sum: number; count: number } } = {};
+                pRatings.forEach(r => {
+                    if (!tempMap[r.product_id]) tempMap[r.product_id] = { sum: 0, count: 0 };
+                    tempMap[r.product_id].sum += r.rating;
+                    tempMap[r.product_id].count += 1;
+                });
+                Object.keys(tempMap).forEach(id => {
+                    productRatingsMap[id] = {
+                        average: tempMap[id].sum / tempMap[id].count,
+                        count: tempMap[id].count
+                    };
+                });
+            }
+
+            return {
+                openingHours: (hours || []) as OpeningHour[],
+                storeRating: { average: avgStoreRating, count: storeReviews.length },
+                storeReviews: storeReviews,
+                productRatings: productRatingsMap
+            };
+        },
+        enabled: !!settings?.user_id,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const openingHours = React.useMemo(() => extraData?.openingHours || [], [extraData?.openingHours]);
+    const storeRating = React.useMemo(() => extraData?.storeRating || { average: 0, count: 0 }, [extraData?.storeRating]);
+    const productRatings = React.useMemo(() => extraData?.productRatings || {}, [extraData?.productRatings]);
+    const storeReviews = React.useMemo(() => extraData?.storeReviews || [], [extraData?.storeReviews]);
+
+    const router = useRouter();
     const [showSchedules, setShowSchedules] = useState(false);
     const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -80,15 +159,23 @@ export default function MenuClient({
     const [, setLoadingAddons] = useState(false);
     const categoryRefs = useRef<{ [key: string]: HTMLElement | null }>({});
 
-    // New Features States
-    const [openingHours, setOpeningHours] = useState<OpeningHour[]>([]);
-    const [storeRating, setStoreRating] = useState({ average: 0, count: 0 });
-    const [productRatings, setProductRatings] = useState<{ [key: string]: { average: number; count: number } }>({});
+    // UI State for Modals
     const [showStoreRatingModal, setShowStoreRatingModal] = useState(false);
     const [showProductRatingModal, setShowProductRatingModal] = useState(false);
     const [showReviewsModal, setShowReviewsModal] = useState(false);
-    const [storeReviews, setStoreReviews] = useState<Array<{ id: string; rating: number; comment: string | null; customer_name: string | null; created_at: string | null; reply: string | null; replied_at: string | null }>>([]);
     const [ratingProduct, setRatingProduct] = useState<Product | null>(null);
+
+    // Modal Item State
+    const [modalQuantity, setModalQuantity] = useState(1);
+    const [selectedModalAddons, setSelectedModalAddons] = useState<SelectedAddon[]>([]);
+    const [observations, setObservations] = useState('');
+
+    const [currentTimeRef, setCurrentTimeRef] = useState(new Date());
+
+    useEffect(() => {
+        const interval = setInterval(() => setCurrentTimeRef(new Date()), 60000);
+        return () => clearInterval(interval);
+    }, []);
 
     const getProductPrice = (product: Product) => {
         if (!product) return 0;
@@ -99,75 +186,30 @@ export default function MenuClient({
         return Math.max(0, product.price - product.promo_value);
     };
 
-    const [isStoreOpen, setIsStoreOpen] = useState(false);
+    const isStoreOpen = React.useMemo(() => {
+        if (!settings) return false;
+        if (settings.store_open === false) return false;
 
-    // Carousel
-    const promotionalCarouselRef = useRef<HTMLDivElement>(null);
-    const [isDraggingCarousel] = useState(false);
-
-    // Modal Control States (Product Detail)
-    const [modalQuantity, setModalQuantity] = useState(1);
-    const [selectedModalAddons, setSelectedModalAddons] = useState<SelectedAddon[]>([]);
-    const [observations, setObservations] = useState('');
-
-    const checkStoreStatus = useCallback(() => {
-        if (!settings) return;
-
-        // Manual override (Master Switch)
-        if (settings.store_open === false) {
-            setIsStoreOpen(false);
-            return;
-        }
-
-        // Check schedule
-        const now = new Date();
-        const dayOfWeek = now.getDay(); // 0 = Sunday
-        const currentTime = now.getHours() * 60 + now.getMinutes(); // Minutes from midnight
-
+        const dayOfWeek = currentTimeRef.getDay();
+        const currentTimeMinutes = currentTimeRef.getHours() * 60 + currentTimeRef.getMinutes();
         const todaySchedule = openingHours.find(h => h.day_of_week === dayOfWeek);
 
-        if (!todaySchedule || todaySchedule.is_closed) {
-            setIsStoreOpen(false);
-            return;
+        if (!todaySchedule || todaySchedule.is_closed || !todaySchedule.open_time || !todaySchedule.close_time) return false;
+
+        const [openHour, openMinute] = todaySchedule.open_time.split(':').map(Number);
+        const [closeHour, closeMinute] = todaySchedule.close_time.split(':').map(Number);
+        const openTime = openHour * 60 + openMinute;
+        const closeTime = closeHour * 60 + closeMinute;
+
+        if (closeTime < openTime) {
+            return currentTimeMinutes >= openTime || currentTimeMinutes <= closeTime;
         }
+        return currentTimeMinutes >= openTime && currentTimeMinutes <= closeTime;
+    }, [settings, openingHours, currentTimeRef]);
 
-        if (todaySchedule.open_time && todaySchedule.close_time) {
-            const [openHour, openMinute] = todaySchedule.open_time.split(':').map(Number);
-            const [closeHour, closeMinute] = todaySchedule.close_time.split(':').map(Number);
-
-            const openTime = openHour * 60 + openMinute;
-            const closeTime = closeHour * 60 + closeMinute;
-
-            if (closeTime < openTime) {
-                // Spans midnight (e.g. 18:00 to 02:00)
-                // If current time is after open OR before close
-                if (currentTime >= openTime || currentTime <= closeTime) {
-                    setIsStoreOpen(true);
-                } else {
-                    setIsStoreOpen(false);
-                }
-            } else {
-                // Normal hours (e.g. 09:00 to 22:00)
-                if (currentTime >= openTime && currentTime <= closeTime) {
-                    setIsStoreOpen(true);
-                } else {
-                    setIsStoreOpen(false);
-                }
-            }
-        } else {
-            // Fallback if no time set but not closed? Assume open? Better closed.
-            setIsStoreOpen(false);
-        }
-    }, [settings, openingHours]);
-
-    useEffect(() => {
-        if (!hasInitialData) {
-            fetchMenuData();
-        } else if (settings) {
-            fetchExtraData(settings.user_id);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [slug, hasInitialData]);
+    // 3. Carousel State
+    const promotionalCarouselRef = useRef<HTMLDivElement>(null);
+    const [isDraggingCarousel] = useState(false);
 
     useEffect(() => {
         if (settings) {
@@ -177,71 +219,6 @@ export default function MenuClient({
             document.documentElement.style.setProperty('--color-sidebar-bg', sidebarColor);
         }
     }, [settings]);
-
-    useEffect(() => {
-        if (settings && openingHours.length > 0) {
-            checkStoreStatus();
-            const interval = setInterval(checkStoreStatus, 60000);
-            return () => clearInterval(interval);
-        }
-    }, [settings, openingHours, checkStoreStatus]);
-
-    const fetchExtraData = async (userId: string) => {
-        try {
-            const [{ data: hours }, { data: sRatings }, { data: pRatings }] = await Promise.all([
-                supabase.from('opening_hours').select('*').eq('user_id', userId),
-                supabase.from('store_ratings').select('*').eq('user_id', userId).eq('hidden', false).order('created_at', { ascending: false }),
-                supabase.from('product_ratings').select('rating, product_id').eq('user_id', userId).eq('hidden', false),
-            ]);
-
-            if (hours) setOpeningHours(hours);
-
-            if (sRatings && sRatings.length > 0) {
-                const avg = sRatings.reduce((a, b) => a + b.rating, 0) / sRatings.length;
-                setStoreRating({ average: avg, count: sRatings.length });
-                setStoreReviews(sRatings);
-            }
-
-            if (pRatings && pRatings.length > 0) {
-                const ratingsMap: { [key: string]: { sum: number; count: number } } = {};
-                pRatings.forEach(r => {
-                    if (!ratingsMap[r.product_id]) ratingsMap[r.product_id] = { sum: 0, count: 0 };
-                    ratingsMap[r.product_id].sum += r.rating;
-                    ratingsMap[r.product_id].count += 1;
-                });
-
-                const finalMap: { [key: string]: { average: number; count: number } } = {};
-                Object.keys(ratingsMap).forEach(id => {
-                    finalMap[id] = {
-                        average: ratingsMap[id].sum / ratingsMap[id].count,
-                        count: ratingsMap[id].count
-                    };
-                });
-                setProductRatings(finalMap);
-            }
-        } catch (e) {
-            console.error('Error fetching extra data', e);
-        }
-    };
-
-    const fetchMenuData = async () => {
-        try {
-            const { data: settingsData, error: settingsError } = await supabase.from('user_settings').select('*').eq('public_slug', slug).single();
-            if (settingsError || !settingsData) { setNotFound(true); setLoading(false); return; }
-            setSettings(settingsData);
-
-            const [{ data: categoriesData }, { data: productsData }] = await Promise.all([
-                supabase.from('categories').select('*').eq('user_id', settingsData.user_id).order('name'),
-                supabase.from('products').select('*').eq('user_id', settingsData.user_id).eq('available', true).order('name'),
-            ]);
-
-            setCategories(categoriesData || []);
-            setProducts(productsData || []);
-
-            await fetchExtraData(settingsData.user_id);
-
-        } catch { setNotFound(true); } finally { setLoading(false); }
-    };
 
     const loadProductAddons = async (productId: string): Promise<AddonGroup[]> => {
         if (!settings) return [];
@@ -395,9 +372,8 @@ export default function MenuClient({
     const getProductsByCategory = (categoryId: string) => products.filter(p => p.category_id === categoryId);
 
 
-
-    if (loading) return <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center gap-4"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /><p className="text-gray-400">Carregando cardápio...</p></div>;
-    if (notFound) return <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center gap-4 text-center p-4"><span className="text-6xl mb-4">🔍</span><h1 className="text-2xl font-bold text-white">Cardápio não encontrado</h1><p className="text-gray-400">O link que você acessou não existe ou foi removido.</p></div>;
+    if (menuLoading) return <MenuSkeleton />;
+    if (menuError || !settings) return <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center gap-4 text-center p-4"><span className="text-6xl mb-4">🔍</span><h1 className="text-2xl font-bold text-white">Cardápio não encontrado</h1><p className="text-gray-400">O link que você acessou não existe ou foi removido.</p></div>;
 
     // Cálculos do Carrinho
     const totalPrice = getCartTotal();

@@ -1,10 +1,13 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
-import { Database } from '@/lib/database.types';
 import { revalidatePath } from 'next/cache';
+import { StoreStatusSchema, DeliveryTimeSchema, StoreRatingSchema, ProductRatingSchema } from '@/lib/schemas';
 
 export async function updateStoreStatus(isOpen: boolean) {
+    const validated = StoreStatusSchema.safeParse(isOpen);
+    if (!validated.success) throw new Error('Status da loja inválido');
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -21,6 +24,9 @@ export async function updateStoreStatus(isOpen: boolean) {
 }
 
 export async function updateDeliveryTime(min: number, max: number) {
+    const validated = DeliveryTimeSchema.safeParse({ min, max });
+    if (!validated.success) throw new Error('Tempo de entrega inválido');
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -103,6 +109,9 @@ export async function getOpeningHours(userId?: string) {
 }
 
 export async function addStoreRating(targetUserId: string, rating: number, comment?: string, customerName?: string) {
+    const validated = StoreRatingSchema.safeParse({ targetUserId, rating, comment, customerName });
+    if (!validated.success) throw new Error('Dados de avaliação da loja inválidos');
+
     const supabase = await createClient();
 
     const { error } = await supabase
@@ -119,6 +128,9 @@ export async function addStoreRating(targetUserId: string, rating: number, comme
 }
 
 export async function addProductRating(targetUserId: string, productId: string, rating: number, comment?: string, customerName?: string) {
+    const validated = ProductRatingSchema.safeParse({ targetUserId, productId, rating, comment, customerName });
+    if (!validated.success) throw new Error('Dados de avaliação do produto inválidos');
+
     const supabase = await createClient();
 
     const { error } = await supabase

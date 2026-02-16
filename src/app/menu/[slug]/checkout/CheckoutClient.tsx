@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { formatCurrency, getWhatsAppUrl, EMOJIS } from '@/lib/whatsapp';
 import { supabase } from '@/lib/supabase';
+import { createOrder } from '@/app/actions/orders';
+import { toast } from 'react-hot-toast';
 
 // ── Interfaces ─────────────────────────────────────────────────────
 interface Product {
@@ -73,6 +75,7 @@ export default function CheckoutClient({ slug, settings, couponsEnabled }: Check
 
     // ── Observations ───────────────────────────────────────────────
     const [observations, setObservations] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // ── Redirect if cart is empty (no useEffect needed) ────────────
     if (typeof window !== 'undefined' && cart.length === 0) {
@@ -138,73 +141,127 @@ export default function CheckoutClient({ slug, settings, couponsEnabled }: Check
     };
 
     // ── Send WhatsApp Order ────────────────────────────────────────
-    const sendWhatsAppOrder = () => {
+    const sendWhatsAppOrder = async () => {
         if (!settings.whatsapp_number || cart.length === 0) return;
         if (!customerName.trim() || !customerPhone.trim()) {
-            alert('Por favor, preencha seu nome e telefone.');
+            toast.error('Por favor, preencha seu nome e telefone.');
             return;
         }
         if (deliveryMode === 'delivery' && (!street.trim() || !houseNumber.trim() || !neighborhood.trim())) {
-            alert('Por favor, preencha o endereço completo.');
+            toast.error('Por favor, preencha o endereço completo.');
             return;
         }
 
-        let message = `${EMOJIS.BURGER} *NOVO PEDIDO - ${settings.app_name.toUpperCase()}* ${EMOJIS.FRIES}\n`;
-        message += `------------------------\n\n`;
-        message += `${EMOJIS.USER} *CLIENTE:* ${customerName}\n`;
-        message += `${EMOJIS.PHONE} *TELEFONE:* ${customerPhone}\n\n`;
+        setIsSubmitting(true);
 
-        if (deliveryMode === 'delivery') {
-            message += `${EMOJIS.LOCATION} *ENTREGA:*\n`;
-            message += `${EMOJIS.HOUSE} ${street}, ${houseNumber}${complement ? ` (${complement})` : ''}\n`;
-            message += `${EMOJIS.NEIGHBORHOOD} ${neighborhood}\n\n`;
-        } else {
-            message += `${EMOJIS.STORE} *RETIRADA NO LOCAL*\n\n`;
+        try {
+            // 1. Preparar dados para o banco
+            const orderData = {
+                user_id: settings.user_id,
+                customerName,
+                customerPhone,
+                deliveryMode,
+                street,
+                houseNumber,
+                neighborhood,
+                complement,
+                paymentMethod,
+                changeFor: paymentMethod === 'cash' ? parseFloat(changeFor) || 0 : 0,
+                subtotal,
+                deliveryFee,
+                total,
+                observations: observations.trim(),
+                items: cart.map(item => ({
+                    productId: item.product.id,
+                    name: item.product.name,
+                    price: getProductPrice(item.product),
+                    quantity: item.quantity,
+                    notes: item.notes,
+                    addons: item.addons.map(a => ({
+                        id: a.id,
+                        name: a.name,
+                        price: a.price
+                    }))
+                }))
+            };
+
+            // 2. Salvar no banco via Server Action
+            const result = await createOrder(orderData);
+
+            if (result.error) {
+                console.error('Erro ao salvar pedido:', result.error);
+                toast.error('Erro ao registrar pedido no sistema. Tente novamente.');
+                setIsSubmitting(false);
+                return;
+            }
+
+            // 3. Gerar mensagem do WhatsApp
+            let message = `${EMOJIS.BURGER} *PEDIDO #${result.orderNumber} - ${settings.app_name.toUpperCase()}* ${EMOJIS.FRIES}\n`;
+            message += `------------------------\n\n`;
+            // ... resto da mensagem (vou manter igual)
+            message += `${EMOJIS.USER} *CLIENTE:* ${customerName}\n`;
+            message += `${EMOJIS.PHONE} *TELEFONE:* ${customerPhone}\n\n`;
+
+            if (deliveryMode === 'delivery') {
+                message += `${EMOJIS.LOCATION} *ENTREGA:*\n`;
+                message += `${EMOJIS.HOUSE} ${street}, ${houseNumber}${complement ? ` (${complement})` : ''}\n`;
+                message += `${EMOJIS.NEIGHBORHOOD} ${neighborhood}\n\n`;
+            } else {
+                message += `${EMOJIS.STORE} *RETIRADA NO LOCAL*\n\n`;
+            }
+
+            message += `${EMOJIS.CLIPBOARD} *ITENS DO PEDIDO:*\n------------------------\n`;
+            cart.forEach(item => {
+                const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
+                const itemPrice = getProductPrice(item.product);
+                const itemTotal = (itemPrice + addonTotal) * item.quantity;
+
+                message += `*${item.quantity}x ${item.product.name.toUpperCase()}*\n`;
+                if (item.addons.length > 0) message += `   - ${EMOJIS.PACKAGE} ${item.addons.map(a => a.name).join(', ')}\n`;
+                if (item.notes) message += `   - ${EMOJIS.MEMO} _Obs: ${item.notes}_\n`;
+                message += `   - ${EMOJIS.BANKNOTE} ${formatCurrency(itemTotal)}\n\n`;
+            });
+            message += `------------------------\n`;
+
+            if (appliedCoupon) {
+                message += `${EMOJIS.COUPON} *CUPOM:* ${appliedCoupon.code} (-${formatCurrency(discount)})\n`;
+            }
+            if (deliveryMode === 'delivery') {
+                message += `${EMOJIS.TRUCK} *ENTREGA:* ${formatCurrency(deliveryFee)}\n`;
+            }
+            message += `${EMOJIS.BANKNOTE} *TOTAL:* *${formatCurrency(total)}*\n\n`;
+
+            const paymentLabels: Record<PaymentMethod, string> = {
+                pix: `PIX ${EMOJIS.ZAP}`,
+                card: `Cartão ${EMOJIS.CARD}`,
+                cash: `Dinheiro ${EMOJIS.BANKNOTE}`
+            };
+            message += `${EMOJIS.CARD} *FORMA DE PAGAMENTO:* ${paymentLabels[paymentMethod]}`;
+            if (paymentMethod === 'cash' && needChange) {
+                message += `\n${EMOJIS.MONEY_BAG} *TROCO PARA:* ${formatCurrency(parseFloat(changeFor) || 0)}`;
+            }
+            message += '\n';
+
+            if (observations.trim()) {
+                message += `\n${EMOJIS.SPEECH} *OBSERVAÇÕES GERAIS:*\n_${observations}_\n`;
+            }
+
+            message += `\n${EMOJIS.ROCKET} *Pedido enviado via Cardápio Online*`;
+
+            const url = getWhatsAppUrl(settings.whatsapp_number, message);
+            window.open(url, '_blank');
+
+            // Limpar carrinho após enviar
+            sessionStorage.removeItem(`cart_${slug}`);
+            toast.success('Pedido registrado com sucesso!');
+            setIsSubmitting(false);
+            router.push(`/menu/${slug}/sucesso?id=${result.orderId}`);
+
+        } catch (error) {
+            console.error('Checkout error:', error);
+            toast.error('Erro inesperado ao processar pedido. Tente novamente.');
+            setIsSubmitting(false);
         }
-
-        message += `${EMOJIS.CLIPBOARD} *ITENS DO PEDIDO:*\n------------------------\n`;
-        cart.forEach(item => {
-            const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
-            const itemPrice = getProductPrice(item.product);
-            const itemTotal = (itemPrice + addonTotal) * item.quantity;
-
-            message += `*${item.quantity}x ${item.product.name.toUpperCase()}*\n`;
-            if (item.addons.length > 0) message += `   - ${EMOJIS.PACKAGE} ${item.addons.map(a => a.name).join(', ')}\n`;
-            if (item.notes) message += `   - ${EMOJIS.MEMO} _Obs: ${item.notes}_\n`;
-            message += `   - ${EMOJIS.BANKNOTE} ${formatCurrency(itemTotal)}\n\n`;
-        });
-        message += `------------------------\n`;
-
-        if (appliedCoupon) {
-            message += `${EMOJIS.COUPON} *CUPOM:* ${appliedCoupon.code} (-${formatCurrency(discount)})\n`;
-        }
-        if (deliveryMode === 'delivery') {
-            message += `${EMOJIS.TRUCK} *ENTREGA:* ${formatCurrency(deliveryFee)}\n`;
-        }
-        message += `${EMOJIS.BANKNOTE} *TOTAL:* *${formatCurrency(total)}*\n\n`;
-
-        const paymentLabels: Record<PaymentMethod, string> = {
-            pix: `PIX ${EMOJIS.ZAP}`,
-            card: `Cartão ${EMOJIS.CARD}`,
-            cash: `Dinheiro ${EMOJIS.BANKNOTE}`
-        };
-        message += `${EMOJIS.CARD} *FORMA DE PAGAMENTO:* ${paymentLabels[paymentMethod]}`;
-        if (paymentMethod === 'cash' && needChange) {
-            message += `\n${EMOJIS.MONEY_BAG} *TROCO PARA:* ${formatCurrency(parseFloat(changeFor) || 0)}`;
-        }
-        message += '\n';
-
-        if (observations.trim()) {
-            message += `\n${EMOJIS.SPEECH} *OBSERVAÇÕES GERAIS:*\n_${observations}_\n`;
-        }
-
-        message += `\n${EMOJIS.ROCKET} *Pedido enviado via Cardápio Online*`;
-
-        const url = getWhatsAppUrl(settings.whatsapp_number, message);
-        window.open(url, '_blank');
-
-        // Limpar carrinho após enviar
-        sessionStorage.removeItem(`cart_${slug}`);
     };
 
     if (cart.length === 0) return null;
@@ -480,11 +537,24 @@ export default function CheckoutClient({ slug, settings, couponsEnabled }: Check
                 <div className="max-w-2xl mx-auto">
                     <button
                         onClick={sendWhatsAppOrder}
-                        disabled={!customerName.trim() || !customerPhone.trim() || (deliveryMode === 'delivery' && (!street.trim() || !houseNumber.trim() || !neighborhood.trim()))}
+                        disabled={isSubmitting || !customerName.trim() || !customerPhone.trim() || (deliveryMode === 'delivery' && (!street.trim() || !houseNumber.trim() || !neighborhood.trim()))}
                         className="w-full py-4 bg-primary hover:opacity-90 disabled:opacity-40 text-white rounded-2xl font-black text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
                     >
-                        <FiMessageCircle size={22} />
-                        Finalizar pelo WhatsApp
+                        {isSubmitting ? (
+                            <span className="flex items-center gap-2">
+                                <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                                    className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full"
+                                />
+                                Processando...
+                            </span>
+                        ) : (
+                            <>
+                                <FiMessageCircle size={22} />
+                                Finalizar pelo WhatsApp
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

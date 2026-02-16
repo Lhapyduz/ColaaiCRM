@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
     FiChevronDown, FiShoppingBag, FiTruck, FiBarChart2,
-    FiGift, FiZap, FiStar, FiArrowRight, FiPlay
+    FiGift, FiZap, FiStar, FiArrowRight, FiPlay, FiX
 } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
 import { cn } from '@/lib/utils';
@@ -67,6 +67,12 @@ const highlights = [
 export default function VendasPage() {
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
     const [openFaq, setOpenFaq] = useState<number | null>(null);
+    const [showFomo, setShowFomo] = useState(false);
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => setShowFomo(true), 5000);
+        return () => clearTimeout(timer);
+    }, []);
 
     const jsonLd = { "@context": "https://schema.org", "@graph": [{ "@type": "Organization", "@id": "https://colaai.com.br/#organization", "name": "Cola Aí", "url": "https://colaai.com.br", "logo": { "@type": "ImageObject", "url": "https://colaai.com.br/logo.png" } }, { "@type": "WebSite", "@id": "https://colaai.com.br/#website", "url": "https://colaai.com.br", "name": "Cola Aí", "publisher": { "@id": "https://colaai.com.br/#organization" } }, { "@type": "SoftwareApplication", "name": "Cola Aí", "applicationCategory": "BusinessApplication", "operatingSystem": "Web", "offers": { "@type": "AggregateOffer", "priceCurrency": "BRL", "lowPrice": "49", "highPrice": "149", "offerCount": "3" }, "aggregateRating": { "@type": "AggregateRating", "ratingValue": "5", "ratingCount": "3", "bestRating": "5", "worstRating": "1" } }, { "@type": "FAQPage", "mainEntity": faqs.map(faq => ({ "@type": "Question", "name": faq.question, "acceptedAnswer": { "@type": "Answer", "text": faq.answer } })) }] };
 
@@ -141,7 +147,11 @@ export default function VendasPage() {
                         </div>
                         <h1 className="text-5xl md:text-7xl font-bold leading-[1.1] mb-6 tracking-tight">
                             Sua lanchonete <br />
-                            <span className="text-transparent bg-clip-text bg-linear-to-r from-primary to-accent">nas suas mãos.</span>
+                            <span className="relative inline-block">
+                                <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-accent to-primary bg-size-[200%_auto] animate-shimmer">
+                                    nas suas mãos.
+                                </span>
+                            </span>
                         </h1>
                         <p className="text-xl md:text-2xl text-text-secondary mb-10 max-w-lg leading-relaxed">
                             Chega de perder pedidos no papel ou se estressar no horário de pico. O Cola Aí organiza seu balcão, agiliza a cozinha e automatiza seu PIX.
@@ -157,14 +167,39 @@ export default function VendasPage() {
                             </button>
                         </div>
                         <div className="mt-12 flex items-center gap-8 text-sm font-medium text-text-muted">
-                            <div className="flex -space-x-3">
-                                {[1, 2, 3, 4].map(i => (
-                                    <div key={i} className="w-10 h-10 rounded-full border-2 border-bg-primary bg-zinc-800 flex items-center justify-center text-xs overflow-hidden">
-                                        {i === 4 ? '+37' : '👤'}
+                            <div className="mt-12 flex items-center gap-8 text-sm font-medium text-text-muted">
+                                <div className="flex -space-x-4">
+                                    {[
+                                        { color: 'bg-orange-500', label: 'C' },
+                                        { color: 'bg-blue-500', label: 'M' },
+                                        { color: 'bg-green-500', label: 'J' },
+                                    ].map((user, i) => (
+                                        <motion.div
+                                            key={i}
+                                            whileHover={{ y: -5, zIndex: 10, scale: 1.1 }}
+                                            className={cn(
+                                                "w-12 h-12 rounded-full border-4 border-bg-primary flex items-center justify-center text-sm font-bold text-white shadow-lg cursor-pointer transition-transform",
+                                                user.color
+                                            )}
+                                        >
+                                            {user.label}
+                                        </motion.div>
+                                    ))}
+                                    <motion.div
+                                        whileHover={{ scale: 1.1 }}
+                                        className="w-12 h-12 rounded-full border-4 border-bg-primary bg-bg-tertiary flex items-center justify-center text-xs font-black text-primary shadow-lg"
+                                    >
+                                        +37
+                                    </motion.div>
+                                </div>
+                                <div className="flex flex-col">
+                                    <p className="text-text-primary font-bold">Junte-se a +37 lanchonetes</p>
+                                    <div className="flex items-center gap-1.5 text-success text-[10px] uppercase tracking-widest font-black">
+                                        <span className="flex h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+                                        Crescendo agora
                                     </div>
-                                ))}
+                                </div>
                             </div>
-                            <p>Junte-se a +37 lanchonetes</p>
                         </div>
                     </motion.div>
 
@@ -389,6 +424,39 @@ export default function VendasPage() {
                     </div>
                 </div>
             </footer>
+
+            {/* FOMO Widget */}
+            <AnimatePresence>
+                {showFomo && (
+                    <motion.div
+                        initial={{ opacity: 0, x: 100, scale: 0.8 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: 100, scale: 0.8 }}
+                        className="fixed bottom-6 right-6 z-dropdown hidden md:flex items-center gap-4 bg-bg-card/80 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-2xl"
+                    >
+                        <div className="relative">
+                            <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-xl shadow-lg ring-4 ring-primary/20">
+                                🍔
+                            </div>
+                            <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-4 w-4 bg-success border-2 border-bg-card"></span>
+                            </span>
+                        </div>
+                        <div>
+                            <p className="text-xs text-text-muted font-bold uppercase tracking-widest mb-0.5">Novo Logista</p>
+                            <p className="text-sm font-black text-text-primary">Lanche do Porto assinou agora!</p>
+                            <p className="text-[10px] text-success font-medium">Há 2 minutos atrás</p>
+                        </div>
+                        <button
+                            onClick={() => setShowFomo(false)}
+                            className="ml-4 p-1 hover:bg-white/5 rounded-full transition-colors"
+                        >
+                            <FiX className="text-text-muted" />
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
