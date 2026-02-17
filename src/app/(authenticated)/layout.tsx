@@ -11,7 +11,7 @@ export default function AuthenticatedLayout({
 }) {
     return (
         <MainLayout>
-            <PWAInstallPrompt appName="Cola Aí" />
+            <PWAInstallPrompt appName="Cola Aí" logoUrl="https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp" />
             {children}
         </MainLayout>
     );

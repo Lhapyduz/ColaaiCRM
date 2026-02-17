@@ -454,7 +454,7 @@ export default function MenuClient({
                         )}
                     </div>
 
-                    <h1 className="text-4xl md:text-5xl font-bold text-white mb-3 tracking-tight">
+                    <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 tracking-tight">
                         {settings?.app_name || 'Sua Logo Aqui'}
                     </h1>
                     <p className="text-gray-400 text-lg mb-8 max-w-xl">
@@ -597,7 +597,7 @@ export default function MenuClient({
                                         <div
                                             key={product.id}
                                             onClick={() => !isDraggingCarousel && handleProductClick(product)}
-                                            className="min-w-sidebar sm:min-w-[320px] max-w-[320px] lg:snap-align-none snap-start bg-linear-to-br from-[#1E1E1E] to-[#151515] rounded-2xl overflow-hidden border border-primary/20 shadow-lg shadow-primary/5 cursor-grab active:cursor-grabbing select-none group hover:border-primary/40 transition-all duration-300"
+                                            className="min-w-[85vw] sm:min-w-[320px] max-w-[320px] lg:snap-align-none snap-start bg-linear-to-br from-[#1E1E1E] to-[#151515] rounded-2xl overflow-hidden border border-primary/20 shadow-lg shadow-primary/5 cursor-grab active:cursor-grabbing select-none group hover:border-primary/40 transition-all duration-300"
                                         >
                                             <div className="relative h-36 sm:h-44 overflow-hidden">
                                                 {product.image_url ? (
@@ -775,7 +775,7 @@ export default function MenuClient({
                             initial={{ y: 100 }}
                             animate={{ y: 0 }}
                             exit={{ y: 100 }}
-                            className="lg:hidden fixed bottom-6 left-4 right-4 z-40"
+                            className="lg:hidden fixed bottom-6 left-4 right-4 z-500"
                         >
                             <button
                                 onClick={() => setShowMobileCart(true)}
@@ -1085,7 +1085,8 @@ export default function MenuClient({
             {settings && (
                 <PWAInstallPrompt
                     appName={settings.app_name}
-                    logoUrl={settings.logo_url || undefined}
+                    logoUrl={settings.logo_url || "https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp"}
+                    className={cart.length > 0 ? "bottom-28" : "bottom-6"}
                 />
             )}
         </div>

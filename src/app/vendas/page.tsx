@@ -460,7 +460,7 @@ export default function VendasPage() {
             </AnimatePresence>
             <PWAInstallPrompt
                 appName="Cola Aí - Gestão Inteligente"
-                logoUrl="/logo-colaai.webp"
+                logoUrl="https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp"
             />
         </div>
     );

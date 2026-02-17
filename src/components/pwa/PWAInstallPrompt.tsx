@@ -23,9 +23,10 @@ interface BeforeInstallPromptEvent extends Event {
 interface PWAInstallPromptProps {
     appName: string;
     logoUrl?: string;
+    className?: string;
 }
 
-export default function PWAInstallPrompt({ appName, logoUrl }: PWAInstallPromptProps) {
+export default function PWAInstallPrompt({ appName, logoUrl, className }: PWAInstallPromptProps) {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isVisible, setIsVisible] = useState(false);
     const [isInstalled, setIsInstalled] = useState(false);
@@ -116,20 +117,19 @@ export default function PWAInstallPrompt({ appName, logoUrl }: PWAInstallPromptP
                 initial={{ opacity: 0, y: 100, scale: 0.9 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 100, scale: 0.9 }}
-                className="fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:max-w-md z-dropdown"
+                className={`fixed left-4 right-4 md:left-auto md:right-6 md:max-w-md z-dropdown transition-all duration-300 ${className || 'bottom-6'}`}
             >
                 <div className="bg-bg-card/80 border border-white/10 p-5 rounded-3xl shadow-2xl backdrop-blur-2xl relative overflow-hidden group">
                     <div className="absolute -inset-1 bg-linear-to-r from-primary/20 via-accent/20 to-primary/20 blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-500 -z-10" />
 
                     <div className="flex items-start gap-4">
                         <div className="w-16 h-16 rounded-2xl bg-bg-secondary border border-white/10 shrink-0 overflow-hidden shadow-2xl relative flex items-center justify-center">
-                            {logoUrl ? (
-                                <Image src={logoUrl} alt={appName} fill className="object-cover" />
-                            ) : (
-                                <div className="w-full h-full bg-linear-to-br from-primary to-accent flex items-center justify-center text-white font-black text-2xl uppercase">
-                                    {appName[0]}
-                                </div>
-                            )}
+                            <Image
+                                src={logoUrl || "https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp"}
+                                alt={appName}
+                                fill
+                                className="object-cover"
+                            />
                         </div>
 
                         <div className="flex-1 min-w-0 flex flex-col gap-1">
