@@ -478,3 +478,8 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Safe area bottom para iPhones com notch/home indicator */
+.safe-area-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.5rem);
+}
