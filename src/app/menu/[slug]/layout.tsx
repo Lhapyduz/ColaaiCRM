@@ -1,4 +1,4 @@
-import { Metadata } from 'next';
+import { Metadata, Viewport } from 'next';
 import { createClient } from '@/utils/supabase/server';
 
 const COLA_AI_LOGO = 'https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp';
@@ -53,8 +53,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
             statusBarStyle: 'default',
             title: appName,
         },
-        // Theme color para Android Chrome e Safari
-        themeColor: themeColor,
         // Desabilitar detecção automática de telefone
         formatDetection: {
             telephone: false,
@@ -78,6 +76,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
             'theme-color': themeColor,
         },
     };
+}
+
+export async function generateViewport({ params }: { params: Promise<{ slug: string }> }): Promise<Viewport> {
+    const { slug } = await params;
+    let themeColor = '#ff6b35';
+    try {
+        const supabase = await createClient();
+        const { data: settings } = await supabase
+            .from('user_settings')
+            .select('primary_color')
+            .eq('public_slug', slug)
+            .single();
+        if (settings?.primary_color) themeColor = settings.primary_color;
+    } catch { /* fallback */ }
+    return { themeColor };
 }
 
 export default function MenuLayout({ children }: LayoutProps) {

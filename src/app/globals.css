@@ -3,8 +3,10 @@
 /* Tailwind CSS v4 */
 @import "tailwindcss";
 
-/* Diretorias de busca para o Tailwind */
-@source "../../src/**/*.{ts,tsx,js,jsx,css}";
+/* Excluir diretórios não-frontend do auto-scan do Tailwind v4 */
+@source not "../../.agent";
+@source not "../../.temp_ag_kit";
+@source not "../../.gemini";
 
 /* Tailwind CSS v4 Theme Configuration */
 /* @tailwind theme */

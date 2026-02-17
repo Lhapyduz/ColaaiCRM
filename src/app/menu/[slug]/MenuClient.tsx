@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { FiShoppingBag, FiMinus, FiPlus, FiX, FiMessageCircle, FiCheck, FiStar, FiClock, FiChevronDown } from 'react-icons/fi';
+import { FiShoppingBag, FiMinus, FiPlus, FiX, FiMessageCircle, FiStar, FiClock, FiChevronDown } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -177,6 +178,16 @@ export default function MenuClient({
         const interval = setInterval(() => setCurrentTimeRef(new Date()), 60000);
         return () => clearInterval(interval);
     }, []);
+
+    // Scroll lock: trava o body quando o detalhe do produto está aberto
+    useEffect(() => {
+        if (showProductDetail) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [showProductDetail]);
 
     const getProductPrice = (product: Product) => {
         if (!product) return 0;
@@ -767,15 +778,15 @@ export default function MenuClient({
                 </aside>
             </div>
 
-            {/* Mobile Cart Bar - Stitch style */}
+            {/* Mobile Cart Bar - Stitch style — Oculta quando detalhe do produto está aberto */}
             <AnimatePresence>
                 {
-                    cart.length > 0 && (
+                    cart.length > 0 && !showProductDetail && (
                         <motion.div
                             initial={{ y: 100 }}
                             animate={{ y: 0 }}
                             exit={{ y: 100 }}
-                            className="lg:hidden fixed bottom-6 left-4 right-4 z-500"
+                            className="lg:hidden fixed bottom-6 left-4 right-4 z-dropdown"
                         >
                             <button
                                 onClick={() => setShowMobileCart(true)}
@@ -803,260 +814,280 @@ export default function MenuClient({
             </AnimatePresence>
 
             {/* Mobile Cart Modal */}
-            <AnimatePresence>
-                {
-                    showMobileCart && (
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {
+                        showMobileCart && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-9999 lg:hidden flex items-end"
+                                onClick={() => setShowMobileCart(false)}
+                            >
+                                <motion.div
+                                    initial={{ y: '100%' }}
+                                    animate={{ y: 0 }}
+                                    exit={{ y: '100%' }}
+                                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                                    className="w-full h-[85vh] bg-[#121212] rounded-t-[32px] overflow-hidden flex flex-col shadow-2xl border-t border-white/5"
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    <div className="flex justify-between items-center p-6 border-b border-white/5 bg-[#1A1A1A]">
+                                        <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                                            <FiShoppingBag className="text-primary" /> Seu Pedido
+                                        </h2>
+                                        <button
+                                            className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors text-white"
+                                            onClick={() => setShowMobileCart(false)}
+                                        >
+                                            <FiX />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                                        {cart.map((item, index) => <CartItemComponent key={index} item={item} index={index} />)}
+                                    </div>
+
+                                    <div className="p-6 border-t border-white/5 bg-[#1A1A1A] space-y-4">
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-sm text-gray-500">
+                                                <span>Subtotal</span>
+                                                <span className="text-white font-bold">{formatCurrency(totalPrice)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xl font-black text-white pt-2 border-t border-white/5">
+                                                <span>Total estimado</span>
+                                                <span className="text-primary">{formatCurrency(totalPrice)}</span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            className="w-full py-4 bg-primary text-white rounded-2xl font-black text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3 active:scale-95 transition-all"
+                                            onClick={() => {
+                                                setShowMobileCart(false);
+                                                sessionStorage.setItem(`cart_${slug}`, JSON.stringify(cart));
+                                                router.push(`/menu/${slug}/checkout`);
+                                            }}
+                                        >
+                                            <FiShoppingBag size={20} />
+                                            Ir para o Checkout
+                                        </button>
+                                        {!isStoreOpen && <p className="text-[10px] text-center text-red-500 font-bold uppercase tracking-widest">Loja Fechada</p>}
+                                    </div>
+                                </motion.div>
+                            </motion.div>
+                        )
+                    }
+                </AnimatePresence>,
+                document.body
+            )}
+
+            {/* Product Detail — Mobile: Fullscreen (estilo iFood) / Desktop: Modal lado a lado */}
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {showProductDetail && selectedProduct && (
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 lg:hidden flex items-end"
-                            onClick={() => setShowMobileCart(false)}
+                            className="fixed inset-0 z-9999 md:flex md:items-center md:justify-center md:p-6 md:bg-black/80 md:backdrop-blur-xl"
+                            onClick={() => { setShowProductDetail(false); setSelectedProduct(null); }}
                         >
+                            {/* Mobile: bg preto fullscreen / Desktop: overlay já está no parent */}
+                            <div className="absolute inset-0 bg-[#121212] md:hidden" />
+
                             <motion.div
-                                initial={{ y: '100%' }}
-                                animate={{ y: 0 }}
-                                exit={{ y: '100%' }}
-                                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                                className="w-full h-[85vh] bg-[#121212] rounded-t-[32px] overflow-hidden flex flex-col shadow-2xl border-t border-white/5"
+                                initial={{ y: '100%', opacity: 1 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: '100%', opacity: 0 }}
+                                transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+                                className="relative w-full h-full md:h-auto md:max-w-5xl md:max-h-[90vh] bg-[#121212] md:rounded-[32px] overflow-hidden flex flex-col md:flex-row shadow-2xl md:border md:border-white/5"
                                 onClick={e => e.stopPropagation()}
                             >
-                                <div className="flex justify-between items-center p-6 border-b border-white/5 bg-[#1A1A1A]">
-                                    <h2 className="text-xl font-bold text-white flex items-center gap-3">
-                                        <FiShoppingBag className="text-primary" /> Seu Pedido
-                                    </h2>
-                                    <button
-                                        className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors text-white"
-                                        onClick={() => setShowMobileCart(false)}
-                                    >
-                                        <FiX />
-                                    </button>
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                                    {cart.map((item, index) => <CartItemComponent key={index} item={item} index={index} />)}
-                                </div>
-
-                                <div className="p-6 border-t border-white/5 bg-[#1A1A1A] space-y-4">
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between text-sm text-gray-500">
-                                            <span>Subtotal</span>
-                                            <span className="text-white font-bold">{formatCurrency(totalPrice)}</span>
+                                {/* ===== IMAGEM DO PRODUTO ===== */}
+                                <div className="relative w-full md:w-1/2 h-56 sm:h-64 md:h-auto shrink-0 bg-[#1A1A1A]">
+                                    {selectedProduct.image_url ? (
+                                        <Image
+                                            src={selectedProduct.image_url}
+                                            alt={selectedProduct.name}
+                                            fill
+                                            className="object-cover"
+                                            sizes="(max-width: 768px) 100vw, 600px"
+                                            priority
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center">
+                                            <span className="material-icons text-primary/20 text-6xl md:text-8xl">restaurant</span>
                                         </div>
-                                        <div className="flex justify-between text-xl font-black text-white pt-2 border-t border-white/5">
-                                            <span>Total estimado</span>
-                                            <span className="text-primary">{formatCurrency(totalPrice)}</span>
+                                    )}
+                                    {/* Gradiente sobre a imagem */}
+                                    <div className="absolute inset-0 bg-linear-to-t md:bg-linear-to-r from-[#121212]/70 via-transparent to-transparent" />
+
+                                    {/* Botão fechar — Mobile (sobre a imagem) */}
+                                    <button
+                                        onClick={() => { setShowProductDetail(false); setSelectedProduct(null); }}
+                                        className="absolute top-4 left-4 md:hidden w-10 h-10 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white border border-white/10 active:scale-90 transition-transform"
+                                    >
+                                        <FiX size={20} />
+                                    </button>
+
+                                    {/* Badge de promoção */}
+                                    {selectedProduct.promo_enabled && (
+                                        <div className="absolute top-4 right-4 md:top-4 md:left-4 md:right-auto bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-2xl animate-pulse">
+                                            🔥 Promoção
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ===== CONTEÚDO + FOOTER ===== */}
+                                <div className="w-full md:w-1/2 flex flex-col min-h-0 flex-1">
+                                    {/* Botão fechar — Desktop */}
+                                    <div className="hidden md:flex justify-end p-4 absolute right-0 top-0 z-10">
+                                        <button
+                                            onClick={() => { setShowProductDetail(false); setSelectedProduct(null); }}
+                                            className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors"
+                                        >
+                                            <FiX />
+                                        </button>
+                                    </div>
+
+                                    {/* ===== ÁREA SCROLLÁVEL ===== */}
+                                    <div className="flex-1 overflow-y-auto overscroll-contain p-5 md:p-8 md:pt-10 space-y-6 md:space-y-8 pb-44 md:pb-8">
+                                        {/* Título, Preço e Descrição */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <h2 className="text-2xl md:text-3xl font-black text-white leading-tight">
+                                                    {selectedProduct.name}
+                                                </h2>
+                                                <div className="flex flex-col items-end shrink-0">
+                                                    <span className="text-xl md:text-2xl font-black text-primary">
+                                                        {formatCurrency(getProductPrice(selectedProduct))}
+                                                    </span>
+                                                    {selectedProduct.promo_enabled && (
+                                                        <span className="text-xs text-gray-500 line-through">
+                                                            {formatCurrency(selectedProduct.price)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {selectedProduct.description && (
+                                                <p className="text-sm md:text-base text-gray-400 leading-relaxed font-medium">
+                                                    {selectedProduct.description}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* ===== GRUPOS DE ADICIONAIS COM CHECKBOX ===== */}
+                                        {productAddonGroups.length > 0 && (
+                                            <div className="space-y-6">
+                                                {productAddonGroups.map((group) => (
+                                                    <div key={group.id} className="space-y-3">
+                                                        <div className="flex items-center justify-between bg-white/3 rounded-xl p-3 -mx-1">
+                                                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.15em]">
+                                                                {group.name}
+                                                            </h3>
+                                                            <div className="flex items-center gap-2">
+                                                                {group.max_selection > 1 && (
+                                                                    <span className="text-[9px] font-bold text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">
+                                                                        máx. {group.max_selection}
+                                                                    </span>
+                                                                )}
+                                                                {group.required && (
+                                                                    <span className="text-[9px] font-black bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full border border-red-500/20">
+                                                                        OBRIGATÓRIO
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid gap-2">
+                                                            {group.addons.map((addon) => {
+                                                                const isSelected = !!selectedModalAddons.find(a => a.id === addon.id);
+                                                                return (
+                                                                    <label
+                                                                        key={addon.id}
+                                                                        className={cn(
+                                                                            "flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer active:scale-[0.98]",
+                                                                            isSelected
+                                                                                ? "bg-primary/10 border-primary shadow-md shadow-primary/10"
+                                                                                : "bg-white/5 border-white/5 hover:bg-white/10"
+                                                                        )}
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={isSelected}
+                                                                                onChange={() => toggleModalAddon(addon)}
+                                                                                className="w-5 h-5 rounded-md border-2 border-gray-600 text-primary bg-transparent checked:bg-primary checked:border-primary focus:ring-primary focus:ring-offset-0 focus:ring-1 accent-primary cursor-pointer shrink-0 appearance-auto"
+                                                                            />
+                                                                            <span className={cn("font-semibold text-sm", isSelected ? "text-white" : "text-gray-300")}>
+                                                                                {addon.name}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className="text-primary font-bold text-sm shrink-0 ml-2">
+                                                                            +{formatCurrency(addon.price)}
+                                                                        </span>
+                                                                    </label>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Observações */}
+                                        <div className="space-y-3">
+                                            <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.15em]">
+                                                Observações
+                                            </h3>
+                                            <textarea
+                                                className="w-full bg-white/5 border border-white/5 rounded-xl p-3.5 text-sm text-white placeholder:text-gray-600 focus:border-primary focus:outline-none resize-none transition-colors"
+                                                placeholder="Ex: sem cebola, ponto da carne..."
+                                                rows={2}
+                                                value={observations}
+                                                onChange={(e) => setObservations(e.target.value)}
+                                            />
                                         </div>
                                     </div>
 
-                                    <button
-                                        className="w-full py-4 bg-primary text-white rounded-2xl font-black text-lg shadow-xl shadow-primary/20 flex items-center justify-center gap-3 active:scale-95 transition-all"
-                                        onClick={() => {
-                                            setShowMobileCart(false);
-                                            sessionStorage.setItem(`cart_${slug}`, JSON.stringify(cart));
-                                            router.push(`/menu/${slug}/checkout`);
-                                        }}
-                                    >
-                                        <FiShoppingBag size={20} />
-                                        Ir para o Checkout
-                                    </button>
-                                    {!isStoreOpen && <p className="text-[10px] text-center text-red-500 font-bold uppercase tracking-widest">Loja Fechada</p>}
+                                    {/* ===== FOOTER FIXO — sempre visível, sticky no bottom ===== */}
+                                    <div className="sticky bottom-0 z-50 shrink-0 p-4 md:p-6 bg-[#1A1A1A] border-t border-white/5 flex items-center gap-3 safe-area-bottom shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+                                        <div className="flex items-center bg-black/40 rounded-xl p-0.5 border border-white/5 shrink-0">
+                                            <button
+                                                onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
+                                                className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white transition-colors active:scale-90"
+                                            >
+                                                <FiMinus size={16} />
+                                            </button>
+                                            <span className="w-8 text-center font-black text-white text-base">
+                                                {modalQuantity}
+                                            </span>
+                                            <button
+                                                onClick={() => setModalQuantity(modalQuantity + 1)}
+                                                className="w-10 h-10 flex items-center justify-center text-primary transition-colors active:scale-90"
+                                            >
+                                                <FiPlus size={16} />
+                                            </button>
+                                        </div>
+
+                                        <button
+                                            className="flex-1 py-3.5 bg-primary hover:bg-orange-600 text-white rounded-xl font-bold text-base shadow-lg shadow-primary/20 active:scale-[0.97] transition-all flex items-center justify-between px-5"
+                                            onClick={confirmModalAddToCart}
+                                        >
+                                            <span>Adicionar</span>
+                                            <span className="bg-white/20 px-2.5 py-0.5 rounded-lg text-sm font-semibold">
+                                                {formatCurrency((getProductPrice(selectedProduct) + selectedModalAddons.reduce((a, b) => a + b.price, 0)) * modalQuantity)}
+                                            </span>
+                                        </button>
+                                    </div>
                                 </div>
                             </motion.div>
                         </motion.div>
-                    )
-                }
-            </AnimatePresence>
-
-            {/* Product Detail Modal — Mobile: Bottom-sheet fullscreen / Desktop: Modal lado a lado */}
-            <AnimatePresence>
-                {showProductDetail && selectedProduct && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/95 backdrop-blur-xl z-70 flex items-end md:items-center md:justify-center md:p-4"
-                        onClick={() => { setShowProductDetail(false); setSelectedProduct(null); }}
-                    >
-                        <motion.div
-                            initial={{ y: '100%', opacity: 1 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: '100%', opacity: 0 }}
-                            transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-                            className="w-full md:max-w-5xl bg-[#121212] md:rounded-[32px] rounded-t-[28px] overflow-hidden flex flex-col md:flex-row shadow-2xl border-t md:border border-white/5 h-[95dvh] md:h-auto md:max-h-[90vh]"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            {/* Imagem do Produto */}
-                            <div className="relative w-full md:w-1/2 h-48 md:h-auto shrink-0 bg-[#1A1A1A]">
-                                {selectedProduct.image_url ? (
-                                    <Image
-                                        src={selectedProduct.image_url}
-                                        alt={selectedProduct.name}
-                                        fill
-                                        className="object-cover"
-                                        sizes="(max-width: 768px) 100vw, 600px"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <span className="material-icons text-primary/20 text-6xl md:text-8xl">restaurant</span>
-                                    </div>
-                                )}
-                                <div className="absolute inset-0 bg-linear-to-t md:bg-linear-to-r from-[#121212] via-transparent to-transparent opacity-60" />
-
-                                {/* Handle de arraste mobile */}
-                                <div className="absolute top-3 left-1/2 -translate-x-1/2 md:hidden w-10 h-1 rounded-full bg-white/30" />
-
-                                <button
-                                    onClick={() => { setShowProductDetail(false); setSelectedProduct(null); }}
-                                    className="absolute top-4 right-4 md:hidden w-9 h-9 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white border border-white/10"
-                                >
-                                    <FiX size={18} />
-                                </button>
-
-                                {selectedProduct.promo_enabled && (
-                                    <div className="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-2xl animate-pulse">
-                                        🔥 Promoção
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Conteúdo + Footer */}
-                            <div className="w-full md:w-1/2 flex flex-col min-h-0 flex-1">
-                                {/* Close desktop */}
-                                <div className="hidden md:flex justify-end p-6 absolute right-0 top-0 z-10">
-                                    <button
-                                        onClick={() => { setShowProductDetail(false); setSelectedProduct(null); }}
-                                        className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors"
-                                    >
-                                        <FiX />
-                                    </button>
-                                </div>
-
-                                {/* Área scrollável — conteúdo do produto */}
-                                <div className="flex-1 overflow-y-auto overscroll-contain p-5 md:p-8 md:pt-10 space-y-6 md:space-y-8">
-                                    <div className="space-y-3">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <h2 className="text-2xl md:text-3xl font-black text-white leading-tight">
-                                                {selectedProduct.name}
-                                            </h2>
-                                            <span className="text-xl md:text-2xl font-black text-primary shrink-0">
-                                                {formatCurrency(getProductPrice(selectedProduct))}
-                                            </span>
-                                        </div>
-
-                                        {selectedProduct.description && (
-                                            <p className="text-sm md:text-base text-gray-400 leading-relaxed font-medium">
-                                                {selectedProduct.description}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Addon Groups */}
-                                    {productAddonGroups.length > 0 && (
-                                        <div className="space-y-6">
-                                            {productAddonGroups.map((group) => (
-                                                <div key={group.id} className="space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.15em]">
-                                                            {group.name}
-                                                        </h3>
-                                                        {group.required && (
-                                                            <span className="text-[9px] font-black bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full border border-red-500/20">OBRIGATÓRIO</span>
-                                                        )}
-                                                    </div>
-                                                    <div className="grid gap-2">
-                                                        {group.addons.map((addon) => {
-                                                            const isSelected = !!selectedModalAddons.find(a => a.id === addon.id);
-                                                            return (
-                                                                <label
-                                                                    key={addon.id}
-                                                                    onClick={() => toggleModalAddon(addon)}
-                                                                    className={cn(
-                                                                        "flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer active:scale-[0.98]",
-                                                                        isSelected
-                                                                            ? "bg-primary/10 border-primary shadow-md shadow-primary/10"
-                                                                            : "bg-white/5 border-white/5 hover:bg-white/10"
-                                                                    )}
-                                                                >
-                                                                    <div className="flex items-center gap-3">
-                                                                        <div className={cn(
-                                                                            "w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all shrink-0",
-                                                                            isSelected ? "bg-primary border-primary" : "border-gray-700"
-                                                                        )}>
-                                                                            {isSelected && <FiCheck className="text-white text-[10px]" />}
-                                                                        </div>
-                                                                        <span className={cn("font-semibold text-sm", isSelected ? "text-white" : "text-gray-300")}>
-                                                                            {addon.name}
-                                                                        </span>
-                                                                    </div>
-                                                                    <span className="text-primary font-bold text-sm shrink-0 ml-2">
-                                                                        +{formatCurrency(addon.price)}
-                                                                    </span>
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        className="hidden"
-                                                                        checked={isSelected}
-                                                                        readOnly
-                                                                    />
-                                                                </label>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Observações */}
-                                    <div className="space-y-3">
-                                        <h3 className="text-xs font-black text-gray-500 uppercase tracking-[0.15em]">
-                                            Observações
-                                        </h3>
-                                        <textarea
-                                            className="w-full bg-white/5 border border-white/5 rounded-xl p-3.5 text-sm text-white placeholder:text-gray-600 focus:border-primary focus:outline-none resize-none transition-colors"
-                                            placeholder="Ex: sem cebola, ponto da carne..."
-                                            rows={2}
-                                            value={observations}
-                                            onChange={(e) => setObservations(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Footer FIXO — sempre visível no mobile */}
-                                <div className="shrink-0 p-4 md:p-6 bg-[#1A1A1A] border-t border-white/5 flex items-center gap-3 safe-area-bottom">
-                                    <div className="flex items-center bg-black/40 rounded-xl p-0.5 border border-white/5 shrink-0">
-                                        <button
-                                            onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
-                                            className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
-                                        >
-                                            <FiMinus size={16} />
-                                        </button>
-                                        <span className="w-8 text-center font-black text-white text-base">
-                                            {modalQuantity}
-                                        </span>
-                                        <button
-                                            onClick={() => setModalQuantity(modalQuantity + 1)}
-                                            className="w-10 h-10 flex items-center justify-center text-primary transition-colors"
-                                        >
-                                            <FiPlus size={16} />
-                                        </button>
-                                    </div>
-
-                                    <button
-                                        className="flex-1 py-3.5 bg-primary text-white rounded-xl font-bold text-base shadow-lg shadow-primary/20 active:scale-[0.97] transition-all flex items-center justify-between px-5"
-                                        onClick={confirmModalAddToCart}
-                                    >
-                                        <span>Adicionar</span>
-                                        <span className="bg-white/20 px-2.5 py-0.5 rounded-lg text-sm font-semibold">
-                                            {formatCurrency((getProductPrice(selectedProduct) + selectedModalAddons.reduce((a, b) => a + b.price, 0)) * modalQuantity)}
-                                        </span>
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
 
             {/* Other Modals */}
             {settings && (

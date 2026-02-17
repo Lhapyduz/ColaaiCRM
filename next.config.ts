@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Forçar Turbopack a usar este diretório como raiz do workspace
+  turbopack: {
+    root: __dirname,
+  },
   // Transpile ESM packages
   transpilePackages: ['@react-pdf/renderer'],
   // Image optimization configuration
