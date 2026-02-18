@@ -201,9 +201,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     { user_id: data.user.id, name: 'Combos', icon: '🍔', color: '#00b894' }
                 ]);
 
-                // Create trial subscription (3 days)
+                // Create trial subscription (7 days)
                 const now = new Date();
-                const trialEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // +3 dias
+                const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // +7 dias
 
                 await supabase.from('subscriptions').insert({
                     user_id: data.user.id,

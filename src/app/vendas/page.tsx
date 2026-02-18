@@ -42,7 +42,7 @@ const features: PlanFeature[] = [
 ];
 
 const faqs: FAQ[] = [
-    { question: 'Posso testar antes de assinar?', answer: 'Sim! Oferecemos 3 dias de teste grátis em todos os planos, sem necessidade de cartão de crédito. Você terá acesso a todas as funcionalidades do plano escolhido.' },
+    { question: 'Posso testar antes de assinar?', answer: 'Sim! Oferecemos 7 dias de teste grátis em todos os planos, sem necessidade de cartão de crédito. Você terá acesso a todas as funcionalidades do plano escolhido.' },
     { question: 'Como funciona a cobrança?', answer: 'A cobrança é feita de forma recorrente via cartão de crédito, boleto ou PIX. Você pode cancelar a qualquer momento, sem multas ou taxas adicionais.' },
     { question: 'Posso mudar de plano depois?', answer: 'Claro! Você pode fazer upgrade ou downgrade do seu plano a qualquer momento. A diferença será calculada proporcionalmente ao tempo restante da assinatura.' },
     { question: 'Meus dados estão seguros?', answer: 'Utilizamos criptografia de ponta a ponta e armazenamos seus dados em servidores seguros da Supabase. Fazemos backups automáticos diários e seguimos as melhores práticas de segurança.' },
@@ -315,7 +315,7 @@ export default function VendasPage() {
                             price="49"
                             annualPrice="490"
                             period={billingPeriod}
-                            features={['Até 30 produtos', '50 vendas/mês', 'Relatórios básicos']}
+                            features={['Até 30 produtos', 'Até 5 categorias', 'Relatórios básicos']}
                             delay={0}
                         />
                         <PricingCard

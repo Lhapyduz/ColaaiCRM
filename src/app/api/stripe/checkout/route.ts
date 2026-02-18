@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
         // Only add trial if user DOES NOT have an active subscription AND has not used trial for this plan
         if (!hasActiveSubscription && !hasUsedTrialForPlan) {
-            sessionConfig.subscription_data.trial_period_days = 3;
+            sessionConfig.subscription_data.trial_period_days = 7;
         }
 
         const session = await stripe.checkout.sessions.create(sessionConfig);

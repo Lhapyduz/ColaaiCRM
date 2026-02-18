@@ -138,7 +138,7 @@ const AssinaturaPage = () => {
                             {plan.recommended && <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-white text-xs font-semibold rounded-full">Mais Popular</div>}
                             <h3 className="text-xl font-bold text-center mt-2">{plan.name}</h3>
                             {getPriceLabel(plan)}
-                            {paymentMethod === 'card' && <div className="text-center text-xs text-[#2ecc71] font-medium mb-4">3 dias de teste grátis</div>}
+                            {paymentMethod === 'card' && <div className="text-center text-xs text-[#2ecc71] font-medium mb-4">7 dias de teste grátis</div>}
                             {paymentMethod === 'pix' && billingPeriod === 'annual' && (
                                 <div className="text-center text-xs text-[#27ae60] font-medium mb-4">Economize {formatCurrency(plan.priceMonthly * 2)}</div>
                             )}

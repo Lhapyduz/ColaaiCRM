@@ -45,11 +45,11 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // Create new subscription with 3-day trial
+        // Create new subscription with 7-day trial
         const newSubscription = await stripe.subscriptions.create({
             customer: customer.id,
             items: [{ price: newPriceId }],
-            trial_period_days: 3,
+            trial_period_days: 7,
             metadata: {
                 userId: user.id,
                 planType: newPlanType,

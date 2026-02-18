@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
     // Basic Meta Tags
     title: "Cola Aí - Sistema de Gestão para Lanchonetes | Pedidos, Entregas e Fidelidade",
-    description: "Sistema completo para gerenciar sua lanchonete. Controle pedidos, entregas, estoque, fidelidade de clientes e muito mais. Teste grátis por 3 dias!",
+    description: "Sistema completo para gerenciar sua lanchonete. Controle pedidos, entregas, estoque, fidelidade de clientes e muito mais. Teste grátis por 7 dias!",
 
     // Keywords
     keywords: [
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     twitter: {
         card: "summary_large_image",
         title: "Cola Aí - Sistema de Gestão para Lanchonetes",
-        description: "O sistema #1 para lanchonetes. Gerencie pedidos, fidelidade, entregas e estoque. Teste grátis por 3 dias!",
+        description: "O sistema #1 para lanchonetes. Gerencie pedidos, fidelidade, entregas e estoque. Teste grátis por 7 dias!",
         images: ["/og-image.png"],
     },
 

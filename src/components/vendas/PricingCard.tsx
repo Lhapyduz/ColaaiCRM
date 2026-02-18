@@ -114,7 +114,7 @@ export default function PricingCard({
                     </Button>
                 </Link>
                 {period === 'monthly' && (
-                    <p className="text-center text-xs text-text-muted mt-3">3 dias grátis, sem cartão</p>
+                    <p className="text-center text-xs text-text-muted mt-3">7 dias grátis, sem cartão</p>
                 )}
             </div>
 

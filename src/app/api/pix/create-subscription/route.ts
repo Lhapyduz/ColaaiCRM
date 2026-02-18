@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
             .maybeSingle();
 
         const hasUsedTrialForPlan = !!usedTrial;
-        const trialDays = hasUsedTrialForPlan ? 0 : 3;
+        const trialDays = hasUsedTrialForPlan ? 0 : 7;
 
         console.log('[PIX API] Trial check:', { planType, hasUsedTrialForPlan, trialDays });
 
