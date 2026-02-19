@@ -14,19 +14,26 @@ import {
     FiMoreVertical,
     FiEdit2,
     FiGift,
-    FiUserX,
-    FiLogIn,
     FiX,
     FiCheck,
     FiAlertCircle,
     FiPlus,
     FiSave,
     FiCalendar,
-    FiRefreshCw
+    FiRefreshCw,
+    FiTrash2,
+    FiClock,
+    FiDollarSign,
+    FiSlash,
+    FiAlertTriangle,
 } from 'react-icons/fi';
 import { syncStripeData } from '@/actions/sync-stripe';
-import { updateClientPlan, updateClientFeatureFlags } from '@/actions/admin/manage-plan';
+import { updateClientFeatureFlags } from '@/actions/admin/manage-plan';
+import { deleteClient, editClient, grantPlanAccess, revokeAccess } from '@/actions/admin/manage-clients';
 
+// ═══════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════
 interface Tenant {
     id: string;
     email: string;
@@ -35,12 +42,28 @@ interface Tenant {
     status: string;
     created_at: string;
     mrr_cents: number;
+    current_period_end: string | null;
 }
 
 interface FeatureFlag {
     feature_key: string;
     enabled: boolean;
     description: string;
+}
+
+interface Plan {
+    id: string;
+    name: string;
+    price_cents: number;
+    active: boolean;
+    stripe_price_id?: string;
+    billing_interval?: 'monthly' | 'semiannual' | 'annual';
+}
+
+interface Toast {
+    id: string;
+    type: 'success' | 'error' | 'info';
+    message: string;
 }
 
 const AVAILABLE_FEATURES: FeatureFlag[] = [
@@ -52,104 +75,146 @@ const AVAILABLE_FEATURES: FeatureFlag[] = [
     { feature_key: 'custom_branding', enabled: false, description: 'Personalização avançada de marca' },
 ];
 
-interface Plan {
-    id: string;
-    name: string;
-    price_cents: number;
-    active: boolean;
-    stripe_price_id?: string;
-    billing_interval?: 'monthly' | 'semiannual' | 'annual';
+const DURATION_PRESETS = [
+    { label: '1 Dia', value: 1, unit: 'days' as const },
+    { label: '7 Dias', value: 7, unit: 'days' as const },
+    { label: '15 Dias', value: 15, unit: 'days' as const },
+    { label: '1 Mês', value: 1, unit: 'months' as const },
+    { label: '3 Meses', value: 3, unit: 'months' as const },
+    { label: '6 Meses', value: 6, unit: 'months' as const },
+    { label: '1 Ano', value: 1, unit: 'years' as const },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// TOAST COMPONENT
+// ═══════════════════════════════════════════════════════════════
+function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
+    return (
+        <div className="fixed top-4 right-4 z-9999 flex flex-col gap-2 max-w-sm">
+            {toasts.map((toast) => (
+                <div
+                    key={toast.id}
+                    className={cn(
+                        "px-4 py-3 rounded-lg shadow-xl border backdrop-blur-sm flex items-center gap-3 animate-in slide-in-from-right duration-300",
+                        toast.type === 'success' && "bg-emerald-500/20 border-emerald-500/40 text-emerald-300",
+                        toast.type === 'error' && "bg-red-500/20 border-red-500/40 text-red-300",
+                        toast.type === 'info' && "bg-blue-500/20 border-blue-500/40 text-blue-300",
+                    )}
+                >
+                    {toast.type === 'success' && <FiCheck size={16} />}
+                    {toast.type === 'error' && <FiAlertCircle size={16} />}
+                    {toast.type === 'info' && <FiRefreshCw size={16} />}
+                    <span className="text-sm flex-1">{toast.message}</span>
+                    <button onClick={() => onDismiss(toast.id)} className="opacity-60 hover:opacity-100">
+                        <FiX size={14} />
+                    </button>
+                </div>
+            ))}
+        </div>
+    );
 }
 
+// ═══════════════════════════════════════════════════════════════
+// MAIN PAGE
+// ═══════════════════════════════════════════════════════════════
 export default function ClientsPage() {
+    // Core state
     const [loading, setLoading] = useState(true);
     const [tenants, setTenants] = useState<Tenant[]>([]);
     const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
-    const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
-    const [showFlagsPanel, setShowFlagsPanel] = useState(false);
-    const [savingFlags, setSavingFlags] = useState(false);
     const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
     const [syncing, setSyncing] = useState(false);
     const [activePlans, setActivePlans] = useState<Plan[]>([]);
+    const [toasts, setToasts] = useState<Toast[]>([]);
 
-    // Create tenant modal state
+    // Feature Flags
+    const [featureFlags, setFeatureFlags] = useState<Record<string, boolean>>({});
+    const [showFlagsPanel, setShowFlagsPanel] = useState(false);
+    const [savingFlags, setSavingFlags] = useState(false);
+
+    // Create Client Modal
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [createForm, setCreateForm] = useState({
-        email: '',
-        store_name: '',
-        plan_id: '',
-        expiration_date: ''
-    });
+    const [createForm, setCreateForm] = useState({ email: '', store_name: '', plan_id: '', expiration_date: '' });
     const [creatingTenant, setCreatingTenant] = useState(false);
 
-    // Edit Plan Modal State
-    const [showEditPlanModal, setShowEditPlanModal] = useState(false);
-    const [editPlanForm, setEditPlanForm] = useState({
-        plan_id: '',
-        expiration_date: ''
-    });
-    const [savingPlan, setSavingPlan] = useState(false);
+    // Edit Client Modal
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editForm, setEditForm] = useState({ email: '', store_name: '' });
+    const [savingEdit, setSavingEdit] = useState(false);
 
-    // Bonus Days Modal State
+    // Grant Plan Modal
+    const [showGrantModal, setShowGrantModal] = useState(false);
+    const [grantForm, setGrantForm] = useState({ plan_id: '', duration_value: 1, duration_unit: 'months' as 'days' | 'months' | 'years' });
+    const [savingGrant, setSavingGrant] = useState(false);
+
+    // Bonus Days Modal
     const [showBonusModal, setShowBonusModal] = useState(false);
     const [bonusDays, setBonusDays] = useState(7);
     const [savingBonus, setSavingBonus] = useState(false);
 
-    // Ban User Check
-    const [processingBan, setProcessingBan] = useState(false);
+    // Delete Modal
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [deleting, setDeleting] = useState(false);
 
+    // Revoke state
+    const [revoking, setRevoking] = useState(false);
+
+    // ═══════════════════════════════════════════════════════════
+    // TOAST HELPER
+    // ═══════════════════════════════════════════════════════════
+    const addToast = useCallback((type: Toast['type'], message: string) => {
+        const id = crypto.randomUUID();
+        setToasts(prev => [...prev, { id, type, message }]);
+        setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+        }, 4000);
+    }, []);
+
+    const dismissToast = useCallback((id: string) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, []);
+
+    // ═══════════════════════════════════════════════════════════
+    // DATA FETCHING
+    // ═══════════════════════════════════════════════════════════
     const fetchTenants = useCallback(async () => {
-
         try {
-            // Join user_settings with subscriptions_cache
             const { data: settings, error: settingsError } = await supabase
                 .from('user_settings')
                 .select('user_id, app_name, created_at');
 
-            if (settingsError) {
-                console.error('Settings fetch error:', settingsError);
-                throw settingsError;
-            }
+            if (settingsError) throw settingsError;
 
-            const { data: subscriptions, error: subError } = await supabase
+            const { data: subscriptions } = await supabase
                 .from('subscriptions_cache')
-                .select('tenant_id, plan_name, status, amount_cents');
-
-            if (subError) {
-                console.error('Subscriptions fetch error:', subError);
-            }
+                .select('tenant_id, plan_name, status, amount_cents, current_period_end');
 
             const users = await listAllUsers();
 
-            // Combine data
             const combined: Tenant[] = (settings || []).map(s => {
                 const sub = subscriptions?.find(sub => sub.tenant_id === s.user_id);
                 const user = users?.find(u => u.id === s.user_id);
                 return {
                     id: s.user_id,
                     email: user?.email || 'N/A',
-                    store_name: (s as any).app_name || 'Sem nome', // Use app_name from database
+                    store_name: s.app_name || 'Sem nome',
                     plan_name: sub?.plan_name || 'Gratuito',
-                    status: sub?.status === 'active' || sub?.status === 'trialing' ? 'active' : 'inactive',
-                    created_at: new Date().toISOString(), // Fallback
-                    mrr_cents: sub?.amount_cents || 0
+                    status: sub?.status === 'active' || sub?.status === 'trialing' ? 'active' : (sub?.status || 'inactive'),
+                    created_at: s.created_at || new Date().toISOString(),
+                    mrr_cents: sub?.amount_cents || 0,
+                    current_period_end: sub?.current_period_end || null,
                 };
             });
 
             setTenants(combined);
-        } catch (error: any) {
-            console.error('Error fetching tenants details:', error?.message || error);
-            // Demo data for development
-            setTenants([
-                { id: '1', email: 'lanchonete@exemplo.com', store_name: 'Hot Dog Express', plan_name: 'Profissional', status: 'active', created_at: '2025-01-15', mrr_cents: 9900 },
-                { id: '2', email: 'fastfood@mail.com', store_name: 'Fast Burger', plan_name: 'Avançado', status: 'active', created_at: '2025-02-20', mrr_cents: 4900 },
-                { id: '3', email: 'dogao@mail.com', store_name: 'Dogão do Zé', plan_name: 'Básico', status: 'past_due', created_at: '2024-12-01', mrr_cents: 2900 },
-                { id: '4', email: 'lanches@teste.com', store_name: 'Lanches da Maria', plan_name: 'Profissional', status: 'active', created_at: '2025-03-10', mrr_cents: 9900 },
-            ]);
+        } catch (error: unknown) {
+            console.error('Error fetching tenants:', error instanceof Error ? error.message : error);
+            addToast('error', 'Erro ao carregar clientes');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [addToast]);
 
     const fetchPlans = useCallback(async () => {
         const { data } = await supabase
@@ -159,31 +224,24 @@ export default function ClientsPage() {
             .order('price_cents', { ascending: true });
 
         if (data) {
-            // Map subscription_plans fields to Plan interface
-            const mappedPlans: Plan[] = data.map(p => ({
-                id: p.id, // Keep internal UUID
+            setActivePlans(data.map(p => ({
+                id: p.id,
                 name: p.name,
                 price_cents: p.price_cents,
                 active: p.is_active,
-                // Add stripe_price_id for reference if needed
                 stripe_price_id: p.stripe_price_id,
-                billing_interval: p.billing_interval
-            }));
-            setActivePlans(mappedPlans);
+                billing_interval: p.billing_interval,
+            })));
         }
     }, []);
 
-    useEffect(() => {
-        fetchPlans();
-    }, [fetchPlans]);
+    useEffect(() => { fetchPlans(); }, [fetchPlans]);
+    useEffect(() => { fetchTenants(); }, [fetchTenants]);
 
-
-    useEffect(() => {
-        fetchTenants();
-    }, [fetchTenants]);
-
+    // ═══════════════════════════════════════════════════════════
+    // FEATURE FLAGS
+    // ═══════════════════════════════════════════════════════════
     const loadFeatureFlags = async (tenantId: string) => {
-
         try {
             const { data } = await supabase
                 .from('tenant_feature_flags')
@@ -196,8 +254,7 @@ export default function ClientsPage() {
                 flags[f.feature_key] = existing?.enabled || false;
             });
             setFeatureFlags(flags);
-        } catch (error) {
-            console.error('Error loading feature flags:', error);
+        } catch {
             const flags: Record<string, boolean> = {};
             AVAILABLE_FEATURES.forEach(f => { flags[f.feature_key] = false; });
             setFeatureFlags(flags);
@@ -210,262 +267,143 @@ export default function ClientsPage() {
         setShowFlagsPanel(true);
     };
 
-    const toggleFlag = (key: string) => {
-        setFeatureFlags(prev => ({ ...prev, [key]: !prev[key] }));
-    };
+    const toggleFlag = (key: string) => setFeatureFlags(prev => ({ ...prev, [key]: !prev[key] }));
 
     const saveFeatureFlags = async () => {
         if (!selectedTenant) return;
         setSavingFlags(true);
-
         try {
             const { success, error } = await updateClientFeatureFlags(selectedTenant.id, featureFlags);
-
             if (!success) throw new Error(error);
-
             setShowFlagsPanel(false);
-            alert('Funcionalidades atualizadas!');
-        } catch (error: any) {
-            console.error('Error saving feature flags:', error);
-            alert(`Erro ao salvar flags: ${error.message}`);
+            addToast('success', 'Funcionalidades atualizadas!');
+        } catch (error: unknown) {
+            addToast('error', `Erro ao salvar flags: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
             setSavingFlags(false);
         }
     };
 
-    const formatCurrency = (cents: number) => {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(cents / 100);
+    // ═══════════════════════════════════════════════════════════
+    // SYNC STRIPE
+    // ═══════════════════════════════════════════════════════════
+    const handleSync = async () => {
+        setSyncing(true);
+        try {
+            const result = await syncStripeData();
+            await fetchTenants();
+            if (result.success) {
+                const count = 'subscriptions' in result ? result.subscriptions : 0;
+                addToast('success', `Sincronizado! ${count} assinaturas processadas.`);
+            } else {
+                addToast('error', 'Erro na sincronização');
+            }
+        } catch {
+            addToast('error', 'Falha na sincronização');
+        } finally {
+            setSyncing(false);
+        }
     };
 
-    const formatDate = (date: string) => {
-        return new Date(date).toLocaleDateString('pt-BR');
-    };
-
-    const getStatusBadge = (status: string) => {
-        const styles: Record<string, string> = {
-            active: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-            past_due: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-            canceled: 'bg-red-500/20 text-red-400 border-red-500/30',
-            inactive: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-        };
-        const labels: Record<string, string> = {
-            active: 'Ativo',
-            past_due: 'Pendente',
-            canceled: 'Cancelado',
-            inactive: 'Inativo',
-        };
-        return (
-            <span className={cn(
-                "px-2 py-1 rounded-full text-xs font-medium border",
-                styles[status] || styles.inactive
-            )}>
-                {labels[status] || status}
-            </span>
-        );
-    };
-
-    const columns: Column<Tenant>[] = [
-        {
-            key: 'store_name',
-            header: 'Loja',
-            sortable: true,
-            render: (_, row) => (
-                <div>
-                    <p className="font-medium text-white">{row.store_name}</p>
-                    <p className="text-gray-500 text-xs">{row.email}</p>
-                </div>
-            )
-        },
-        {
-            key: 'plan_name',
-            header: 'Plano',
-            sortable: true,
-            render: (value) => (
-                <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full text-xs font-medium">
-                    {value as string}
-                </span>
-            )
-        },
-        {
-            key: 'status',
-            header: 'Status',
-            sortable: true,
-            render: (value) => getStatusBadge(value as string)
-        },
-        {
-            key: 'mrr_cents',
-            header: 'MRR',
-            sortable: true,
-            render: (value) => (
-                <span className="text-white font-medium">{formatCurrency(value as number)}</span>
-            )
-        },
-        {
-            key: 'created_at',
-            header: 'Cliente Desde',
-            sortable: true,
-            render: (value) => formatDate(value as string)
-        },
-    ];
-
-    const renderActions = (row: Tenant) => (
-        <div className="relative">
-            <button
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setActionMenuOpen(actionMenuOpen === row.id ? null : row.id);
-                }}
-                className="p-2 hover:bg-gray-700 rounded-lg transition-colors text-gray-400 hover:text-white"
-            >
-                <FiMoreVertical size={18} />
-            </button>
-
-            {actionMenuOpen === row.id && (
-                <>
-                    <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setActionMenuOpen(null)}
-                    />
-                    <div className="absolute right-0 top-10 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 py-2">
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                openFlagsPanel(row);
-                                setActionMenuOpen(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3"
-                        >
-                            <FiToggleRight size={16} />
-                            Feature Flags
-                        </button>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenEditPlan(row);
-                                setActionMenuOpen(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3"
-                        >
-                            <FiEdit2 size={16} />
-                            Alterar Plano
-                        </button>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenBonus(row);
-                                setActionMenuOpen(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3"
-                        >
-                            <FiGift size={16} />
-                            Adicionar Dias
-                        </button>
-                        <button className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3">
-                            <FiLogIn size={16} />
-                            Acessar Painel
-                        </button>
-                        <hr className="my-2 border-gray-700" />
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleBanUser(row);
-                                setActionMenuOpen(null);
-                            }}
-                            disabled={processingBan}
-                            className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-3"
-                        >
-                            <FiUserX size={16} />
-                            Banir Cliente
-                        </button>
-                    </div>
-                </>
-            )}
-        </div>
-    );
-
-    const activeCount = tenants.filter(t => t.status === 'active').length;
-    const totalMRR = tenants.reduce((sum, t) => sum + t.mrr_cents, 0);
-    const pendingCount = tenants.filter(t => t.status === 'past_due').length;
-
-    // Create tenant function
+    // ═══════════════════════════════════════════════════════════
+    // CREATE CLIENT
+    // ═══════════════════════════════════════════════════════════
     const handleCreateClient = async () => {
         if (!createForm.email || !createForm.store_name || !createForm.plan_id) return;
         setCreatingTenant(true);
 
         const selectedPlan = activePlans.find(p => p.id === createForm.plan_id);
-        const planName = selectedPlan?.name || 'Unknown Plan';
-        const planPrice = selectedPlan?.price_cents || 0;
 
         try {
-            // Create user settings (in production, you'd create auth user first)
             const newUserId = crypto.randomUUID();
 
             await supabase.from('user_settings').insert({
                 user_id: newUserId,
-                app_name: createForm.store_name, // Fix: use app_name in database
-                created_at: new Date().toISOString()
+                app_name: createForm.store_name,
+                created_at: new Date().toISOString(),
             });
 
-            // Create subscription cache entry
             await supabase.from('subscriptions_cache').insert({
                 tenant_id: newUserId,
-                plan_name: planName,
+                plan_name: selectedPlan?.name || 'Unknown',
                 status: 'active',
-                mrr_cents: planPrice, // Use dynamic price
-                amount_cents: planPrice, // Also populate amount_cents as per earlier fix
-                current_period_end: createForm.expiration_date ? new Date(createForm.expiration_date).toISOString() : null
+                amount_cents: selectedPlan?.price_cents || 0,
+                current_period_end: createForm.expiration_date ? new Date(createForm.expiration_date).toISOString() : null,
             });
 
             setShowCreateModal(false);
             setCreateForm({ email: '', store_name: '', plan_id: '', expiration_date: '' });
+            addToast('success', 'Cliente criado com sucesso!');
             fetchTenants();
-        } catch (error) {
-            console.error('Error creating tenant:', error);
+        } catch (error: unknown) {
+            addToast('error', `Erro ao criar: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
             setCreatingTenant(false);
         }
     };
 
-    // Edit Plan Functions
-    const handleOpenEditPlan = (tenant: Tenant) => {
+    // ═══════════════════════════════════════════════════════════
+    // EDIT CLIENT
+    // ═══════════════════════════════════════════════════════════
+    const handleOpenEdit = (tenant: Tenant) => {
         setSelectedTenant(tenant);
-        // Try to find plan by name
-        const matchingPlan = activePlans.find(p => p.name === tenant.plan_name);
-        setEditPlanForm({
-            plan_id: matchingPlan?.id || '',
-            expiration_date: ''
-        });
-        setShowEditPlanModal(true);
+        setEditForm({ email: tenant.email, store_name: tenant.store_name });
+        setShowEditModal(true);
     };
 
-    const handleSavePlan = async () => {
+    const handleSaveEdit = async () => {
         if (!selectedTenant) return;
-        setSavingPlan(true);
-
+        setSavingEdit(true);
         try {
-            const { success, error } = await updateClientPlan({
+            const { success, error } = await editClient({
                 userId: selectedTenant.id,
-                planId: editPlanForm.plan_id,
-                periodEnd: editPlanForm.expiration_date
+                email: editForm.email !== selectedTenant.email ? editForm.email : undefined,
+                storeName: editForm.store_name !== selectedTenant.store_name ? editForm.store_name : undefined,
             });
-
             if (!success) throw new Error(error);
-
-            alert('Plano atualizado com sucesso!');
-            setShowEditPlanModal(false);
+            setShowEditModal(false);
+            addToast('success', 'Dados atualizados!');
             fetchTenants();
-        } catch (error: any) {
-            console.error('Error updating plan:', error);
-            alert(`Erro ao atualizar plano: ${error.message}`);
+        } catch (error: unknown) {
+            addToast('error', `Erro: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
-            setSavingPlan(false);
+            setSavingEdit(false);
         }
     };
 
-    // Bonus Days Function
+    // ═══════════════════════════════════════════════════════════
+    // GRANT PLAN ACCESS
+    // ═══════════════════════════════════════════════════════════
+    const handleOpenGrant = (tenant: Tenant) => {
+        setSelectedTenant(tenant);
+        const matchingPlan = activePlans.find(p => p.name === tenant.plan_name);
+        setGrantForm({ plan_id: matchingPlan?.id || (activePlans[0]?.id || ''), duration_value: 1, duration_unit: 'months' });
+        setShowGrantModal(true);
+    };
+
+    const handleSaveGrant = async () => {
+        if (!selectedTenant || !grantForm.plan_id) return;
+        setSavingGrant(true);
+        try {
+            const { success, error } = await grantPlanAccess({
+                userId: selectedTenant.id,
+                planId: grantForm.plan_id,
+                duration: { value: grantForm.duration_value, unit: grantForm.duration_unit },
+            });
+            if (!success) throw new Error(error);
+            setShowGrantModal(false);
+            addToast('success', 'Plano concedido com sucesso!');
+            fetchTenants();
+        } catch (error: unknown) {
+            addToast('error', `Erro: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+            setSavingGrant(false);
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // BONUS DAYS
+    // ═══════════════════════════════════════════════════════════
     const handleOpenBonus = (tenant: Tenant) => {
         setSelectedTenant(tenant);
         setBonusDays(7);
@@ -475,9 +413,7 @@ export default function ClientsPage() {
     const handleGiveBonusDays = async () => {
         if (!selectedTenant) return;
         setSavingBonus(true);
-
         try {
-            // Fetch current subscription to get period_end
             const { data: sub } = await supabase
                 .from('subscriptions_cache')
                 .select('current_period_end')
@@ -485,122 +421,294 @@ export default function ClientsPage() {
                 .single();
 
             const currentEnd = sub?.current_period_end ? new Date(sub.current_period_end) : new Date();
-            // If expired, start from now. If active, add to existing end.
             const baseDate = currentEnd > new Date() ? currentEnd : new Date();
-
             baseDate.setDate(baseDate.getDate() + bonusDays);
 
             const { error } = await supabase
                 .from('subscriptions_cache')
-                .update({
-                    current_period_end: baseDate.toISOString(),
-                    status: 'active'
-                })
+                .update({ current_period_end: baseDate.toISOString(), status: 'active' })
                 .eq('tenant_id', selectedTenant.id);
 
             if (error) throw error;
 
             setShowBonusModal(false);
+            addToast('success', `${bonusDays} dias bônus adicionados!`);
             fetchTenants();
-        } catch (error) {
-            console.error('Error giving bonus days:', error);
+        } catch (error: unknown) {
+            addToast('error', `Erro: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
             setSavingBonus(false);
         }
     };
 
-    // Ban User Function
-    const handleBanUser = async (tenant: Tenant) => {
-        if (!confirm(`Tem certeza que deseja banir a loja "${tenant.store_name}"? Isso impedirá o acesso ao sistema.`)) return;
-        setProcessingBan(true);
-
+    // ═══════════════════════════════════════════════════════════
+    // REVOKE ACCESS
+    // ═══════════════════════════════════════════════════════════
+    const handleRevoke = async (tenant: Tenant) => {
+        if (!confirm(`Tem certeza que deseja revogar o acesso de "${tenant.store_name}"?`)) return;
+        setRevoking(true);
         try {
-            const { error } = await supabase
-                .from('subscriptions_cache')
-                .update({
-                    status: 'banned',
-                    updated_at: new Date().toISOString()
-                })
-                .eq('tenant_id', tenant.id);
-
-            if (error) throw error;
+            const { success, error } = await revokeAccess(tenant.id);
+            if (!success) throw new Error(error);
+            addToast('success', 'Acesso revogado!');
             fetchTenants();
-        } catch (error) {
-            console.error('Error banning user:', error);
+        } catch (error: unknown) {
+            addToast('error', `Erro: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
-            setProcessingBan(false);
+            setRevoking(false);
         }
     };
 
-    return (
-        <div className="p-8">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-white">Gestão de Clientes</h1>
-                    <p className="text-gray-400 mt-1">Gerencie todas as lanchonetes cadastradas no sistema</p>
+    // ═══════════════════════════════════════════════════════════
+    // DELETE CLIENT
+    // ═══════════════════════════════════════════════════════════
+    const handleOpenDelete = (tenant: Tenant) => {
+        setSelectedTenant(tenant);
+        setDeleteConfirmText('');
+        setShowDeleteModal(true);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!selectedTenant || deleteConfirmText !== 'EXCLUIR') return;
+        setDeleting(true);
+        try {
+            const result = await deleteClient(selectedTenant.id);
+            if (!result.success) throw new Error(result.error);
+
+            setShowDeleteModal(false);
+            if (result.partial) {
+                addToast('info', 'Cliente excluído com avisos parciais.');
+            } else {
+                addToast('success', 'Cliente excluído permanentemente!');
+            }
+            fetchTenants();
+        } catch (error: unknown) {
+            addToast('error', `Erro ao excluir: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // FORMATTERS & HELPERS
+    // ═══════════════════════════════════════════════════════════
+    const formatCurrency = (cents: number) =>
+        new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
+
+    const formatDate = (date: string) => new Date(date).toLocaleDateString('pt-BR');
+
+    const getExpirationStatus = (dateStr: string | null) => {
+        if (!dateStr) return { label: 'Sem prazo', color: 'text-gray-500', bg: 'bg-gray-500/10 border-gray-500/20' };
+        const now = new Date();
+        const end = new Date(dateStr);
+        const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (daysLeft < 0) return { label: `Expirado há ${Math.abs(daysLeft)}d`, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
+        if (daysLeft <= 3) return { label: `${daysLeft}d restantes`, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
+        if (daysLeft <= 7) return { label: `${daysLeft}d restantes`, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
+        if (daysLeft <= 30) return { label: `${daysLeft}d restantes`, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' };
+        return { label: formatDate(dateStr), color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' };
+    };
+
+    const getStatusBadge = (status: string) => {
+        const styles: Record<string, string> = {
+            active: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+            trialing: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+            past_due: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+            canceled: 'bg-red-500/20 text-red-400 border-red-500/30',
+            banned: 'bg-red-700/20 text-red-500 border-red-700/30',
+            inactive: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+        };
+        const labels: Record<string, string> = {
+            active: 'Ativo',
+            trialing: 'Trial',
+            past_due: 'Pendente',
+            canceled: 'Cancelado',
+            banned: 'Banido',
+            inactive: 'Inativo',
+        };
+        return (
+            <span className={cn("px-2 py-1 rounded-full text-xs font-medium border", styles[status] || styles.inactive)}>
+                {labels[status] || status}
+            </span>
+        );
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // STATS
+    // ═══════════════════════════════════════════════════════════
+    const activeCount = tenants.filter(t => t.status === 'active' || t.status === 'trialing').length;
+    const totalMRR = tenants.filter(t => t.status === 'active').reduce((sum, t) => sum + t.mrr_cents, 0);
+    const expiringCount = tenants.filter(t => {
+        if (!t.current_period_end) return false;
+        const daysLeft = Math.ceil((new Date(t.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return daysLeft >= 0 && daysLeft <= 7;
+    }).length;
+
+    // ═══════════════════════════════════════════════════════════
+    // TABLE COLUMNS
+    // ═══════════════════════════════════════════════════════════
+    const columns: Column<Tenant>[] = [
+        {
+            key: 'store_name',
+            header: 'Loja',
+            sortable: true,
+            render: (_, row) => (
+                <div className="min-w-0">
+                    <p className="font-medium text-white truncate">{row.store_name}</p>
+                    <p className="text-gray-500 text-xs truncate">{row.email}</p>
                 </div>
-                <div className="flex gap-2">
+            ),
+        },
+        {
+            key: 'plan_name',
+            header: 'Plano',
+            sortable: true,
+            render: (value) => (
+                <span className="px-2 py-1 bg-orange-500/20 text-orange-400 rounded-full text-xs font-medium whitespace-nowrap">
+                    {value as string}
+                </span>
+            ),
+        },
+        {
+            key: 'status',
+            header: 'Status',
+            sortable: true,
+            render: (value) => getStatusBadge(value as string),
+        },
+        {
+            key: 'current_period_end',
+            header: 'Expiração',
+            sortable: true,
+            render: (_, row) => {
+                const exp = getExpirationStatus(row.current_period_end);
+                return (
+                    <span className={cn("px-2 py-1 rounded-md text-xs font-medium border whitespace-nowrap", exp.bg, exp.color)}>
+                        {exp.label}
+                    </span>
+                );
+            },
+        },
+        {
+            key: 'mrr_cents',
+            header: 'MRR',
+            sortable: true,
+            render: (value) => (
+                <span className="text-white font-medium whitespace-nowrap">{formatCurrency(value as number)}</span>
+            ),
+        },
+    ];
+
+    // ═══════════════════════════════════════════════════════════
+    // ACTIONS MENU RENDER
+    // ═══════════════════════════════════════════════════════════
+    const renderActions = (row: Tenant) => (
+        <div className="relative">
+            <button
+                onClick={(e) => { e.stopPropagation(); setActionMenuOpen(actionMenuOpen === row.id ? null : row.id); }}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors text-gray-400 hover:text-white"
+            >
+                <FiMoreVertical size={18} />
+            </button>
+
+            {actionMenuOpen === row.id && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setActionMenuOpen(null)} />
+                    <div className="absolute right-0 top-10 w-56 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 py-1">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleOpenEdit(row); setActionMenuOpen(null); }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3"
+                        >
+                            <FiEdit2 size={15} /> Editar Dados
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleOpenGrant(row); setActionMenuOpen(null); }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3"
+                        >
+                            <FiCalendar size={15} /> Conceder Plano
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleOpenBonus(row); setActionMenuOpen(null); }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3"
+                        >
+                            <FiGift size={15} /> Adicionar Dias
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); openFlagsPanel(row); setActionMenuOpen(null); }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-gray-700 flex items-center gap-3"
+                        >
+                            <FiToggleRight size={15} /> Feature Flags
+                        </button>
+                        <hr className="my-1 border-gray-700" />
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleRevoke(row); setActionMenuOpen(null); }}
+                            disabled={revoking}
+                            className="w-full px-4 py-2.5 text-left text-sm text-amber-400 hover:bg-amber-500/10 flex items-center gap-3"
+                        >
+                            <FiSlash size={15} /> Revogar Acesso
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleOpenDelete(row); setActionMenuOpen(null); }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-3"
+                        >
+                            <FiTrash2 size={15} /> Excluir Cliente
+                        </button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+
+    // ═══════════════════════════════════════════════════════════
+    // RENDER
+    // ═══════════════════════════════════════════════════════════
+    return (
+        <div className="p-4 md:p-8 max-w-full overflow-x-hidden">
+            {/* Toasts */}
+            <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white">Gestão de Clientes</h1>
+                    <p className="text-gray-400 text-sm mt-1">Gerencie todos os clientes, planos e acessos — sincronizado com Stripe</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
                     <button
-                        onClick={async () => {
-                            setSyncing(true);
-                            try {
-                                await syncStripeData();
-                                await fetchTenants();
-                            } catch (e) {
-                                console.error(e);
-                            } finally {
-                                setSyncing(false);
-                            }
-                        }}
+                        onClick={handleSync}
                         disabled={syncing}
                         className={cn(
-                            "flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700",
+                            "flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700 text-sm",
                             syncing && "opacity-50 cursor-not-allowed"
                         )}
                     >
                         <FiRefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
-                        {syncing ? 'Sincronizando...' : 'Sincronizar Dados'}
+                        {syncing ? 'Sincronizando...' : 'Sincronizar'}
                     </button>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className={cn(
-                            "flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all",
-                            "bg-linear-to-r from-orange-500 to-red-500 text-white",
-                            "hover:from-orange-600 hover:to-red-600"
-                        )}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-linear-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 text-sm"
                     >
-                        <FiPlus size={18} />
-                        Novo Cliente
+                        <FiPlus size={16} /> Novo Cliente
                     </button>
                 </div>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+                <StatsCard title="Total de Clientes" value={tenants.length} icon={<FiUsers size={22} />} loading={loading} />
+                <StatsCard title="Clientes Ativos" value={activeCount} icon={<FiCheck size={22} />} variant="success" loading={loading} />
+                <StatsCard title="MRR Total" value={formatCurrency(totalMRR)} icon={<FiDollarSign size={22} />} loading={loading} />
                 <StatsCard
-                    title="Total de Lojas"
-                    value={tenants.length}
-                    icon={<FiUsers size={24} />}
-                    loading={loading}
-                />
-                <StatsCard
-                    title="Lojas Ativas"
-                    value={activeCount}
-                    icon={<FiCheck size={24} />}
-                    variant="success"
-                    loading={loading}
-                />
-                <StatsCard
-                    title="Pagamento Pendente"
-                    value={pendingCount}
-                    icon={<FiAlertCircle size={24} />}
-                    variant={pendingCount > 0 ? 'warning' : 'default'}
+                    title="Expirando em 7d"
+                    value={expiringCount}
+                    icon={<FiClock size={22} />}
+                    variant={expiringCount > 0 ? 'warning' : 'default'}
                     loading={loading}
                 />
             </div>
 
-            {/* Tenants Table */}
+            {/* Data Table */}
             <DataTable
                 columns={columns}
                 data={tenants}
@@ -611,186 +719,232 @@ export default function ClientsPage() {
                 selectable
             />
 
-            {/* Feature Flags Panel */}
-            {showFlagsPanel && selectedTenant && (
-                <>
-                    <div
-                        className="fixed inset-0 bg-black/50 z-40"
-                        onClick={() => setShowFlagsPanel(false)}
-                    />
-                    <div className="fixed right-0 top-0 h-screen w-96 bg-gray-900 border-l border-gray-700 z-50 overflow-y-auto">
-                        <div className="p-6">
-                            {/* Header */}
-                            <div className="flex items-center justify-between mb-6">
-                                <div>
-                                    <h2 className="text-xl font-bold text-white">Feature Flags</h2>
-                                    <p className="text-gray-400 text-sm">{selectedTenant.store_name}</p>
-                                </div>
-                                <button
-                                    onClick={() => setShowFlagsPanel(false)}
-                                    className="p-2 hover:bg-gray-800 rounded-lg transition-colors text-gray-400"
-                                >
-                                    <FiX size={20} />
-                                </button>
-                            </div>
-
-                            {/* Flags List */}
-                            <div className="space-y-4">
-                                {AVAILABLE_FEATURES.map((feature) => (
-                                    <div
-                                        key={feature.feature_key}
-                                        className={cn(
-                                            "p-4 rounded-lg border transition-all cursor-pointer",
-                                            featureFlags[feature.feature_key]
-                                                ? "bg-orange-500/10 border-orange-500/30"
-                                                : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
-                                        )}
-                                        onClick={() => toggleFlag(feature.feature_key)}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1">
-                                                <p className="text-white font-medium">{feature.feature_key}</p>
-                                                <p className="text-gray-400 text-sm mt-1">{feature.description}</p>
-                                            </div>
-                                            <button className="ml-4">
-                                                {featureFlags[feature.feature_key] ? (
-                                                    <FiToggleRight size={28} className="text-orange-500" />
-                                                ) : (
-                                                    <FiToggleLeft size={28} className="text-gray-500" />
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Save Button */}
-                            <div className="mt-8 pt-6 border-t border-gray-700">
-                                <button
-                                    onClick={saveFeatureFlags}
-                                    disabled={savingFlags}
-                                    className={cn(
-                                        "w-full py-3 rounded-lg font-medium transition-all",
-                                        "bg-linear-to-r from-orange-500 to-red-500 text-white",
-                                        "hover:from-orange-600 hover:to-red-600",
-                                        "disabled:opacity-50 disabled:cursor-not-allowed"
-                                    )}
-                                >
-                                    {savingFlags ? 'Salvando...' : 'Salvar Alterações'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {/* Create Tenant Modal */}
-            {showCreateModal && (
+            {/* ═══ MODAL: Editar Dados ═══ */}
+            {showEditModal && selectedTenant && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg">
-                        {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-700">
-                            <h2 className="text-xl font-bold text-white">Novo Cliente</h2>
-                            <button
-                                onClick={() => setShowCreateModal(false)}
-                                className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700"
-                            >
-                                <FiX size={20} />
+                        <div className="flex items-center justify-between p-5 border-b border-gray-700">
+                            <h2 className="text-lg font-bold text-white">Editar Cliente</h2>
+                            <button onClick={() => setShowEditModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">
+                                <FiX size={18} />
                             </button>
                         </div>
-
-                        {/* Modal Body */}
-                        <div className="p-6 space-y-5">
-                            {/* Email */}
+                        <div className="p-5 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Email *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
                                 <input
                                     type="email"
-                                    value={createForm.email}
-                                    onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                                    placeholder="email@exemplo.com"
+                                    value={editForm.email}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                                    className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
                                 />
                             </div>
-
-                            {/* Store Name */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Nome da Loja *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Nome da Loja</label>
                                 <input
                                     type="text"
-                                    value={createForm.store_name}
-                                    onChange={(e) => setCreateForm(prev => ({ ...prev, store_name: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                                    placeholder="Nome da lanchonete"
+                                    value={editForm.store_name}
+                                    onChange={(e) => setEditForm(prev => ({ ...prev, store_name: e.target.value }))}
+                                    className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
                                 />
                             </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-700">
+                            <button onClick={() => setShowEditModal(false)} className="px-5 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">Cancelar</button>
+                            <button
+                                onClick={handleSaveEdit}
+                                disabled={savingEdit}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50"
+                            >
+                                <FiSave size={16} />
+                                {savingEdit ? 'Salvando...' : 'Salvar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                            {/* Plan Selection */}
+            {/* ═══ MODAL: Conceder Plano ═══ */}
+            {showGrantModal && selectedTenant && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-700">
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    Plano
-                                </label>
+                                <h2 className="text-lg font-bold text-white">Conceder Plano</h2>
+                                <p className="text-gray-400 text-xs mt-0.5">{selectedTenant.store_name}</p>
+                            </div>
+                            <button onClick={() => setShowGrantModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            {/* Plan Select */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Plano</label>
                                 {activePlans.length === 0 ? (
                                     <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500 text-sm">
-                                        Nenhum plano ativo encontrado. <Link href="/admin/plans" className="underline font-bold">Criar Planos</Link>.
+                                        Nenhum plano ativo. <Link href="/admin/plans" className="underline font-bold">Criar Planos</Link>.
                                     </div>
                                 ) : (
                                     <select
-                                        value={createForm.plan_id}
-                                        onChange={(e) => setCreateForm(prev => ({ ...prev, plan_id: e.target.value }))}
-                                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                        value={grantForm.plan_id}
+                                        onChange={(e) => setGrantForm(prev => ({ ...prev, plan_id: e.target.value }))}
+                                        className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
                                     >
-                                        <option value="">Selecione um plano...</option>
                                         {activePlans.map(plan => (
                                             <option key={plan.id} value={plan.id}>
-                                                {plan.name} - {formatCurrency(plan.price_cents)}/mês
+                                                {plan.name} — {formatCurrency(plan.price_cents)}/{plan.billing_interval === 'annual' ? 'ano' : 'mês'}
                                             </option>
                                         ))}
                                     </select>
                                 )}
                             </div>
 
-                            {/* Expiration Date */}
+                            {/* Duration Presets */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    <FiCalendar className="inline mr-2" size={16} />
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Duração do Acesso</label>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {DURATION_PRESETS.map((preset) => {
+                                        const isActive = grantForm.duration_value === preset.value && grantForm.duration_unit === preset.unit;
+                                        return (
+                                            <button
+                                                key={preset.label}
+                                                onClick={() => setGrantForm(prev => ({ ...prev, duration_value: preset.value, duration_unit: preset.unit }))}
+                                                className={cn(
+                                                    "px-3 py-2 rounded-lg text-xs font-medium transition-all border",
+                                                    isActive
+                                                        ? "bg-orange-500/20 border-orange-500/40 text-orange-400"
+                                                        : "bg-gray-900 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300"
+                                                )}
+                                            >
+                                                {preset.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Custom Duration */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1">
+                                    <label className="block text-xs text-gray-500 mb-1">Personalizado</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={grantForm.duration_value}
+                                        onChange={(e) => setGrantForm(prev => ({ ...prev, duration_value: Math.max(1, parseInt(e.target.value) || 1) }))}
+                                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-xs text-gray-500 mb-1">Unidade</label>
+                                    <select
+                                        value={grantForm.duration_unit}
+                                        onChange={(e) => setGrantForm(prev => ({ ...prev, duration_unit: e.target.value as 'days' | 'months' | 'years' }))}
+                                        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    >
+                                        <option value="days">Dias</option>
+                                        <option value="months">Meses</option>
+                                        <option value="years">Anos</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Preview */}
+                            <div className="p-3 bg-gray-900/50 rounded-lg border border-gray-700/50">
+                                <p className="text-xs text-gray-400">
+                                    O acesso será válido por <strong className="text-orange-400">{grantForm.duration_value} {grantForm.duration_unit === 'days' ? 'dia(s)' : grantForm.duration_unit === 'months' ? 'mês(es)' : 'ano(s)'}</strong> a partir de agora.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-700">
+                            <button onClick={() => setShowGrantModal(false)} className="px-5 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">Cancelar</button>
+                            <button
+                                onClick={handleSaveGrant}
+                                disabled={savingGrant || !grantForm.plan_id}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium bg-linear-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 disabled:opacity-50"
+                            >
+                                <FiCheck size={16} />
+                                {savingGrant ? 'Concedendo...' : 'Conceder Acesso'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══ MODAL: Criar Cliente ═══ */}
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-700">
+                            <h2 className="text-lg font-bold text-white">Novo Cliente</h2>
+                            <button onClick={() => setShowCreateModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">
+                                <FiX size={18} />
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Email *</label>
+                                <input
+                                    type="email"
+                                    value={createForm.email}
+                                    onChange={(e) => setCreateForm(prev => ({ ...prev, email: e.target.value }))}
+                                    className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    placeholder="email@exemplo.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Nome da Loja *</label>
+                                <input
+                                    type="text"
+                                    value={createForm.store_name}
+                                    onChange={(e) => setCreateForm(prev => ({ ...prev, store_name: e.target.value }))}
+                                    className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    placeholder="Nome da lanchonete"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Plano</label>
+                                {activePlans.length === 0 ? (
+                                    <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500 text-sm">
+                                        Nenhum plano ativo. <Link href="/admin/plans" className="underline font-bold">Criar Planos</Link>.
+                                    </div>
+                                ) : (
+                                    <select
+                                        value={createForm.plan_id}
+                                        onChange={(e) => setCreateForm(prev => ({ ...prev, plan_id: e.target.value }))}
+                                        className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    >
+                                        <option value="">Selecione um plano...</option>
+                                        {activePlans.map(plan => (
+                                            <option key={plan.id} value={plan.id}>
+                                                {plan.name} — {formatCurrency(plan.price_cents)}/mês
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                                    <FiCalendar className="inline mr-1.5" size={14} />
                                     Data de Expiração (opcional)
                                 </label>
                                 <input
                                     type="date"
                                     value={createForm.expiration_date}
                                     onChange={(e) => setCreateForm(prev => ({ ...prev, expiration_date: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
                                 />
-                                <p className="text-gray-500 text-xs mt-1">
-                                    Deixe em branco para assinatura sem data de término fixa
-                                </p>
                             </div>
                         </div>
-
-                        {/* Modal Footer */}
-                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-700">
-                            <button
-                                onClick={() => setShowCreateModal(false)}
-                                className="px-6 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-all"
-                            >
-                                Cancelar
-                            </button>
+                        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-700">
+                            <button onClick={() => setShowCreateModal(false)} className="px-5 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">Cancelar</button>
                             <button
                                 onClick={handleCreateClient}
                                 disabled={creatingTenant || !createForm.email || !createForm.store_name}
-                                className={cn(
-                                    "flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all",
-                                    "bg-linear-to-r from-orange-500 to-red-500 text-white",
-                                    "hover:from-orange-600 hover:to-red-600",
-                                    "disabled:opacity-50 disabled:cursor-not-allowed"
-                                )}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium bg-linear-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 disabled:opacity-50"
                             >
-                                <FiSave size={18} />
+                                <FiSave size={16} />
                                 {creatingTenant ? 'Criando...' : 'Criar Cliente'}
                             </button>
                         </div>
@@ -798,110 +952,172 @@ export default function ClientsPage() {
                 </div>
             )}
 
-            {/* Edit Plan Modal */}
-            {showEditPlanModal && selectedTenant && (
+            {/* ═══ MODAL: Dias Bônus ═══ */}
+            {showBonusModal && selectedTenant && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-lg">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-700">
-                            <h2 className="text-xl font-bold text-white">Editar Plano - {selectedTenant.store_name}</h2>
-                            <button onClick={() => setShowEditPlanModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">
-                                <FiX size={20} />
+                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-sm">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-700">
+                            <h2 className="text-lg font-bold text-white">Dar Dias Bônus</h2>
+                            <button onClick={() => setShowBonusModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">
+                                <FiX size={18} />
                             </button>
                         </div>
-                        <div className="p-6 space-y-5">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Plano</label>
-                                {activePlans.length === 0 ? (
-                                    <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-500 text-sm">
-                                        Nenhum plano ativo encontrado. <Link href="/admin/plans" className="underline font-bold">Criar Planos</Link>.
-                                    </div>
-                                ) : (
-                                    <select
-                                        value={editPlanForm.plan_id}
-                                        onChange={(e) => setEditPlanForm(prev => ({ ...prev, plan_id: e.target.value }))}
-                                        className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                                    >
-                                        {activePlans.map(plan => (
-                                            <option key={plan.id} value={plan.id}>
-                                                {plan.name} - {formatCurrency(plan.price_cents)}/mês
-                                            </option>
-                                        ))}
-                                        {/* Handle case where current plan might be inactive or custom */}
-                                        {!activePlans.find(p => p.id === editPlanForm.plan_id) && editPlanForm.plan_id && (
-                                            <option value={editPlanForm.plan_id} disabled>Plano Atual (Arquivado)</option>
+                        <div className="p-5 space-y-4">
+                            <p className="text-gray-300 text-sm">Quantos dias adicionar à assinatura de <strong className="text-white">{selectedTenant.store_name}</strong>?</p>
+                            <div className="grid grid-cols-4 gap-2">
+                                {[1, 3, 7, 15, 30, 60, 90, 365].map(d => (
+                                    <button
+                                        key={d}
+                                        onClick={() => setBonusDays(d)}
+                                        className={cn(
+                                            "px-2 py-2 rounded-lg text-xs font-medium border transition-all",
+                                            bonusDays === d
+                                                ? "bg-green-500/20 border-green-500/40 text-green-400"
+                                                : "bg-gray-900 border-gray-700 text-gray-400 hover:border-gray-600"
                                         )}
-                                    </select>
-                                )}
+                                    >
+                                        {d}d
+                                    </button>
+                                ))}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    <FiCalendar className="inline mr-2" size={16} />
-                                    Nova Data de Expiração (opcional)
-                                </label>
+                                <label className="block text-xs text-gray-500 mb-1">Dias personalizados</label>
                                 <input
-                                    type="date"
-                                    value={editPlanForm.expiration_date}
-                                    onChange={(e) => setEditPlanForm(prev => ({ ...prev, expiration_date: e.target.value }))}
-                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    type="number"
+                                    min="1"
+                                    value={bonusDays}
+                                    onChange={(e) => setBonusDays(Math.max(1, parseInt(e.target.value) || 1))}
+                                    className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500/50"
                                 />
-                                <p className="text-gray-500 text-xs mt-1">Preencha apenas se desejar alterar a data de vencimento.</p>
                             </div>
                         </div>
-                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-700">
-                            <button onClick={() => setShowEditPlanModal(false)} className="px-6 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-all">
-                                Cancelar
-                            </button>
+                        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-700">
+                            <button onClick={() => setShowBonusModal(false)} className="px-5 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">Cancelar</button>
                             <button
-                                onClick={handleSavePlan}
-                                disabled={savingPlan}
-                                className="flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-orange-500 text-white hover:bg-orange-600 transition-all disabled:opacity-50"
+                                onClick={handleGiveBonusDays}
+                                disabled={savingBonus}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
                             >
-                                <FiSave size={18} />
-                                {savingPlan ? 'Salvando...' : 'Salvar Alterações'}
+                                <FiGift size={16} />
+                                {savingBonus ? 'Adicionando...' : `Adicionar ${bonusDays} dias`}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Bonus Days Modal */}
-            {showBonusModal && selectedTenant && (
+            {/* ═══ MODAL: Excluir Cliente ═══ */}
+            {showDeleteModal && selectedTenant && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <div className="bg-gray-800 rounded-xl border border-gray-700 w-full max-w-sm">
-                        <div className="flex items-center justify-between p-6 border-b border-gray-700">
-                            <h2 className="text-xl font-bold text-white">Dar Dias Bônus</h2>
-                            <button onClick={() => setShowBonusModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">
-                                <FiX size={20} />
+                    <div className="bg-gray-800 rounded-xl border border-red-500/30 w-full max-w-md">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-700">
+                            <div className="flex items-center gap-2 text-red-400">
+                                <FiAlertTriangle size={20} />
+                                <h2 className="text-lg font-bold">Excluir Permanentemente</h2>
+                            </div>
+                            <button onClick={() => setShowDeleteModal(false)} className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">
+                                <FiX size={18} />
                             </button>
                         </div>
-                        <div className="p-6 space-y-5">
-                            <p className="text-gray-300 text-sm">Quantos dias deseja adicionar à assinatura de <strong>{selectedTenant.store_name}</strong>?</p>
+                        <div className="p-5 space-y-4">
+                            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                <p className="text-red-300 text-sm font-medium mb-2">⚠️ Esta ação é IRREVERSÍVEL!</p>
+                                <p className="text-red-300/80 text-xs">
+                                    Todos os dados de <strong>&quot;{selectedTenant.store_name}&quot;</strong> serão removidos permanentemente:
+                                </p>
+                                <ul className="text-red-300/70 text-xs mt-2 space-y-1 list-disc pl-4">
+                                    <li>Conta de autenticação (Supabase Auth)</li>
+                                    <li>Configurações e dados da loja</li>
+                                    <li>Assinatura e cache de plano</li>
+                                    <li>Feature flags</li>
+                                    <li>Customer e assinatura no Stripe</li>
+                                </ul>
+                            </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Dias</label>
+                                <label className="block text-sm text-gray-300 mb-1.5">
+                                    Digite <strong className="text-red-400">EXCLUIR</strong> para confirmar
+                                </label>
                                 <input
-                                    type="number"
-                                    min="1"
-                                    value={bonusDays}
-                                    onChange={(e) => setBonusDays(Math.max(1, parseInt(e.target.value)))}
-                                    className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                                    type="text"
+                                    value={deleteConfirmText}
+                                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-gray-900 border border-red-500/30 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+                                    placeholder="EXCLUIR"
                                 />
                             </div>
                         </div>
-                        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-700">
-                            <button onClick={() => setShowBonusModal(false)} className="px-6 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-all">
-                                Cancelar
-                            </button>
+                        <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-700">
+                            <button onClick={() => setShowDeleteModal(false)} className="px-5 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700">Cancelar</button>
                             <button
-                                onClick={handleGiveBonusDays}
-                                disabled={savingBonus}
-                                className="flex items-center gap-2 px-6 py-3 rounded-lg font-medium bg-green-500 text-white hover:bg-green-600 transition-all disabled:opacity-50"
+                                onClick={handleConfirmDelete}
+                                disabled={deleting || deleteConfirmText !== 'EXCLUIR'}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium bg-red-600 text-white hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
                             >
-                                <FiGift size={18} />
-                                {savingBonus ? 'Adicionando...' : 'Adicionar Dias'}
+                                <FiTrash2 size={16} />
+                                {deleting ? 'Excluindo...' : 'Excluir Permanentemente'}
                             </button>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ═══ PAINEL: Feature Flags ═══ */}
+            {showFlagsPanel && selectedTenant && (
+                <>
+                    <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowFlagsPanel(false)} />
+                    <div className="fixed right-0 top-0 h-screen w-80 md:w-96 bg-gray-900 border-l border-gray-700 z-50 overflow-y-auto">
+                        <div className="p-5">
+                            <div className="flex items-center justify-between mb-5">
+                                <div>
+                                    <h2 className="text-lg font-bold text-white">Feature Flags</h2>
+                                    <p className="text-gray-400 text-xs">{selectedTenant.store_name}</p>
+                                </div>
+                                <button onClick={() => setShowFlagsPanel(false)} className="p-2 hover:bg-gray-800 rounded-lg text-gray-400">
+                                    <FiX size={18} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-3">
+                                {AVAILABLE_FEATURES.map((feature) => (
+                                    <div
+                                        key={feature.feature_key}
+                                        className={cn(
+                                            "p-3 rounded-lg border transition-all cursor-pointer",
+                                            featureFlags[feature.feature_key]
+                                                ? "bg-orange-500/10 border-orange-500/30"
+                                                : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
+                                        )}
+                                        onClick={() => toggleFlag(feature.feature_key)}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-white font-medium text-sm">{feature.feature_key}</p>
+                                                <p className="text-gray-400 text-xs mt-0.5 truncate">{feature.description}</p>
+                                            </div>
+                                            <button className="ml-3 shrink-0">
+                                                {featureFlags[feature.feature_key] ? (
+                                                    <FiToggleRight size={24} className="text-orange-500" />
+                                                ) : (
+                                                    <FiToggleLeft size={24} className="text-gray-500" />
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-6 pt-4 border-t border-gray-700">
+                                <button
+                                    onClick={saveFeatureFlags}
+                                    disabled={savingFlags}
+                                    className="w-full py-2.5 rounded-lg font-medium bg-linear-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 disabled:opacity-50 text-sm"
+                                >
+                                    {savingFlags ? 'Salvando...' : 'Salvar Alterações'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
             )}
         </div>
     );
