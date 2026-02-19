@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { stripe, getStripeCustomer } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import Stripe from 'stripe';
 
 export async function POST(req: NextRequest) {
     try {
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
         const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || vercelUrl || 'http://localhost:3000';
 
-        const sessionConfig: any = {
+        const sessionConfig: Stripe.Checkout.SessionCreateParams = {
             customer: customer.id,
             line_items: [
                 {
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
         };
 
         // Only add trial if user DOES NOT have an active subscription AND has not used trial for this plan
-        if (!hasActiveSubscription && !hasUsedTrialForPlan) {
+        if (!hasActiveSubscription && !hasUsedTrialForPlan && sessionConfig.subscription_data) {
             sessionConfig.subscription_data.trial_period_days = 7;
         }
 

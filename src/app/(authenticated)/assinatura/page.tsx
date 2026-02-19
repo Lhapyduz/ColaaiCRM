@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
 import { useSubscription, PlanType } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { getPlanPrice, BillingPeriod, PlanPriceKey } from '@/lib/pix-config';
+import { BillingPeriod, PlanPriceKey } from '@/lib/pix-config';
 import PixPaymentModal from '@/components/pix/PixPaymentModal';
 import { cn } from '@/lib/utils';
 
@@ -19,7 +19,7 @@ const PLANS = [
 type PaymentMethod = 'card' | 'pix';
 
 const AssinaturaPage = () => {
-    const { subscription, loading, refreshSubscription } = useSubscription();
+    const { subscription, refreshSubscription } = useSubscription();
     const { user } = useAuth();
     const router = useRouter();
     const [loadingCheckout, setLoadingCheckout] = useState<string | null>(null);
@@ -29,13 +29,15 @@ const AssinaturaPage = () => {
     const [pixModalData, setPixModalData] = useState<{ planType: PlanPriceKey, planName: string } | null>(null);
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
 
-    React.useEffect(() => { const query = new URLSearchParams(window.location.search); if (query.get('success') === 'true' || query.get('portal') === 'true') handleSync(); else handleAutoSync(); }, []);
+    React.useEffect(() => {
+        const query = new URLSearchParams(window.location.search); if (query.get('success') === 'true' || query.get('portal') === 'true') handleSync(); else handleAutoSync(); // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleAutoSync = async () => { try { await refreshSubscription(); const res = await fetch('/api/stripe/sync', { method: 'POST' }); if (res.ok) await refreshSubscription(); } catch (e) { console.error(e); } };
     const handleSync = async () => { try { setSyncing(true); const res = await fetch('/api/stripe/sync', { method: 'POST' }); if (res.ok) { await refreshSubscription(); window.history.replaceState({}, '', '/assinatura'); } } catch (e) { console.error(e); } finally { setSyncing(false); } };
 
-    const handleSubscribe = async (priceId: string | undefined, planType: string) => { if (!user) { router.push('/login?redirect=/assinatura'); return; } if (!priceId) { alert('Configuração de preço ausente.'); return; } setLoadingCheckout(planType); try { const response = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ priceId, planType }) }); if (!response.ok) throw new Error(await response.text() || 'Falha ao iniciar checkout'); const { url } = await response.json(); window.location.href = url; } catch (error: any) { alert(`Erro ao iniciar pagamento: ${error.message}`); setLoadingCheckout(null); } };
-    const handleManageSubscription = async () => { setLoadingPortal(true); try { const response = await fetch('/api/stripe/portal', { method: 'POST' }); if (!response.ok) throw new Error(await response.text() || 'Falha ao abrir portal'); const { url } = await response.json(); window.location.href = url; } catch (error: any) { alert(`Erro ao abrir o portal: ${error.message}`); setLoadingPortal(false); } };
+    const handleSubscribe = async (priceId: string | undefined, planType: string) => { if (!user) { router.push('/login?redirect=/assinatura'); return; } if (!priceId) { alert('Configuração de preço ausente.'); return; } setLoadingCheckout(planType); try { const response = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ priceId, planType }) }); if (!response.ok) throw new Error(await response.text() || 'Falha ao iniciar checkout'); const { url } = await response.json(); window.location.href = url; } catch (error: unknown) { const message = error instanceof Error ? error.message : 'Erro desconhecido'; alert(`Erro ao iniciar pagamento: ${message}`); setLoadingCheckout(null); } };
+    const handleManageSubscription = async () => { setLoadingPortal(true); try { const response = await fetch('/api/stripe/portal', { method: 'POST' }); if (!response.ok) throw new Error(await response.text() || 'Falha ao abrir portal'); const { url } = await response.json(); window.location.href = url; } catch (error: unknown) { const message = error instanceof Error ? error.message : 'Erro desconhecido'; alert(`Erro ao abrir o portal: ${message}`); setLoadingPortal(false); } };
 
     // Fluxo PIX Manual - Abre o modal com QR Code
     const handlePixSubscribe = async (planType: PlanPriceKey) => {
@@ -66,9 +68,7 @@ const AssinaturaPage = () => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
     };
 
-    const getPrice = (plan: typeof PLANS[0]) => {
-        return billingPeriod === 'annual' ? plan.priceAnnual : plan.priceMonthly;
-    };
+
 
     const getPriceLabel = (plan: typeof PLANS[0]) => {
         if (billingPeriod === 'annual') {

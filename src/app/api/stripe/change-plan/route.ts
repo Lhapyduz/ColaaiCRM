@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         });
 
         // Update Supabase with new subscription
-        const sub = newSubscription as any;
+        const sub = newSubscription as unknown as { current_period_start: number; current_period_end: number };
         await supabaseAdmin
             .from('subscriptions')
             .upsert({
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
                 current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
                 stripe_current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
                 billing_period: 'monthly'
-            } as any, { onConflict: 'user_id' });
+            } as Record<string, unknown>, { onConflict: 'user_id' });
 
         return NextResponse.json({
             success: true,

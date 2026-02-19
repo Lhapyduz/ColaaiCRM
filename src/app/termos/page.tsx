@@ -15,7 +15,7 @@ export default function TermosPage() {
                 </div>
 
                 <div className="prose prose-invert max-w-none">
-                    <section className="mb-8"><h2 className="text-xl font-semibold mb-3 text-primary">1. Aceitação dos Termos</h2><p className="text-text-secondary leading-relaxed">Ao acessar e utilizar a plataforma Cola Aí ("Plataforma"), você declara ter lido, compreendido e concordado com estes Termos de Uso. Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos serviços.</p></section>
+                    <section className="mb-8"><h2 className="text-xl font-semibold mb-3 text-primary">1. Aceitação dos Termos</h2><p className="text-text-secondary leading-relaxed">Ao acessar e utilizar a plataforma Cola Aí (&ldquo;Plataforma&rdquo;), você declara ter lido, compreendido e concordado com estes Termos de Uso. Se você não concordar com qualquer parte destes termos, não deverá utilizar nossos serviços.</p></section>
 
                     <section className="mb-8"><h2 className="text-xl font-semibold mb-3 text-primary">2. Descrição do Serviço</h2><p className="text-text-secondary leading-relaxed mb-3">O Cola Aí é uma plataforma de gestão para estabelecimentos do ramo alimentício, oferecendo funcionalidades como:</p><ul className="list-disc pl-6 text-text-secondary space-y-1"><li>Gestão de pedidos e vendas</li><li>Controle de produtos e estoque</li><li>Relatórios e análises</li><li>Programas de fidelidade</li><li>Cardápio digital online</li><li>Gestão de entregas</li></ul></section>
 

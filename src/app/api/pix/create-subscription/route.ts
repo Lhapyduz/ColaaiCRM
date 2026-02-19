@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import Stripe from 'stripe';
 import { createClient } from '@/utils/supabase/server';
 import { stripe, getStripeCustomer } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase-admin';
@@ -71,8 +72,8 @@ export async function POST(req: NextRequest) {
             console.log('[PIX API] Cancelling existing subscription:', sub.id);
             try {
                 await stripe.subscriptions.cancel(sub.id);
-            } catch (cancelError: any) {
-                console.log('[PIX API] Subscription already cancelled or error:', cancelError.message);
+            } catch (cancelError: unknown) {
+                console.log('[PIX API] Subscription already cancelled or error:', cancelError instanceof Error ? cancelError.message : cancelError);
                 // Continue - subscription might already be cancelled
             }
         }
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
 
         // Create subscription in Stripe with send_invoice collection method
         // This creates a subscription that doesn't automatically charge
-        const subscriptionParams: any = {
+        const subscriptionParams: Stripe.SubscriptionCreateParams = {
             customer: customer.id,
             items: [{ price: priceId }],
             collection_method: 'send_invoice',
@@ -139,11 +140,12 @@ export async function POST(req: NextRequest) {
         const trialEndsAt = subscription.trial_end
             ? new Date(subscription.trial_end * 1000).toISOString()
             : null;
-        const periodStart = (subscription as any).current_period_start
-            ? new Date((subscription as any).current_period_start * 1000).toISOString()
+        const subAny = subscription as unknown as { current_period_start?: number; current_period_end?: number };
+        const periodStart = subAny.current_period_start
+            ? new Date(subAny.current_period_start * 1000).toISOString()
             : now.toISOString();
-        const periodEnd = (subscription as any).current_period_end
-            ? new Date((subscription as any).current_period_end * 1000).toISOString()
+        const periodEnd = subAny.current_period_end
+            ? new Date(subAny.current_period_end * 1000).toISOString()
             : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
         // For Pix payments, create with pending_pix status
@@ -167,7 +169,7 @@ export async function POST(req: NextRequest) {
                 current_period_end: periodEnd,
                 stripe_current_period_end: periodEnd,
                 billing_period: 'monthly'
-            } as any, { onConflict: 'user_id' });
+            } as Record<string, unknown>, { onConflict: 'user_id' });
 
         if (upsertError) {
             console.error('[PIX API] Error syncing to Supabase:', upsertError);
@@ -197,8 +199,8 @@ export async function POST(req: NextRequest) {
                 : `Assinatura do plano ${planType} criada com sucesso! Você receberá uma fatura por email.`
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[PIX API] Error:', error);
-        return new NextResponse(`Internal Error: ${error.message}`, { status: 500 });
+        return new NextResponse(`Internal Error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
     }
 }
