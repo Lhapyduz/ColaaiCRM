@@ -144,7 +144,7 @@ export default function ImageUpload({
         return urlData.publicUrl;
     };
 
-    const deleteFromStorage = async (url: string) => {
+    const deleteFromStorage = useCallback(async (url: string) => {
         try {
             const urlParts = url.split(`${bucket}/`);
             if (urlParts.length < 2) return;
@@ -153,7 +153,7 @@ export default function ImageUpload({
         } catch (err) {
             console.error('Delete error:', err);
         }
-    };
+    }, [bucket]);
 
     const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -221,11 +221,12 @@ export default function ImageUpload({
             onChange(null);
             setPreview(null);
         } catch (err) {
+            console.error(err);
             setError('Erro ao remover imagem');
         } finally {
             setUploading(false);
         }
-    }, [value, disabled, onChange, bucket]);
+    }, [value, disabled, onChange, deleteFromStorage]);
 
     const handleClick = () => {
         if (!disabled && !uploading) {
@@ -300,7 +301,7 @@ export default function ImageUpload({
 
             {/* Crop Modal */}
             {showCropper && imageToCrop && (
-                <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-9999 p-5">
+                <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-overlay p-5">
                     <div className="bg-bg-secondary rounded-lg max-w-[500px] w-full overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
                         <div className="px-5 py-4 border-b border-border">
                             <h3 className="m-0 text-lg font-semibold text-text-primary">Recortar Imagem</h3>

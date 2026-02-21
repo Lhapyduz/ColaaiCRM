@@ -89,8 +89,9 @@ export async function findCustomerByEmail(email: string): Promise<AbacatepayCust
         }
 
         return found || null;
-    } catch (error: any) {
-        console.error('[AbacatePay] Exception finding customer:', error);
+    } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[AbacatePay] Exception finding customer:', errorMsg);
         return null;
     }
 }
@@ -123,16 +124,16 @@ export async function createCustomer(params: {
         });
 
         const data = await response.json();
-        console.log('[AbacatePay] Create customer response:', JSON.stringify(data, null, 2));
 
         if (!response.ok || data.error) {
             return { customer: null, error: data.error || 'Failed to create customer' };
         }
 
         return { customer: data.data, error: null };
-    } catch (error: any) {
-        console.error('[AbacatePay] Exception creating customer:', error);
-        return { customer: null, error: error.message };
+    } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[AbacatePay] Exception creating customer:', errorMsg);
+        return { customer: null, error: errorMsg };
     }
 }
 
@@ -170,7 +171,7 @@ export async function getOrCreateCustomer(params: {
  */
 export async function createAbacatepayBilling(params: CreateBillingParams): Promise<CreateBillingResponse> {
     try {
-        console.log('[AbacatePay] Request params:', JSON.stringify(params, null, 2));
+        console.log('[AbacatePay] Creating billing for customer:', params.customerId);
 
         const response = await fetch(`${ABACATEPAY_API_URL}/billing/create`, {
             method: 'POST',
@@ -183,7 +184,6 @@ export async function createAbacatepayBilling(params: CreateBillingParams): Prom
         });
 
         const data = await response.json();
-        console.log('[AbacatePay] Response:', JSON.stringify(data, null, 2));
 
         // AbacatePay retorna HTTP 200 mesmo em erros, verificar campo success
         if (!response.ok || data.success === false || data.error) {
@@ -192,9 +192,10 @@ export async function createAbacatepayBilling(params: CreateBillingParams): Prom
         }
 
         return { error: null, billing: data.data || data.billing || data };
-    } catch (error: any) {
-        console.error('[AbacatePay] Exception:', error);
-        return { error: error.message, billing: null };
+    } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[AbacatePay] Exception:', errorMsg);
+        return { error: errorMsg, billing: null };
     }
 }
 
@@ -218,8 +219,9 @@ export async function getAbacatepayBilling(billingId: string): Promise<Abacatepa
 
         const data = await response.json();
         return data.data || data.billing || data;
-    } catch (error: any) {
-        console.error('[AbacatePay] Exception:', error);
+    } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[AbacatePay] Exception:', errorMsg);
         return null;
     }
 }
@@ -244,8 +246,9 @@ export async function listAbacatepayBillings(): Promise<AbacatepayBilling[]> {
 
         const data = await response.json();
         return data.data || data.billings || [];
-    } catch (error: any) {
-        console.error('[AbacatePay] Exception:', error);
+    } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[AbacatePay] Exception:', errorMsg);
         return [];
     }
 }

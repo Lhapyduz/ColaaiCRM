@@ -2,6 +2,7 @@
 
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import Stripe from 'stripe';
 
 export async function syncStripeData() {
     console.log('[Sync] Starting full Stripe sync...');
@@ -16,7 +17,7 @@ export async function syncStripeData() {
         let startingAfter: string | undefined = undefined;
 
         while (hasMore) {
-            const paginatedSubscriptions: any = await stripe.subscriptions.list({
+            const paginatedSubscriptions: Stripe.ApiList<Stripe.Subscription> = await stripe.subscriptions.list({
                 limit: 100,
                 status: 'all',
                 expand: ['data.plan.product'],
@@ -32,7 +33,8 @@ export async function syncStripeData() {
             // Process each subscription
             for (const sub of paginatedSubscriptions.data) {
                 try {
-                    const userId = sub.metadata?.userId;
+                    const subCast = sub as unknown as Stripe.Subscription & { current_period_start: number, current_period_end: number, plan?: { amount: number, product: unknown, interval: string, id: string } };
+                    const userId = subCast.metadata?.userId;
                     let validUserId = null;
 
                     // If we have a userId in metadata, verify it exists in our auth system using supabaseAdmin
@@ -45,29 +47,25 @@ export async function syncStripeData() {
 
                     // If no userId in metadata, try to find by customer email
                     if (!validUserId) {
-                        const customer = await stripe.customers.retrieve(sub.customer as string);
-                        if (!customer.deleted && customer.email) {
-                            // Find user by email - this is tricky with supabaseAdmin, we actully need to query auth.users directly or listUsers
-                            // But listUsers is paginated, so queries might be slow.
-                            // For now, let's rely on metadata primarily, and if missing, simply log it.
-                            // Or better: Use RPC or Service Role to query auth.users schema if accessible, but admin API is safer.
-                            // Let's stick to metadata for now to avoid complexity of matching thousands of emails.
+                        const customer = await stripe.customers.retrieve(subCast.customer as string);
+                        if (!customer.deleted && (customer as Stripe.Customer).email) {
+                            // ...
                         }
                     }
 
                     // Prepare record
-                    const amount = sub.items.data[0]?.price?.unit_amount || sub.plan?.amount || 0;
-                    const planName = (sub.plan?.product as any)?.name || 'Desconhecido';
+                    const amount = subCast.items.data[0]?.price?.unit_amount || subCast.plan?.amount || 0;
+                    const planName = (subCast.plan?.product as { name?: string })?.name || 'Desconhecido';
 
                     const record = {
-                        id: sub.id,
+                        id: subCast.id,
                         user_id: validUserId, // Can be null if not found
-                        status: sub.status,
+                        status: subCast.status,
                         plan_name: planName,
                         amount_cents: amount,
-                        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+                        current_period_end: new Date(subCast.current_period_end * 1000).toISOString(),
                         tenant_id: validUserId, // Redundant but good for backward compat
-                        created_at: new Date(sub.created * 1000).toISOString()
+                        created_at: new Date(subCast.created * 1000).toISOString()
                     };
 
                     // Upsert into Supabase
@@ -76,7 +74,7 @@ export async function syncStripeData() {
                         .upsert(record);
 
                     if (error) {
-                        console.error('[Sync] Error upserting sub:', sub.id, error);
+                        console.error('[Sync] Error upserting sub:', subCast.id, error);
                         results.errors++;
                     } else {
                         results.subscriptions++;
@@ -100,7 +98,7 @@ export async function syncStripeData() {
                         };
 
                         const planType = mapPlanType(planName);
-                        const interval = sub.plan?.interval || 'month';
+                        const interval = subCast.plan?.interval || 'month';
 
                         // Check for existing manual subscription to avoid overwriting with Canceled Stripe sub
                         const { data: existingSub } = await supabaseAdmin
@@ -110,7 +108,7 @@ export async function syncStripeData() {
                             .maybeSingle();
 
                         const isManualActive = existingSub?.payment_method === 'manual' && existingSub?.status === 'active';
-                        const isStripeCanceled = sub.status === 'canceled';
+                        const isStripeCanceled = subCast.status === 'canceled';
 
                         // Skip update if we have a manual active plan and Stripe says canceled
                         if (!isManualActive || !isStripeCanceled) {
@@ -120,13 +118,13 @@ export async function syncStripeData() {
                             const subRecord = {
                                 user_id: validUserId,
                                 plan_type: planType,
-                                status: sub.status,
+                                status: subCast.status,
                                 billing_period: mapInterval(interval),
-                                current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-                                current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-                                stripe_customer_id: sub.customer as string,
-                                stripe_subscription_id: sub.id,
-                                stripe_price_id: sub.plan?.id,
+                                current_period_start: new Date(subCast.current_period_start * 1000).toISOString(),
+                                current_period_end: new Date(subCast.current_period_end * 1000).toISOString(),
+                                stripe_customer_id: subCast.customer as string,
+                                stripe_subscription_id: subCast.id,
+                                stripe_price_id: subCast.plan?.id,
                                 updated_at: new Date().toISOString(),
                                 payment_method: 'card' // Default to card for Stripe Sync
                             };

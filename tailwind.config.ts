@@ -98,12 +98,18 @@ const config: Config = {
                 normal: '250ms',
                 slow: '400ms',
             },
-            // Z-index
+            // Z-index System Master
             zIndex: {
+                hide: '-1',
+                auto: 'auto',
+                base: '0',
                 dropdown: '100',
                 sticky: '200',
-                modal: '300',
-                toast: '400',
+                overlay: '300',
+                modal: '400',
+                popover: '500',
+                toast: '600',
+                tooltip: '700',
             },
             // Animations
             keyframes: {

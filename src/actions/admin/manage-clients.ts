@@ -217,11 +217,13 @@ export async function grantPlanAccess({ userId, planId, duration }: GrantAccessP
         if (subError) throw new Error(`Subscriptions: ${subError.message}`);
 
         // 5. Atualizar subscriptions_cache (select + update/insert, pois não há UNIQUE em tenant_id)
-        const { data: existingCache } = await supabaseAdmin
+        const { data: existingCaches } = await supabaseAdmin
             .from('subscriptions_cache')
             .select('id')
             .eq('tenant_id', userId)
-            .maybeSingle();
+            .limit(1);
+
+        const existingCache = existingCaches && existingCaches.length > 0 ? existingCaches[0] : null;
 
         if (existingCache) {
             // Atualizar registro existente

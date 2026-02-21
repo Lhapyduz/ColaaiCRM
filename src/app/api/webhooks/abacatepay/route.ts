@@ -89,8 +89,7 @@ export async function POST(req: NextRequest) {
 
         const event = JSON.parse(body);
 
-        console.log('[AbacatePay Webhook] Received event:', event.event || event.type);
-        console.log('[AbacatePay Webhook] Data:', JSON.stringify(event.data || event, null, 2));
+        console.log(`[AbacatePay Webhook] Received event: ${event.event || event.type}`);
 
         // Handle billing.paid event
         const eventType = event.event || event.type;
@@ -131,7 +130,7 @@ export async function POST(req: NextRequest) {
                             status: 'active',
                             current_period_start: now.toISOString(),
                             current_period_end: periodEnd.toISOString(),
-                        } as any)
+                        })
                         .eq('user_id', existingSub.user_id);
 
                     if (updateError) {
@@ -159,7 +158,7 @@ export async function POST(req: NextRequest) {
                         current_period_start: now.toISOString(),
                         current_period_end: periodEnd.toISOString(),
                         billing_period: billingPeriod,
-                    } as any, { onConflict: 'user_id' });
+                    }, { onConflict: 'user_id' });
 
                 if (upsertError) {
                     console.error('[AbacatePay Webhook] Error upserting subscription:', upsertError);
@@ -172,10 +171,11 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ received: true });
 
-    } catch (error: any) {
-        console.error('[AbacatePay Webhook] Error:', error);
+    } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown Error';
+        console.error('[AbacatePay Webhook] Error:', errorMsg);
         return NextResponse.json(
-            { error: `Webhook error: ${error.message}` },
+            { error: `Webhook error: ${errorMsg}` },
             { status: 500 }
         );
     }

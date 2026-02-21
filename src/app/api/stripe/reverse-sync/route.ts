@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
@@ -43,9 +44,9 @@ export async function POST(req: NextRequest) {
         }
 
         const payload: WebhookPayload = await req.json();
-        console.log('[Reverse Sync] Received:', JSON.stringify(payload, null, 2));
+        console.log(`[Reverse Sync] Received payload for table: ${payload.table}, type: ${payload.type}`);
 
-        const { type, record, old_record } = payload;
+        const { record, old_record } = payload;
 
         // Skip if no Stripe subscription ID
         if (!record.stripe_subscription_id) {
@@ -59,16 +60,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ message: 'Skipping - source is stripe' });
         }
 
-        let result: any = null;
+        let result: Stripe.Subscription | null = null;
 
         // Handle cancellation
         if (record.status === 'cancelled' && old_record?.status !== 'cancelled') {
             console.log('[Reverse Sync] Cancelling subscription in Stripe:', record.stripe_subscription_id);
             try {
                 result = await stripe.subscriptions.cancel(record.stripe_subscription_id);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 // Subscription might already be cancelled
-                console.log('[Reverse Sync] Cancel failed (might already be cancelled):', err.message);
+                const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+                console.log('[Reverse Sync] Cancel failed (might already be cancelled):', errorMsg);
             }
         }
 
@@ -93,8 +95,9 @@ export async function POST(req: NextRequest) {
                             proration_behavior: 'create_prorations',
                         });
                     }
-                } catch (err: any) {
-                    console.error('[Reverse Sync] Plan update failed:', err.message);
+                } catch (err: unknown) {
+                    const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+                    console.error('[Reverse Sync] Plan update failed:', errorMsg);
                 }
             }
         }
@@ -106,7 +109,7 @@ export async function POST(req: NextRequest) {
                 .update({
                     last_synced_at: new Date().toISOString(),
                     sync_source: 'stripe' // Prevent loop
-                } as any)
+                })
                 .eq('id', record.id);
         }
 
@@ -118,8 +121,9 @@ export async function POST(req: NextRequest) {
             stripe_result: result?.id
         });
 
-    } catch (error: any) {
-        console.error('[Reverse Sync] Error:', error);
-        return new NextResponse(`Error: ${error.message}`, { status: 500 });
+    } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+        console.error('[Reverse Sync] Error:', errorMsg);
+        return new NextResponse(`Error: ${errorMsg}`, { status: 500 });
     }
 }

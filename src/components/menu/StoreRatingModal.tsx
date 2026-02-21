@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import StarRating from '@/components/ui/StarRating';
 import { addStoreRating } from '@/app/actions/store';
+import { Portal } from '@/components/ui/Portal';
 import Button from '@/components/ui/Button';
 
 interface StoreRatingModalProps {
@@ -30,8 +31,8 @@ export default function StoreRatingModal({ isOpen, onClose, storeOwnerId, appNam
                 const date = new Date(lastRated);
                 const now = new Date();
                 const diffTime = Math.abs(now.getTime() - date.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
                 // Allow rating again after 7 days
                 if (diffDays < 7) {
                     setAlreadyRated(true);
@@ -52,10 +53,10 @@ export default function StoreRatingModal({ isOpen, onClose, storeOwnerId, appNam
 
         try {
             await addStoreRating(storeOwnerId, rating, comment, customerName || 'Anônimo');
-            
+
             // Save to local storage
             localStorage.setItem(`store_rated_${storeOwnerId}`, new Date().toISOString());
-            
+
             setSuccess(true);
             setTimeout(() => {
                 onClose();
@@ -75,89 +76,91 @@ export default function StoreRatingModal({ isOpen, onClose, storeOwnerId, appNam
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-            <div className="w-full max-w-md bg-bg-card rounded-3xl p-6 shadow-2xl animate-scaleIn border border-white/10 relative">
-                <button 
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-text-muted hover:text-white transition-colors"
-                >
-                    <FiX size={24} />
-                </button>
+        <Portal>
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-overlay flex items-center justify-center p-4 animate-fadeIn">
+                <div className="w-full max-w-md bg-bg-card rounded-3xl p-6 shadow-2xl animate-scaleIn border border-white/10 relative z-modal">
+                    <button
+                        onClick={onClose}
+                        className="absolute top-4 right-4 text-text-muted hover:text-white transition-colors"
+                    >
+                        <FiX size={24} />
+                    </button>
 
-                <div className="text-center mb-6">
-                    <h2 className="text-2xl font-bold text-white mb-2">Avaliar {appName}</h2>
-                    <p className="text-text-secondary">O que você achou do nosso estabelecimento?</p>
+                    <div className="text-center mb-6">
+                        <h2 className="text-2xl font-bold text-white mb-2">Avaliar {appName}</h2>
+                        <p className="text-text-secondary">O que você achou do nosso estabelecimento?</p>
+                    </div>
+
+                    {alreadyRated ? (
+                        <div className="text-center py-8">
+                            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
+                                <FiCheck size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Obrigado!</h3>
+                            <p className="text-text-muted">Você já avaliou este estabelecimento recentemente.</p>
+                            <Button className="mt-6 w-full" onClick={onClose}>Fechar</Button>
+                        </div>
+                    ) : success ? (
+                        <div className="text-center py-8">
+                            <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4 text-success">
+                                <FiCheck size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-white mb-2">Obrigado!</h3>
+                            <p className="text-text-muted">Sua avaliação foi enviada com sucesso.</p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="flex justify-center">
+                                <StarRating
+                                    rating={rating}
+                                    onChange={setRating}
+                                    interactive
+                                    size="lg"
+                                />
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary mb-1">Seu Nome (Opcional)</label>
+                                    <input
+                                        type="text"
+                                        value={customerName}
+                                        onChange={(e) => setCustomerName(e.target.value)}
+                                        className="w-full px-4 py-3 bg-bg-tertiary border border-white/5 rounded-xl text-white focus:border-primary focus:outline-none transition-colors"
+                                        placeholder="Como quer ser identificado?"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary mb-1">Comentário (Opcional)</label>
+                                    <textarea
+                                        value={comment}
+                                        onChange={(e) => setComment(e.target.value)}
+                                        className="w-full px-4 py-3 bg-bg-tertiary border border-white/5 rounded-xl text-white focus:border-primary focus:outline-none transition-colors min-h-[100px] resize-none"
+                                        placeholder="Conte-nos sobre sua experiência..."
+                                    />
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className="flex items-center gap-2 text-error text-sm bg-error/10 p-3 rounded-lg">
+                                    <FiAlertCircle />
+                                    {error}
+                                </div>
+                            )}
+
+                            <Button
+                                type="submit"
+                                className="w-full py-3 text-lg font-bold"
+                                isLoading={loading}
+                                disabled={rating === 0}
+                            >
+                                Enviar Avaliação
+                            </Button>
+                        </form>
+                    )}
                 </div>
-
-                {alreadyRated ? (
-                    <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
-                            <FiCheck size={32} />
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-2">Obrigado!</h3>
-                        <p className="text-text-muted">Você já avaliou este estabelecimento recentemente.</p>
-                        <Button className="mt-6 w-full" onClick={onClose}>Fechar</Button>
-                    </div>
-                ) : success ? (
-                    <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4 text-success">
-                            <FiCheck size={32} />
-                        </div>
-                        <h3 className="text-xl font-bold text-white mb-2">Obrigado!</h3>
-                        <p className="text-text-muted">Sua avaliação foi enviada com sucesso.</p>
-                    </div>
-                ) : (
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="flex justify-center">
-                            <StarRating 
-                                rating={rating} 
-                                onChange={setRating} 
-                                interactive 
-                                size="lg" 
-                            />
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-text-secondary mb-1">Seu Nome (Opcional)</label>
-                                <input
-                                    type="text"
-                                    value={customerName}
-                                    onChange={(e) => setCustomerName(e.target.value)}
-                                    className="w-full px-4 py-3 bg-bg-tertiary border border-white/5 rounded-xl text-white focus:border-primary focus:outline-none transition-colors"
-                                    placeholder="Como quer ser identificado?"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-text-secondary mb-1">Comentário (Opcional)</label>
-                                <textarea
-                                    value={comment}
-                                    onChange={(e) => setComment(e.target.value)}
-                                    className="w-full px-4 py-3 bg-bg-tertiary border border-white/5 rounded-xl text-white focus:border-primary focus:outline-none transition-colors min-h-[100px] resize-none"
-                                    placeholder="Conte-nos sobre sua experiência..."
-                                />
-                            </div>
-                        </div>
-
-                        {error && (
-                            <div className="flex items-center gap-2 text-error text-sm bg-error/10 p-3 rounded-lg">
-                                <FiAlertCircle />
-                                {error}
-                            </div>
-                        )}
-
-                        <Button 
-                            type="submit" 
-                            className="w-full py-3 text-lg font-bold"
-                            isLoading={loading}
-                            disabled={rating === 0}
-                        >
-                            Enviar Avaliação
-                        </Button>
-                    </form>
-                )}
             </div>
-        </div>
+        </Portal>
     );
 }

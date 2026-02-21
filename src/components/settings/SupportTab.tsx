@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-    FiMessageSquare, FiPlus, FiSend, FiX, FiUser, FiHeadphones,
-    FiClock, FiCheckCircle, FiAlertCircle, FiChevronLeft
+    FiPlus, FiSend, FiX, FiUser, FiHeadphones,
+    FiClock, FiChevronLeft
 } from 'react-icons/fi';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -58,7 +58,7 @@ export default function SupportTab() {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const fetchTickets = async () => {
+    const fetchTickets = useCallback(async () => {
         try {
             const data = await getTenantTickets();
             // Cast data to Ticket[] because the query returns a complex object structure
@@ -70,7 +70,7 @@ export default function SupportTab() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [error]);
 
     useEffect(() => {
         fetchTickets();
@@ -90,7 +90,7 @@ export default function SupportTab() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [fetchTickets]);
 
     useEffect(() => {
         if (selectedTicket) {
@@ -407,8 +407,8 @@ export default function SupportTab() {
             {/* New Ticket Modal */}
             {showNewTicket && (
                 <>
-                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" onClick={() => setShowNewTicket(false)} />
-                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-bg-card border border-border rounded-2xl p-6 z-50 shadow-2xl animate-scaleIn">
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-overlay" onClick={() => setShowNewTicket(false)} />
+                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-bg-card border border-border rounded-2xl p-6 z-modal shadow-2xl animate-scaleIn">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold text-text-primary">Novo Chamado</h3>
                             <button onClick={() => setShowNewTicket(false)} className="text-text-muted hover:text-text-primary">
@@ -447,7 +447,7 @@ export default function SupportTab() {
                                     <select
                                         className="w-full bg-bg-tertiary border border-border rounded-lg h-[42px] px-3 focus:outline-none focus:border-primary text-text-primary"
                                         value={newTicketData.priority}
-                                        onChange={(e) => setNewTicketData({ ...newTicketData, priority: e.target.value as any })}
+                                        onChange={(e) => setNewTicketData({ ...newTicketData, priority: e.target.value as 'low' | 'medium' | 'high' | 'urgent' })}
                                     >
                                         <option value="low">Baixa</option>
                                         <option value="medium">Normal</option>

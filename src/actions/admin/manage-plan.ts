@@ -22,7 +22,7 @@ export async function updateClientPlan({ userId, planId, periodEnd }: UpdatePlan
             .single();
 
         if (planError || !targetPlan) {
-            throw new Error(`Plan not found: ${planError?.message}`);
+            return { success: false, error: `Plan not found: ${planError?.message}` };
         }
 
         // 2. Fetch User's Current Subscription (to check if it's Stripe or Manual)
@@ -33,7 +33,7 @@ export async function updateClientPlan({ userId, planId, periodEnd }: UpdatePlan
             .maybeSingle();
 
         if (subError) {
-            throw new Error(`Error fetching subscription: ${subError.message}`);
+            return { success: false, error: `Error fetching subscription: ${subError.message}` };
         }
 
         let stripeSubscriptionId = currentSub?.stripe_subscription_id;
@@ -60,9 +60,9 @@ export async function updateClientPlan({ userId, planId, periodEnd }: UpdatePlan
                 });
 
                 paymentMethod = 'card'; // Assumed if on Stripe
-            } catch (stripeError: any) {
+            } catch (stripeError) {
                 console.error('[ManagePlan] Stripe Error:', stripeError);
-                throw new Error(`Stripe Update Failed: ${stripeError.message}`);
+                return { success: false, error: `Stripe Update Failed: ${stripeError instanceof Error ? stripeError.message : 'Unknown'}` };
             }
         }
 
@@ -99,7 +99,7 @@ export async function updateClientPlan({ userId, planId, periodEnd }: UpdatePlan
             .from('subscriptions')
             .upsert(subData, { onConflict: 'user_id' });
 
-        if (upsertError) throw upsertError;
+        if (upsertError) return { success: false, error: `Failed saving to Supabase: ${upsertError.message}` };
 
         // 5. Update 'subscriptions_cache' (The Admin Dashboard View)
         const cacheData = {
@@ -116,14 +116,14 @@ export async function updateClientPlan({ userId, planId, periodEnd }: UpdatePlan
             .from('subscriptions_cache')
             .upsert(cacheData, { onConflict: 'tenant_id' });
 
-        if (cacheError) throw cacheError;
+        if (cacheError) return { success: false, error: `Failed to update view cache: ${cacheError.message}` };
 
         revalidatePath('/admin/clients');
         return { success: true };
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('[ManagePlan] Critical Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown Server Error' };
     }
 }
 
@@ -140,12 +140,12 @@ export async function updateClientFeatureFlags(userId: string, flags: Record<str
             .from('tenant_feature_flags')
             .upsert(upserts, { onConflict: 'tenant_id,feature_key' });
 
-        if (error) throw error;
+        if (error) return { success: false, error: error.message };
 
         revalidatePath('/admin/clients');
         return { success: true };
-    } catch (error: any) {
+    } catch (error) {
         console.error('[ManageFeatures] Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown Server Error' };
     }
 }

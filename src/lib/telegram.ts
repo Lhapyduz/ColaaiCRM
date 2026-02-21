@@ -61,11 +61,11 @@ export async function sendTelegramNotification(
                 message: data.description || 'Unknown error'
             };
         }
-    } catch (error: any) {
+    } catch (error) {
         console.error('[Telegram] Erro:', error);
         return {
             success: false,
-            message: error.message
+            message: error instanceof Error ? error.message : 'Unknown error'
         };
     }
 }

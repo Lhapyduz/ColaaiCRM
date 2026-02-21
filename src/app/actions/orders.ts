@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import { OrderSchema } from '@/lib/schemas';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -14,7 +14,10 @@ export async function createOrder(rawOrder: z.infer<typeof OrderSchema>) {
     }
 
     const order = validated.data;
-    const supabase = await createClient();
+    // O checkout roda no Servidor. Como clientes são anônimos, usamos supabaseAdmin 
+    // para realizar a leitura/inserção de forma atômica e segura contornando RLS, 
+    // permitindo que o RLS da tabela 'orders' seja restritivo apenas para os Lojistas.
+    const supabase = supabaseAdmin;
 
     // 2. Pegar o próximo número do pedido para o usuário (vendedor)
     const { data: lastOrder } = await supabase

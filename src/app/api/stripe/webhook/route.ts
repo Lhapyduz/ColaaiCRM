@@ -94,13 +94,13 @@ export async function POST(req: Request) {
             signature,
             process.env.STRIPE_WEBHOOK_SECRET!
         );
-    } catch (error: any) {
-        console.error(`Webhook signature verification failed: ${error.message}`);
-        return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
+    } catch (error: unknown) {
+        const errorMsg = error instanceof Error ? error.message : 'Unknown Webhook Error';
+        console.error(`Webhook signature verification failed: ${errorMsg}`);
+        return new NextResponse(`Webhook Error: ${errorMsg}`, { status: 400 });
     }
 
     const session = event.data.object as Stripe.Checkout.Session;
-    const subscription = event.data.object as Stripe.Subscription;
 
     try {
         switch (event.type) {
@@ -108,12 +108,7 @@ export async function POST(req: Request) {
                 const userId = session.metadata?.userId;
                 const planType = session.metadata?.planType;
 
-                console.log('[WEBHOOK] === checkout.session.completed ===');
-                console.log('[WEBHOOK] session.id:', session.id);
-                console.log('[WEBHOOK] userId:', userId);
-                console.log('[WEBHOOK] planType:', planType);
-                console.log('[WEBHOOK] customer:', session.customer);
-                console.log('[WEBHOOK] subscription:', session.subscription);
+                console.log(`[WEBHOOK] === checkout.session.completed === | Session: ${session.id} | User: ${userId} | Plan: ${planType}`);
 
                 if (!userId) {
                     console.error('[WEBHOOK] Missing userId in session metadata');
@@ -148,8 +143,9 @@ export async function POST(req: Request) {
                             try {
                                 await stripe.subscriptions.cancel(oldSub.stripe_subscription_id);
                                 console.log(`[WEBHOOK] Cancelled old subscription: ${oldSub.stripe_subscription_id}`);
-                            } catch (err: any) {
-                                console.error(`[WEBHOOK] Failed to cancel old subscription ${oldSub.stripe_subscription_id}:`, err.message);
+                            } catch (err: unknown) {
+                                const errorMsg = err instanceof Error ? err.message : 'Unknown Error';
+                                console.error(`[WEBHOOK] Failed to cancel old subscription ${oldSub.stripe_subscription_id}:`, errorMsg);
                             }
                         }
                     }
@@ -157,11 +153,11 @@ export async function POST(req: Request) {
 
                 // Fetch subscription details to get current period end
                 console.log('[WEBHOOK] Fetching subscription details from Stripe...');
-                const sub = await stripe.subscriptions.retrieve(subscriptionId);
-                const priceId = (sub as any).items.data[0].price.id;
+                const rawSub = await stripe.subscriptions.retrieve(subscriptionId);
+                const sub = rawSub as unknown as Stripe.Subscription & { current_period_start: number, current_period_end: number };
+                const priceId = sub.items.data[0].price.id;
 
-                console.log('[WEBHOOK] Subscription status:', sub.status);
-                console.log('[WEBHOOK] Price ID:', priceId);
+                console.log(`[WEBHOOK] SubStatus: ${sub.status} | Price: ${priceId}`);
 
                 // Derive planType from priceId if not in metadata
                 const finalPlanType = planType || getPlanTypeFromPriceId(priceId);
@@ -170,25 +166,27 @@ export async function POST(req: Request) {
                 // Prepare dates with validation
                 const now = new Date().toISOString();
                 const trialEndsAt = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
-                const periodStart = (sub as any).current_period_start ? new Date((sub as any).current_period_start * 1000).toISOString() : now;
-                const periodEnd = (sub as any).current_period_end ? new Date((sub as any).current_period_end * 1000).toISOString() : now;
+                const periodStart = sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : now;
+                const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : now;
 
                 // Get the exact next invoice date from Stripe
                 let nextInvoiceDate = periodEnd;
                 try {
+                    // Type casting as Invoice misses subscription in this SDK version
                     const upcomingInvoice = await stripe.invoices.createPreview({
                         customer: session.customer as string,
                         subscription: subscriptionId
-                    } as any);
+                    } as unknown as Stripe.InvoiceCreateParams);
                     if (upcomingInvoice.next_payment_attempt) {
                         nextInvoiceDate = new Date(upcomingInvoice.next_payment_attempt * 1000).toISOString();
                         console.log('[WEBHOOK] Next invoice date from Stripe:', nextInvoiceDate);
-                    } else if ((upcomingInvoice as any).period_end) {
-                        nextInvoiceDate = new Date((upcomingInvoice as any).period_end * 1000).toISOString();
+                    } else if (upcomingInvoice.period_end) {
+                        nextInvoiceDate = new Date(upcomingInvoice.period_end * 1000).toISOString();
                         console.log('[WEBHOOK] Using period_end from invoice:', nextInvoiceDate);
                     }
-                } catch (invoiceError: any) {
-                    console.log('[WEBHOOK] Could not get upcoming invoice, using current_period_end:', invoiceError.message);
+                } catch (invoiceError: unknown) {
+                    const msg = invoiceError instanceof Error ? invoiceError.message : 'Unknown Error';
+                    console.log('[WEBHOOK] Could not get upcoming invoice, using current_period_end:', msg);
                 }
 
                 console.log('[WEBHOOK] Upserting to Supabase...');
@@ -206,7 +204,7 @@ export async function POST(req: Request) {
                         current_period_end: periodEnd,
                         stripe_current_period_end: nextInvoiceDate,
                         billing_period: 'monthly'
-                    } as any, { onConflict: 'user_id' })
+                    }, { onConflict: 'user_id' })
                     .select();
 
                 if (upsertError) {
@@ -242,14 +240,11 @@ export async function POST(req: Request) {
 
             case 'customer.subscription.created': {
                 // Handle subscription created (manual creation via Stripe Dashboard or API)
-                const sub = event.data.object as Stripe.Subscription;
+                const sub = event.data.object as unknown as Stripe.Subscription & { current_period_start: number, current_period_end: number, collection_method?: string };
                 const stripeCustomerId = sub.customer as string;
                 const priceId = sub.items.data[0].price.id;
 
-                console.log('[WEBHOOK] === customer.subscription.created ===');
-                console.log('[WEBHOOK] Subscription ID:', sub.id);
-                console.log('[WEBHOOK] Customer ID:', stripeCustomerId);
-                console.log('[WEBHOOK] Status:', sub.status);
+                console.log(`[WEBHOOK] === customer.subscription.created === | Sub: ${sub.id} | Customer: ${stripeCustomerId} | Status: ${sub.status}`);
 
                 // Get userId from subscription metadata or find by customer
                 let userId = sub.metadata?.userId;
@@ -298,16 +293,14 @@ export async function POST(req: Request) {
                 }
 
                 const planType = sub.metadata?.planType || getPlanTypeFromPriceId(priceId);
-                const paymentMethod = sub.metadata?.paymentMethod || ((sub as any).collection_method === 'send_invoice' ? 'pix' : 'card');
+                const paymentMethod = sub.metadata?.paymentMethod || (sub.collection_method === 'send_invoice' ? 'pix' : 'card');
 
-                console.log('[WEBHOOK] User ID:', userId);
-                console.log('[WEBHOOK] Plan Type:', planType);
-                console.log('[WEBHOOK] Payment Method:', paymentMethod);
+                console.log(`[WEBHOOK] Processando plano ${planType} via ${paymentMethod} para user ${userId}`);
 
                 // Calculate dates
                 const trialEndsAt = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
-                const periodStart = new Date((sub as any).current_period_start * 1000).toISOString();
-                const periodEnd = new Date((sub as any).current_period_end * 1000).toISOString();
+                const periodStart = new Date(sub.current_period_start * 1000).toISOString();
+                const periodEnd = new Date(sub.current_period_end * 1000).toISOString();
 
                 // Upsert subscription
                 const { error: upsertError } = await supabaseAdmin
@@ -325,7 +318,7 @@ export async function POST(req: Request) {
                         current_period_end: periodEnd,
                         stripe_current_period_end: periodEnd,
                         billing_period: 'monthly'
-                    } as any, { onConflict: 'user_id' });
+                    }, { onConflict: 'user_id' });
 
                 if (upsertError) {
                     console.error('[WEBHOOK] Error upserting subscription:', upsertError);
@@ -341,7 +334,7 @@ export async function POST(req: Request) {
 
             case 'customer.subscription.updated': {
                 // Handle subscription update
-                const sub = event.data.object as Stripe.Subscription;
+                const sub = event.data.object as Stripe.Subscription & { current_period_start: number, current_period_end: number, collection_method?: string };
                 const stripeCustomerId = sub.customer as string;
                 const priceId = sub.items.data[0].price.id;
 
@@ -359,23 +352,24 @@ export async function POST(req: Request) {
                     const newPlanType = getPlanTypeFromPriceId(priceId);
 
                     // Get payment method from metadata or collection_method
-                    const paymentMethod = sub.metadata?.paymentMethod || ((sub as any).collection_method === 'send_invoice' ? 'pix' : 'card');
+                    const paymentMethod = sub.metadata?.paymentMethod || (sub.collection_method === 'send_invoice' ? 'pix' : 'card');
 
                     // Get the exact next invoice date from Stripe
-                    let nextInvoiceDate = new Date((sub as any).current_period_end * 1000).toISOString();
+                    let nextInvoiceDate = new Date(sub.current_period_end * 1000).toISOString();
                     try {
                         const upcomingInvoice = await stripe.invoices.createPreview({
                             customer: stripeCustomerId,
                             subscription: sub.id
-                        } as any);
+                        } as unknown as Stripe.InvoiceCreateParams);
                         if (upcomingInvoice.next_payment_attempt) {
                             nextInvoiceDate = new Date(upcomingInvoice.next_payment_attempt * 1000).toISOString();
-                        } else if ((upcomingInvoice as any).period_end) {
-                            nextInvoiceDate = new Date((upcomingInvoice as any).period_end * 1000).toISOString();
+                        } else if (upcomingInvoice.period_end) {
+                            nextInvoiceDate = new Date(upcomingInvoice.period_end * 1000).toISOString();
                         }
                         console.log('[WEBHOOK] Next invoice date:', nextInvoiceDate);
-                    } catch (invoiceError: any) {
-                        console.log('[WEBHOOK] Could not get upcoming invoice:', invoiceError.message);
+                    } catch (invoiceError: unknown) {
+                        const msg = invoiceError instanceof Error ? invoiceError.message : 'Unknown error';
+                        console.log('[WEBHOOK] Could not get upcoming invoice:', msg);
                     }
 
                     await supabaseAdmin
@@ -385,11 +379,11 @@ export async function POST(req: Request) {
                             status: mapStripeStatus(sub.status, paymentMethod),
                             plan_type: newPlanType,
                             trial_ends_at: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
-                            current_period_start: new Date((sub as any).current_period_start * 1000).toISOString(),
-                            current_period_end: new Date((sub as any).current_period_end * 1000).toISOString(),
+                            current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+                            current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
                             stripe_current_period_end: nextInvoiceDate,
                             stripe_price_id: priceId
-                        } as any)
+                        })
                         .eq('user_id', userData.user_id);
                 }
                 break;
@@ -418,7 +412,7 @@ export async function POST(req: Request) {
                             .from('subscriptions')
                             .update({
                                 status: 'cancelled'
-                            } as any)
+                            })
                             .eq('user_id', userData.user_id);
                     } else {
                         console.log('[WEBHOOK] Old subscription deleted (plan change), ignoring. Current:', userData.stripe_subscription_id);
@@ -429,17 +423,16 @@ export async function POST(req: Request) {
 
             case 'invoice.paid': {
                 // Handle subscription renewal - update period dates
-                const invoice = event.data.object as Stripe.Invoice;
+                const invoice = event.data.object as Stripe.Invoice & { subscription: string };
                 const stripeCustomerId = invoice.customer as string;
-                const subscriptionId = (invoice as any).subscription as string;
+                const subscriptionId = invoice.subscription;
 
-                console.log('[WEBHOOK] invoice.paid - Processing renewal');
-                console.log('[WEBHOOK] Customer:', stripeCustomerId);
-                console.log('[WEBHOOK] Subscription:', subscriptionId);
+                console.log(`[WEBHOOK] invoice.paid - Renewal for customer: ${stripeCustomerId}, sub: ${subscriptionId}`);
 
                 if (subscriptionId) {
                     // Fetch the updated subscription from Stripe
-                    const stripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+                    const rawStripeSub = await stripe.subscriptions.retrieve(subscriptionId);
+                    const stripeSub = rawStripeSub as unknown as Stripe.Subscription & { current_period_start: number, current_period_end: number, collection_method?: string };
                     const priceId = stripeSub.items.data[0].price.id;
 
                     const { data: userData } = await supabaseAdmin
@@ -450,7 +443,7 @@ export async function POST(req: Request) {
 
                     if (userData) {
                         // Get payment method from subscription metadata or collection_method
-                        const paymentMethod = stripeSub.metadata?.paymentMethod || ((stripeSub as any).collection_method === 'send_invoice' ? 'pix' : 'card');
+                        const paymentMethod = stripeSub.metadata?.paymentMethod || (stripeSub.collection_method === 'send_invoice' ? 'pix' : 'card');
 
                         const { error } = await supabaseAdmin
                             .from('subscriptions')
@@ -458,10 +451,10 @@ export async function POST(req: Request) {
                                 status: mapStripeStatus(stripeSub.status, paymentMethod),
                                 plan_type: getPlanTypeFromPriceId(priceId),
                                 trial_ends_at: stripeSub.trial_end ? new Date(stripeSub.trial_end * 1000).toISOString() : null,
-                                current_period_start: new Date((stripeSub as any).current_period_start * 1000).toISOString(),
-                                current_period_end: new Date((stripeSub as any).current_period_end * 1000).toISOString(),
-                                stripe_current_period_end: new Date((stripeSub as any).current_period_end * 1000).toISOString(),
-                            } as any)
+                                current_period_start: new Date(stripeSub.current_period_start * 1000).toISOString(),
+                                current_period_end: new Date(stripeSub.current_period_end * 1000).toISOString(),
+                                stripe_current_period_end: new Date(stripeSub.current_period_end * 1000).toISOString(),
+                            })
                             .eq('user_id', userData.user_id);
 
                         if (error) {

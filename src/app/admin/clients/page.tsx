@@ -414,11 +414,13 @@ export default function ClientsPage() {
         if (!selectedTenant) return;
         setSavingBonus(true);
         try {
-            const { data: sub } = await supabase
+            const { data: subArray } = await supabase
                 .from('subscriptions_cache')
                 .select('current_period_end')
                 .eq('tenant_id', selectedTenant.id)
-                .single();
+                .limit(1);
+
+            const sub = subArray && subArray.length > 0 ? subArray[0] : null;
 
             const currentEnd = sub?.current_period_end ? new Date(sub.current_period_end) : new Date();
             const baseDate = currentEnd > new Date() ? currentEnd : new Date();

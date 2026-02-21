@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { DataTable } from '@/components/admin';
 import { ResourceUsage } from '@/components/admin/ResourceUsage';
 import type { Column } from '@/components/admin';
@@ -58,76 +59,74 @@ const SERVICES = [
 ];
 
 export default function HealthPage() {
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [services, setServices] = useState<ServiceHealth[]>([]);
-    const [loginSessions, setLoginSessions] = useState<LoginSession[]>([]);
-    const [systemLimits, setSystemLimits] = useState<SystemLimits | null>(null);
-
-    const fetchData = useCallback(async () => {
-        try {
-            // 1. Fetch system limits from our new API
-            const limitsRes = await fetch('/api/admin/system-limits');
-            const limitsData = await limitsRes.json();
-            if (limitsData.success) {
-                setSystemLimits({
-                    supabase: limitsData.supabase,
-                    vercel: limitsData.vercel
-                });
+    const { data: healthDataInfo, isLoading, isRefetching, refetch } = useQuery({
+        queryKey: ['adminHealthData'],
+        queryFn: async () => {
+            // 1. Fetch system limits
+            let systemLimits: SystemLimits | null = null;
+            try {
+                const limitsRes = await fetch('/api/admin/system-limits');
+                const limitsData = await limitsRes.json();
+                if (limitsData.success) {
+                    systemLimits = {
+                        supabase: limitsData.supabase,
+                        vercel: limitsData.vercel
+                    };
+                }
+            } catch (e) {
+                console.error('Error fetching limits:', e);
             }
 
-            // 2. Fetch service health (keeping existing logic)
+            // 2. Fetch service health
             const { data: healthData } = await supabase
                 .from('service_health_checks')
                 .select('*')
                 .order('checked_at', { ascending: false })
                 .limit(10);
 
+            const servicesResult = healthData && healthData.length > 0 ? healthData : [
+                { id: '1', service_name: 'database', status: 'healthy', response_time_ms: 12, error_message: null, checked_at: new Date().toISOString() },
+                { id: '2', service_name: 'api', status: 'healthy', response_time_ms: 45, error_message: null, checked_at: new Date().toISOString() },
+                { id: '3', service_name: 'stripe', status: 'healthy', response_time_ms: 120, error_message: null, checked_at: new Date().toISOString() },
+                { id: '4', service_name: 'cdn', status: 'degraded', response_time_ms: 350, error_message: 'Alta latência detectada', checked_at: new Date().toISOString() },
+            ] as ServiceHealth[];
+
             // 3. Fetch login sessions
             const { data: sessionsData } = await supabase
                 .from('login_sessions')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(5); // Reduzindo limit para focar em saúde
+                .limit(5);
 
             const { data: settings } = await supabase
                 .from('user_settings')
                 .select('user_id, app_name');
 
-            if (healthData && healthData.length > 0) {
-                setServices(healthData);
-            } else {
-                // Mock fallback
-                setServices([
-                    { id: '1', service_name: 'database', status: 'healthy', response_time_ms: 12, error_message: null, checked_at: new Date().toISOString() },
-                    { id: '2', service_name: 'api', status: 'healthy', response_time_ms: 45, error_message: null, checked_at: new Date().toISOString() },
-                    { id: '3', service_name: 'stripe', status: 'healthy', response_time_ms: 120, error_message: null, checked_at: new Date().toISOString() },
-                    { id: '4', service_name: 'cdn', status: 'degraded', response_time_ms: 350, error_message: 'Alta latência detectada', checked_at: new Date().toISOString() },
-                ]);
-            }
-
+            let loginSessionsResult: LoginSession[] = [];
             if (sessionsData) {
-                const sessionsWithStore = sessionsData.map((s) => ({
+                loginSessionsResult = sessionsData.map((s) => ({
                     ...s,
                     store_name: settings?.find((st) => st.user_id === s.user_id)?.app_name || 'Loja Desconhecida'
                 })) as LoginSession[];
-                setLoginSessions(sessionsWithStore);
             }
-        } catch (error) {
-            console.error('Error fetching health data:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+            return {
+                systemLimits,
+                services: servicesResult,
+                loginSessions: loginSessionsResult
+            };
+        },
+        refetchInterval: 60000 // Refresh every minute
+    });
+
+    const loading = isLoading;
+    const refreshing = isRefetching;
+    const services = healthDataInfo?.services || [];
+    const loginSessions = healthDataInfo?.loginSessions || [];
+    const systemLimits = healthDataInfo?.systemLimits || null;
 
     const refreshHealth = async () => {
-        setRefreshing(true);
-        await fetchData();
-        setRefreshing(false);
+        await refetch();
     };
 
     const formatDate = (date: string) => {
