@@ -29,7 +29,7 @@ export async function createTicket(data: TicketData) {
         .select()
         .single();
 
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     revalidatePath('/configuracoes');
     return ticket;
 }
@@ -60,7 +60,7 @@ export async function sendMessage(ticketId: string, content: string) {
             content
         });
 
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     revalidatePath('/configuracoes');
 }
 
@@ -201,11 +201,11 @@ export async function adminGetTicketMessages(ticketId: string) {
             .eq('ticket_id', ticketId)
             .order('created_at', { ascending: true });
 
-        if (error) throw error;
+        if (error) throw new Error(error.message);
         return data;
-    } catch (err) {
+    } catch (err: any) {
         console.error('[adminGetTicketMessages] Error:', err);
-        throw err;
+        throw new Error(err.message || 'Erro ao carregar mensagens');
     }
 }
 
@@ -217,12 +217,12 @@ export async function adminSendMessage(ticketId: string, content: string) {
             .from('ticket_messages')
             .insert({
                 ticket_id: ticketId,
-                sender_id: user.id, // Securely use the session ID, not a passed string
+                sender_id: user.id,
                 sender_role: 'admin',
                 content
             });
 
-        if (error) throw error;
+        if (error) throw new Error(error.message);
 
         // Auto-update status to in_progress if open
         await supabaseAdmin
@@ -232,39 +232,46 @@ export async function adminSendMessage(ticketId: string, content: string) {
             .eq('status', 'open');
 
         revalidatePath('/admin/support');
-    } catch (err) {
+    } catch (err: any) {
         console.error('[adminSendMessage] Error:', err);
-        throw err;
+        throw new Error(err.message || 'Erro ao enviar mensagem');
     }
 }
 
 export async function adminUpdateTicketStatus(ticketId: string, status: string) {
     await ensureAdmin();
 
-    const updates: any = { status, updated_at: new Date().toISOString() };
-    if (status === 'resolved') {
-        updates.resolved_at = new Date().toISOString();
+    try {
+        const updates: any = { status, updated_at: new Date().toISOString() };
+
+        const { error } = await supabaseAdmin
+            .from('support_tickets')
+            .update(updates)
+            .eq('id', ticketId);
+
+        if (error) throw new Error(error.message);
+        revalidatePath('/admin/support');
+    } catch (err: any) {
+        console.error('[adminUpdateTicketStatus] Error:', err);
+        throw new Error(err.message || 'Erro ao atualizar status');
     }
-
-    const { error } = await supabaseAdmin
-        .from('support_tickets')
-        .update(updates)
-        .eq('id', ticketId);
-
-    if (error) throw error;
-    revalidatePath('/admin/support');
 }
 
 export async function adminDeleteTicket(ticketId: string) {
     await ensureAdmin();
 
-    const { error } = await supabaseAdmin
-        .from('support_tickets')
-        .delete()
-        .eq('id', ticketId);
+    try {
+        const { error } = await supabaseAdmin
+            .from('support_tickets')
+            .delete()
+            .eq('id', ticketId);
 
-    if (error) throw error;
-    revalidatePath('/admin/support');
+        if (error) throw new Error(error.message);
+        revalidatePath('/admin/support');
+    } catch (err: any) {
+        console.error('[adminDeleteTicket] Error:', err);
+        throw new Error(err.message || 'Erro ao excluir ticket');
+    }
 }
 
 export async function adminUpdateTicketDetails(
@@ -273,16 +280,21 @@ export async function adminUpdateTicketDetails(
 ) {
     await ensureAdmin();
 
-    const { error } = await supabaseAdmin
-        .from('support_tickets')
-        .update({
-            subject: data.subject,
-            priority: data.priority,
-            category: data.category,
-            updated_at: new Date().toISOString()
-        })
-        .eq('id', ticketId);
+    try {
+        const { error } = await supabaseAdmin
+            .from('support_tickets')
+            .update({
+                subject: data.subject,
+                priority: data.priority,
+                category: data.category,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', ticketId);
 
-    if (error) throw error;
-    revalidatePath('/admin/support');
+        if (error) throw new Error(error.message);
+        revalidatePath('/admin/support');
+    } catch (err: any) {
+        console.error('[adminUpdateTicketDetails] Error:', err);
+        throw new Error(err.message || 'Erro ao atualizar ticket');
+    }
 }

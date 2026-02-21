@@ -204,7 +204,7 @@ export default function SupportTab() {
         const styles: Record<string, string> = {
             open: 'bg-green-500/20 text-green-400',
             in_progress: 'bg-amber-500/20 text-amber-400',
-            resolved: 'bg-blue-500/20 text-blue-400',
+            resolved: 'bg-emerald-500/20 text-emerald-400',
             closed: 'bg-gray-500/20 text-gray-400',
         };
         const labels: Record<string, string> = {
@@ -254,7 +254,8 @@ export default function SupportTab() {
                                 <span className={cn("w-2 h-2 rounded-full",
                                     selectedTicket.status === 'open' ? "bg-green-500" :
                                         selectedTicket.status === 'in_progress' ? "bg-amber-500" :
-                                            "bg-gray-500"
+                                            selectedTicket.status === 'resolved' ? "bg-emerald-500" :
+                                                "bg-gray-500"
                                 )} />
                                 <span className="text-xs text-text-secondary">Protocolo: {selectedTicket.id.slice(0, 8)}</span>
                             </div>

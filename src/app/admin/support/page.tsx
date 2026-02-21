@@ -471,7 +471,7 @@ export default function SupportPage() {
                                         className={cn(
                                             "px-3 py-1 rounded-lg text-xs font-medium transition-all border border-transparent",
                                             selectedTicket.status === status
-                                                ? "bg-orange-500 text-white"
+                                                ? (status === 'resolved' ? "bg-emerald-500 text-white" : "bg-orange-500 text-white")
                                                 : "bg-gray-800 text-gray-400 hover:text-white hover:border-gray-600"
                                         )}
                                     >
