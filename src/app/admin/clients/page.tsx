@@ -186,24 +186,41 @@ export default function ClientsPage() {
 
             if (settingsError) throw settingsError;
 
-            const { data: subscriptions } = await supabase
+            // Buscar subscriptions_cache (fonte primária de dados de plano)
+            const { data: cacheData } = await supabase
                 .from('subscriptions_cache')
                 .select('tenant_id, plan_name, status, amount_cents, current_period_end');
+
+            // Buscar subscriptions como fallback (para users que ainda não tem cache)
+            const { data: subsData } = await supabase
+                .from('subscriptions')
+                .select('user_id, plan_type, status, current_period_end');
 
             const users = await listAllUsers();
 
             const combined: Tenant[] = (settings || []).map(s => {
-                const sub = subscriptions?.find(sub => sub.tenant_id === s.user_id);
+                // Tentar encontrar no cache primeiro
+                const cache = cacheData?.find(c => c.tenant_id === s.user_id);
+                // Fallback: buscar na tabela subscriptions
+                const subFallback = subsData?.find(sub => sub.user_id === s.user_id);
                 const user = users?.find(u => u.id === s.user_id);
+
+                // Determinar dados do plano: cache tem prioridade
+                const planName = cache?.plan_name || subFallback?.plan_type || 'Gratuito';
+                const rawStatus = cache?.status || subFallback?.status || 'inactive';
+                const status = rawStatus === 'active' || rawStatus === 'trialing' ? 'active' : rawStatus;
+                const periodEnd = cache?.current_period_end || subFallback?.current_period_end || null;
+                const mrrCents = cache?.amount_cents || 0;
+
                 return {
                     id: s.user_id,
                     email: user?.email || 'N/A',
                     store_name: s.app_name || 'Sem nome',
-                    plan_name: sub?.plan_name || 'Gratuito',
-                    status: sub?.status === 'active' || sub?.status === 'trialing' ? 'active' : (sub?.status || 'inactive'),
+                    plan_name: planName,
+                    status,
                     created_at: s.created_at || new Date().toISOString(),
-                    mrr_cents: sub?.amount_cents || 0,
-                    current_period_end: sub?.current_period_end || null,
+                    mrr_cents: mrrCents,
+                    current_period_end: periodEnd,
                 };
             });
 

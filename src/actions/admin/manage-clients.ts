@@ -172,7 +172,7 @@ export async function grantPlanAccess({ userId, planId, duration }: GrantAccessP
             throw new Error(`Plano não encontrado: ${planError?.message}`);
         }
 
-        // 2. Calcular data de expiração
+        // 2. Calcular data de expiração a partir de AGORA
         const now = new Date();
         const endDate = new Date(now);
 
@@ -188,7 +188,7 @@ export async function grantPlanAccess({ userId, planId, duration }: GrantAccessP
                 break;
         }
 
-        // 3. Map plan type
+        // 3. Map plan type para os valores aceitos pela constraint do banco
         const mapPlanType = (name: string): 'Basico' | 'Avançado' | 'Profissional' => {
             const n = name.toLowerCase();
             if (n.includes('basico') || n.includes('básico')) return 'Basico';
@@ -197,12 +197,19 @@ export async function grantPlanAccess({ userId, planId, duration }: GrantAccessP
             return 'Basico';
         };
 
-        // 4. Atualizar tabela subscriptions
+        // 4. Map billing interval para valores aceitos pela constraint
+        const mapBillingInterval = (interval?: string): 'monthly' | 'semiannual' | 'annual' => {
+            if (interval === 'annual' || interval === 'yearly') return 'annual';
+            if (interval === 'semiannual') return 'semiannual';
+            return 'monthly';
+        };
+
+        // 5. Atualizar tabela subscriptions (UPSERT por user_id que é UNIQUE)
         const subData = {
             user_id: userId,
             plan_type: mapPlanType(plan.name),
             status: 'active',
-            billing_period: plan.billing_interval || 'monthly',
+            billing_period: mapBillingInterval(plan.billing_interval),
             current_period_start: now.toISOString(),
             current_period_end: endDate.toISOString(),
             updated_at: now.toISOString(),
@@ -216,43 +223,29 @@ export async function grantPlanAccess({ userId, planId, duration }: GrantAccessP
 
         if (subError) throw new Error(`Subscriptions: ${subError.message}`);
 
-        // 5. Atualizar subscriptions_cache (select + update/insert, pois não há UNIQUE em tenant_id)
-        const { data: existingCaches } = await supabaseAdmin
+        // 6. Atualizar subscriptions_cache — deletar registros antigos e inserir novo
+        // Primeiro, deletar quaisquer registros existentes para este tenant
+        await supabaseAdmin
             .from('subscriptions_cache')
-            .select('id')
-            .eq('tenant_id', userId)
-            .limit(1);
+            .delete()
+            .eq('tenant_id', userId);
 
-        const existingCache = existingCaches && existingCaches.length > 0 ? existingCaches[0] : null;
+        // Depois inserir o registro limpo e atualizado
+        const { error: cacheError } = await supabaseAdmin
+            .from('subscriptions_cache')
+            .insert({
+                id: `manual_${userId}`,
+                tenant_id: userId,
+                user_id: userId,
+                plan_name: plan.name,
+                status: 'active',
+                amount_cents: plan.price_cents,
+                current_period_end: endDate.toISOString(),
+            });
 
-        if (existingCache) {
-            // Atualizar registro existente
-            const { error: cacheError } = await supabaseAdmin
-                .from('subscriptions_cache')
-                .update({
-                    plan_name: plan.name,
-                    status: 'active',
-                    amount_cents: plan.price_cents,
-                    current_period_end: endDate.toISOString(),
-                })
-                .eq('id', existingCache.id);
-
-            if (cacheError) throw new Error(`Cache update: ${cacheError.message}`);
-        } else {
-            // Inserir novo registro
-            const { error: cacheError } = await supabaseAdmin
-                .from('subscriptions_cache')
-                .insert({
-                    id: `manual_${userId}`,
-                    tenant_id: userId,
-                    user_id: userId,
-                    plan_name: plan.name,
-                    status: 'active',
-                    amount_cents: plan.price_cents,
-                    current_period_end: endDate.toISOString(),
-                });
-
-            if (cacheError) throw new Error(`Cache insert: ${cacheError.message}`);
+        if (cacheError) {
+            console.error('[GrantAccess] Cache insert error:', cacheError);
+            // Não falhar a operação inteira — o subscription principal já foi atualizado
         }
 
         revalidatePath('/admin/clients');
@@ -278,7 +271,7 @@ export async function revokeAccess(userId: string) {
             .eq('user_id', userId)
             .maybeSingle();
 
-        // 2. Cancelar no Stripe
+        // 2. Cancelar no Stripe (imediatamente)
         if (sub?.stripe_subscription_id) {
             try {
                 await stripe.subscriptions.cancel(sub.stripe_subscription_id);
@@ -287,8 +280,8 @@ export async function revokeAccess(userId: string) {
             }
         }
 
-        // 3. Atualizar subscriptions
-        await supabaseAdmin
+        // 3. Atualizar subscriptions — status canceled e period_end = agora
+        const { error: subError } = await supabaseAdmin
             .from('subscriptions')
             .update({
                 status: 'canceled',
@@ -297,14 +290,43 @@ export async function revokeAccess(userId: string) {
             })
             .eq('user_id', userId);
 
-        // 4. Atualizar subscriptions_cache
-        await supabaseAdmin
+        if (subError) {
+            console.error('[RevokeAccess] Erro ao atualizar subscriptions:', subError);
+        }
+
+        // 4. Atualizar subscriptions_cache — status canceled, period_end = agora, limpar plan
+        const { error: cacheError } = await supabaseAdmin
             .from('subscriptions_cache')
             .update({
                 status: 'canceled',
                 current_period_end: now,
             })
             .eq('tenant_id', userId);
+
+        if (cacheError) {
+            console.error('[RevokeAccess] Erro ao atualizar cache:', cacheError);
+        }
+
+        // 5. Se não houver cache, criar um com status canceled para que a listagem reflita
+        const { data: cacheCheck } = await supabaseAdmin
+            .from('subscriptions_cache')
+            .select('id')
+            .eq('tenant_id', userId)
+            .limit(1);
+
+        if (!cacheCheck || cacheCheck.length === 0) {
+            await supabaseAdmin
+                .from('subscriptions_cache')
+                .insert({
+                    id: `revoked_${userId}`,
+                    tenant_id: userId,
+                    user_id: userId,
+                    plan_name: 'Cancelado',
+                    status: 'canceled',
+                    amount_cents: 0,
+                    current_period_end: now,
+                });
+        }
 
         revalidatePath('/admin/clients');
         return { success: true };
