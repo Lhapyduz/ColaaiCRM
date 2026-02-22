@@ -13,7 +13,7 @@ import {
     FiX,
     FiUser,
     FiShield,
-    FiPaperclip,
+
     FiTrash2,
     FiEdit2
 } from 'react-icons/fi';
@@ -77,7 +77,7 @@ export default function SupportPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [error]);
 
     useEffect(() => {
         fetchTickets();
@@ -597,7 +597,7 @@ export default function SupportPage() {
                                     <select
                                         className="w-full bg-gray-800 border border-gray-700 rounded-lg h-[42px] px-3 focus:outline-none focus:border-orange-500 text-white"
                                         value={editData.priority}
-                                        onChange={(e) => setEditData({ ...editData, priority: e.target.value as any })}
+                                        onChange={(e) => setEditData({ ...editData, priority: e.target.value as Ticket['priority'] })}
                                     >
                                         <option value="low">Baixa</option>
                                         <option value="medium">Normal</option>

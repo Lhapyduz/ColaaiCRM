@@ -160,7 +160,7 @@ export async function adminGetTickets() {
         console.log(`[adminGetTickets] Found ${data.length} tickets. Fetching tenant emails...`);
 
         // Fetch emails for all unique tenant_ids via auth admin API
-        const uniqueTenantIds = [...new Set(data.map((t: any) => t.tenant_id))];
+        const uniqueTenantIds = [...new Set(data.map((t: { tenant_id: string }) => t.tenant_id))];
         const emailMap: Record<string, string> = {};
 
         await Promise.all(
@@ -180,9 +180,9 @@ export async function adminGetTickets() {
         );
 
         // Transform to include store name and email
-        return data.map((ticket: any) => ({
+        return data.map((ticket) => ({
             ...ticket,
-            store_name: ticket.tenant_settings?.app_name || 'Desconhecido',
+            store_name: (ticket.tenant_settings as { app_name: string } | null)?.app_name || 'Desconhecido',
             tenant_email: emailMap[ticket.tenant_id] || 'Email não disponível'
         }));
     } catch (err) {
@@ -203,9 +203,9 @@ export async function adminGetTicketMessages(ticketId: string) {
 
         if (error) throw new Error(error.message);
         return data;
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[adminGetTicketMessages] Error:', err);
-        throw new Error(err.message || 'Erro ao carregar mensagens');
+        throw new Error(err instanceof Error ? err.message : 'Erro ao carregar mensagens');
     }
 }
 
@@ -232,9 +232,9 @@ export async function adminSendMessage(ticketId: string, content: string) {
             .eq('status', 'open');
 
         revalidatePath('/admin/support');
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[adminSendMessage] Error:', err);
-        throw new Error(err.message || 'Erro ao enviar mensagem');
+        throw new Error(err instanceof Error ? err.message : 'Erro ao enviar mensagem');
     }
 }
 
@@ -242,7 +242,7 @@ export async function adminUpdateTicketStatus(ticketId: string, status: string) 
     await ensureAdmin();
 
     try {
-        const updates: any = { status, updated_at: new Date().toISOString() };
+        const updates: { status: string; updated_at: string } = { status, updated_at: new Date().toISOString() };
 
         const { error } = await supabaseAdmin
             .from('support_tickets')
@@ -251,9 +251,9 @@ export async function adminUpdateTicketStatus(ticketId: string, status: string) 
 
         if (error) throw new Error(error.message);
         revalidatePath('/admin/support');
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[adminUpdateTicketStatus] Error:', err);
-        throw new Error(err.message || 'Erro ao atualizar status');
+        throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar status');
     }
 }
 
@@ -268,9 +268,9 @@ export async function adminDeleteTicket(ticketId: string) {
 
         if (error) throw new Error(error.message);
         revalidatePath('/admin/support');
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[adminDeleteTicket] Error:', err);
-        throw new Error(err.message || 'Erro ao excluir ticket');
+        throw new Error(err instanceof Error ? err.message : 'Erro ao excluir ticket');
     }
 }
 
@@ -293,8 +293,8 @@ export async function adminUpdateTicketDetails(
 
         if (error) throw new Error(error.message);
         revalidatePath('/admin/support');
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('[adminUpdateTicketDetails] Error:', err);
-        throw new Error(err.message || 'Erro ao atualizar ticket');
+        throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar ticket');
     }
 }
