@@ -34,6 +34,7 @@ interface Product {
 }
 interface UserSettings {
     app_name: string;
+    slogan: string | null;
     logo_url: string | null;
     primary_color: string;
     secondary_color: string;
@@ -473,7 +474,7 @@ export default function MenuClient({
                         {settings?.app_name || 'Sua Logo Aqui'}
                     </h1>
                     <p className="text-gray-400 text-lg mb-8 max-w-xl">
-                        A melhor experiência gastronômica, entregue na sua porta.
+                        {settings?.slogan || 'A melhor experiência gastronômica, entregue na sua porta.'}
                     </p>
 
                     <div className="flex flex-wrap items-center justify-center gap-3">

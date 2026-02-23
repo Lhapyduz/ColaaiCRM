@@ -60,6 +60,7 @@ function ConfiguracoesContent() {
 
     const [activeTab, setActiveTab] = useState<SettingsTab>('geral');
     const [appName, setAppName] = useState(userSettings?.app_name || 'Cola Aí');
+    const [slogan, setSlogan] = useState(userSettings?.slogan || '');
     const [primaryColor, setPrimaryColor] = useState(userSettings?.primary_color || '#ff6b35');
     const [secondaryColor, setSecondaryColor] = useState(userSettings?.secondary_color || '#2d3436');
     const [whatsappNumber, setWhatsappNumber] = useState(userSettings?.whatsapp_number || '');
@@ -126,6 +127,7 @@ function ConfiguracoesContent() {
     useEffect(() => {
         if (userSettings) {
             setAppName(userSettings.app_name || 'Cola Aí');
+            setSlogan(userSettings.slogan || '');
             setPrimaryColor(userSettings.primary_color || '#ff6b35');
             setSecondaryColor(userSettings.secondary_color || '#2d3436');
             setWhatsappNumber(userSettings.whatsapp_number || '');
@@ -221,7 +223,7 @@ function ConfiguracoesContent() {
                 if (!isAvailable) { setSlugError('Este link já está em uso. Escolha outro.'); setSaving(false); return; }
             }
             const { error } = await updateSettings({
-                app_name: appName, primary_color: primaryColor, secondary_color: secondaryColor, sidebar_color: sidebarColor,
+                app_name: appName, slogan: slogan || null, primary_color: primaryColor, secondary_color: secondaryColor, sidebar_color: sidebarColor,
                 whatsapp_number: whatsappNumber || null, public_slug: publicSlug || null, pix_key: pixKey || null, pix_key_type: pixKeyType || null,
                 merchant_city: merchantCity || null, delivery_fee_value: deliveryFee, store_open: storeOpen, delivery_time_min: deliveryTimeMin, delivery_time_max: deliveryTimeMax
             });
@@ -302,6 +304,7 @@ function ConfiguracoesContent() {
                         <div className={styles.sectionHeader}><h2>Informações do Negócio</h2><p>Configure as informações básicas do seu estabelecimento</p></div>
                         <div className={styles.formGrid}>
                             <div className={styles.formGroup}><label>Nome do Negócio</label><Input value={appName} onChange={(e) => { setAppName(e.target.value); previewSettings({ app_name: e.target.value }); }} placeholder="Nome do seu negócio" /><span className={styles.hint}>Este nome aparece no topo da sidebar</span></div>
+                            <div className={styles.formGroup}><label>Slogan da Loja</label><Input value={slogan} onChange={(e) => { setSlogan(e.target.value); previewSettings({ slogan: e.target.value }); }} placeholder="A melhor experiência gastronômica, entregue na sua porta." /><span className={styles.hint}>Aparece logo abaixo do nome no cardápio online</span></div>
                             <div className={styles.formGroup}><label><FaWhatsapp style={{ marginRight: '8px', color: '#25D366' }} />WhatsApp</label><Input value={formatWhatsApp(whatsappNumber)} onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))} placeholder="(11) 99999-9999" maxLength={16} /><span className={styles.hint}>Usado para receber pedidos via WhatsApp</span></div>
                         </div>
                         <div className={styles.formGroup}><label>Logo do Negócio</label><div className={styles.logoUpload}><div className={styles.currentLogo}>{userSettings?.logo_url ? <div className="relative w-full h-full"><Image src={userSettings.logo_url} alt="Logo" fill className="object-contain" /></div> : <span className={styles.logoEmoji}>🌭</span>}</div><div className={styles.logoActions}><input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} hidden /><Button variant="outline" leftIcon={<FiUpload />} onClick={() => fileInputRef.current?.click()} isLoading={uploading}>{userSettings?.logo_url ? 'Trocar' : 'Carregar'}</Button>{userSettings?.logo_url && <Button variant="danger" leftIcon={<FiTrash2 />} onClick={handleRemoveLogo}>Remover</Button>}</div></div></div>

@@ -78,9 +78,10 @@ export default function EstoquePage() {
     const handleStockMovement = async () => {
         if (!user || !selectedIngredient || !movementQuantity) return;
         try {
-            const quantity = movementType === 'waste' ? -Math.abs(parseFloat(movementQuantity)) : parseFloat(movementQuantity);
+            const parsedQty = parseFloat(movementQuantity);
+            const quantity = movementType === 'waste' ? -Math.abs(parsedQty) : parsedQty;
             await supabase.from('stock_movements').insert({ ingredient_id: selectedIngredient.id, user_id: user.id, quantity, type: movementType, notes: movementNotes || null });
-            const newStock = selectedIngredient.current_stock + quantity;
+            const newStock = movementType === 'adjustment' ? parsedQty : selectedIngredient.current_stock + quantity;
             await supabase.from('ingredients').update({ current_stock: Math.max(0, newStock), updated_at: new Date().toISOString() }).eq('id', selectedIngredient.id);
             toast.success('Movimentação registrada!');
             setShowMovementModal(false); fetchIngredients();
@@ -189,10 +190,10 @@ export default function EstoquePage() {
                             <div className="flex gap-2 max-md:flex-col">
                                 <button className={cn('flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-bg-tertiary border border-border rounded-md text-text-secondary text-[0.9rem] cursor-pointer transition-all duration-fast hover:border-border-light', movementType === 'purchase' && 'bg-primary/15 border-primary text-primary')} onClick={() => setMovementType('purchase')}><FiTrendingUp /> Entrada</button>
                                 <button className={cn('flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-bg-tertiary border border-border rounded-md text-text-secondary text-[0.9rem] cursor-pointer transition-all duration-fast hover:border-border-light', movementType === 'adjustment' && 'bg-primary/15 border-primary text-primary')} onClick={() => setMovementType('adjustment')}><FiPackage /> Ajuste</button>
-                                <button className={cn('flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-bg-tertiary border border-border rounded-md text-text-secondary text-[0.9rem] cursor-pointer transition-all duration-fast hover:border-border-light', movementType === 'waste' && 'bg-error/15 border-error text-error')} onClick={() => setMovementType('waste')}><FiTrendingDown /> Perda</button>
+                                <button className={cn('flex-1 flex items-center justify-center gap-2 px-3 py-3 bg-bg-tertiary border border-border rounded-md text-text-secondary text-[0.9rem] cursor-pointer transition-all duration-fast hover:border-border-light', movementType === 'waste' && 'bg-error/15 border-error text-error')} onClick={() => setMovementType('waste')}><FiTrendingDown /> Saída</button>
                             </div>
                         </div>
-                        <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Quantidade ({selectedIngredient.unit}){movementType === 'waste' && ' - será removido do estoque'}</label><Input type="number" step="0.001" value={movementQuantity} onChange={(e) => setMovementQuantity(e.target.value)} placeholder="0" /></div>
+                        <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Quantidade ({selectedIngredient.unit}){movementType === 'waste' ? ' - será removido do estoque' : movementType === 'adjustment' ? ' - o estoque será definido para este valor' : ''}</label><Input type="number" step="0.001" value={movementQuantity} onChange={(e) => setMovementQuantity(e.target.value)} placeholder="0" /></div>
                         <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Observações (opcional)</label><Input value={movementNotes} onChange={(e) => setMovementNotes(e.target.value)} placeholder="Ex: Compra fornecedor X..." /></div>
                         <div className="flex gap-3 justify-end mt-6"><Button variant="outline" onClick={() => setShowMovementModal(false)}>Cancelar</Button><Button onClick={handleStockMovement}>Confirmar Movimentação</Button></div>
                     </div>

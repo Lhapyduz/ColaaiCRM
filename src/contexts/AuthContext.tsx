@@ -9,6 +9,7 @@ interface UserSettings {
     id: string;
     user_id: string;
     app_name: string;
+    slogan: string | null;
     logo_url: string | null;
     primary_color: string;
     secondary_color: string;
@@ -90,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         .insert({
                             user_id: userId,
                             app_name: 'Cola Aí',
+                            slogan: null,
                             primary_color: '#ff6b35',
                             secondary_color: '#2d3436',
                             whatsapp_number: null,
