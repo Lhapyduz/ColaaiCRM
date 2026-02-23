@@ -77,8 +77,8 @@ export default function StoreRatingModal({ isOpen, onClose, storeOwnerId, appNam
 
     return (
         <Portal>
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-overlay flex items-center justify-center p-4 animate-fadeIn">
-                <div className="w-full max-w-md bg-bg-card rounded-3xl p-6 shadow-2xl animate-scaleIn border border-white/10 relative z-modal">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" style={{ zIndex: 9998 }}>
+                <div className="w-full max-w-md bg-bg-card rounded-3xl p-6 shadow-2xl animate-scaleIn border border-white/10 relative" style={{ zIndex: 9999 }}>
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 text-text-muted hover:text-white transition-colors"

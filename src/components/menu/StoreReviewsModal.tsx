@@ -36,10 +36,11 @@ export default function StoreReviewsModal({
 
     return (
         <Portal>
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-overlay flex items-center justify-center p-4 animate-fadeIn" onClick={onClose}>
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn" onClick={onClose} style={{ zIndex: 9998 }}>
                 <div
-                    className="w-full max-w-lg bg-bg-card rounded-3xl overflow-hidden max-h-[85vh] flex flex-col shadow-2xl animate-scaleIn border border-white/10 z-modal"
+                    className="w-full max-w-lg bg-bg-card rounded-3xl overflow-hidden max-h-[85vh] flex flex-col shadow-2xl animate-scaleIn border border-white/10"
                     onClick={e => e.stopPropagation()}
+                    style={{ zIndex: 9999 }}
                 >
                     <div className="p-6 border-b border-white/5 flex items-center justify-between bg-bg-card sticky top-0 z-10">
                         <h2 className="text-xl font-bold text-white">Avaliações da Loja</h2>

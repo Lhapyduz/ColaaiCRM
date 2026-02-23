@@ -97,8 +97,9 @@
   /* Z-Index */
   --z-index-dropdown: 100;
   --z-index-sticky: 200;
-  --z-index-modal: 300;
-  --z-index-toast: 400;
+  --z-index-overlay: 9998;
+  --z-index-modal: 9999;
+  --z-index-toast: 10000;
 
   /* Animations */
   --animate-fade-in: fadeIn 250ms ease;
@@ -274,8 +275,9 @@
   /* Z-Index */
   --z-dropdown: 100;
   --z-sticky: 200;
-  --z-modal: 300;
-  --z-toast: 400;
+  --z-overlay: 9998;
+  --z-modal: 9999;
+  --z-toast: 10000;
 
   /* Layout */
   --sidebar-width: 280px;

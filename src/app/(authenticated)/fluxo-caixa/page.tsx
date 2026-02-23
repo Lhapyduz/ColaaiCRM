@@ -213,7 +213,7 @@ export default function FluxoCaixaPage() {
 
     const income = entries.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
     const expense = entries.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
-    const totals = { income, expense, balance: income - expense };
+    const totals = { income, expense, balance: (income + ordersRevenue) - expense };
 
     // Total combinado: entradas + receita de pedidos
     const totalCombined = totals.income + ordersRevenue;

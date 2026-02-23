@@ -514,19 +514,21 @@ export default function ClientsPage() {
     const formatCurrency = (cents: number) =>
         new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
 
-    const formatDate = (date: string) => new Date(date).toLocaleDateString('pt-BR');
+
 
     const getExpirationStatus = (dateStr: string | null) => {
         if (!dateStr) return { label: 'Sem prazo', color: 'text-gray-500', bg: 'bg-gray-500/10 border-gray-500/20' };
         const now = new Date();
         const end = new Date(dateStr);
         const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const formattedDate = end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
-        if (daysLeft < 0) return { label: `Expirado há ${Math.abs(daysLeft)}d`, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
-        if (daysLeft <= 3) return { label: `${daysLeft}d restantes`, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
-        if (daysLeft <= 7) return { label: `${daysLeft}d restantes`, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
-        if (daysLeft <= 30) return { label: `${daysLeft}d restantes`, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' };
-        return { label: formatDate(dateStr), color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' };
+        if (daysLeft < 0) return { label: `Expirado há ${Math.abs(daysLeft)}d (${formattedDate})`, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
+        if (daysLeft === 0) return { label: `Expira hoje (${formattedDate})`, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
+        if (daysLeft <= 3) return { label: `${daysLeft}d restantes (${formattedDate})`, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20' };
+        if (daysLeft <= 7) return { label: `${daysLeft}d restantes (${formattedDate})`, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' };
+        if (daysLeft <= 30) return { label: `${daysLeft}d restantes (${formattedDate})`, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/20' };
+        return { label: `${daysLeft}d restantes (${formattedDate})`, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' };
     };
 
     const getStatusBadge = (status: string) => {

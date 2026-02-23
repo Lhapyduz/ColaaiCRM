@@ -105,11 +105,11 @@ const config: Config = {
                 base: '0',
                 dropdown: '100',
                 sticky: '200',
-                overlay: '300',
-                modal: '400',
+                overlay: '9998',
+                modal: '9999',
                 popover: '500',
-                toast: '600',
-                tooltip: '700',
+                toast: '10000',
+                tooltip: '10001',
             },
             // Animations
             keyframes: {
