@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import StoreRatingModal from '@/components/menu/StoreRatingModal';
 import ProductRatingModal from '@/components/menu/ProductRatingModal';
 import StoreReviewsModal from '@/components/menu/StoreReviewsModal';
+import ProductReviewsModal from '@/components/menu/ProductReviewsModal';
 import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
 
 
@@ -109,7 +110,7 @@ export default function MenuClient({
             const [{ data: hours }, { data: sRatings }, { data: pRatings }] = await Promise.all([
                 supabase.from('opening_hours').select('*').eq('user_id', settings.user_id),
                 supabase.from('store_ratings').select('*').eq('user_id', settings.user_id).eq('hidden', false).order('created_at', { ascending: false }),
-                supabase.from('product_ratings').select('rating, product_id').eq('user_id', settings.user_id).eq('hidden', false),
+                supabase.from('product_ratings').select('*').eq('user_id', settings.user_id).eq('hidden', false).order('created_at', { ascending: false }),
             ]);
 
             const storeReviews = sRatings || [];
@@ -137,7 +138,8 @@ export default function MenuClient({
                 openingHours: (hours || []) as OpeningHour[],
                 storeRating: { average: avgStoreRating, count: storeReviews.length },
                 storeReviews: storeReviews,
-                productRatings: productRatingsMap
+                productRatings: productRatingsMap,
+                allProductReviews: pRatings || []
             };
         },
         enabled: !!settings?.user_id,
@@ -148,6 +150,7 @@ export default function MenuClient({
     const storeRating = React.useMemo(() => extraData?.storeRating || { average: 0, count: 0 }, [extraData?.storeRating]);
     const productRatings = React.useMemo(() => extraData?.productRatings || {}, [extraData?.productRatings]);
     const storeReviews = React.useMemo(() => extraData?.storeReviews || [], [extraData?.storeReviews]);
+    const allProductReviews = React.useMemo(() => extraData?.allProductReviews || [], [extraData?.allProductReviews]);
 
     const router = useRouter();
     const [showSchedules, setShowSchedules] = useState(false);
@@ -165,6 +168,7 @@ export default function MenuClient({
     const [showStoreRatingModal, setShowStoreRatingModal] = useState(false);
     const [showProductRatingModal, setShowProductRatingModal] = useState(false);
     const [showReviewsModal, setShowReviewsModal] = useState(false);
+    const [showProductReviewsModal, setShowProductReviewsModal] = useState(false);
     const [ratingProduct, setRatingProduct] = useState<Product | null>(null);
 
     // Modal Item State
@@ -822,7 +826,7 @@ export default function MenuClient({
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-9999 lg:hidden flex items-end"
+                                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-modal lg:hidden flex items-end"
                                 onClick={() => setShowMobileCart(false)}
                             >
                                 <motion.div
@@ -890,7 +894,7 @@ export default function MenuClient({
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-9999 md:flex md:items-center md:justify-center md:p-6 md:bg-black/80 md:backdrop-blur-xl"
+                            className="fixed inset-0 z-modal md:flex md:items-center md:justify-center md:p-6 md:bg-black/80 md:backdrop-blur-xl"
                             onClick={() => { setShowProductDetail(false); setSelectedProduct(null); }}
                         >
                             {/* Mobile: bg preto fullscreen / Desktop: overlay já está no parent */}
@@ -976,6 +980,29 @@ export default function MenuClient({
                                                     {selectedProduct.description}
                                                 </p>
                                             )}
+
+                                            <div className="flex flex-wrap items-center gap-3 pt-2">
+                                                <button
+                                                    onClick={() => { setShowProductRatingModal(true); setRatingProduct(selectedProduct); }}
+                                                    className="bg-white/5 text-white px-4 py-2 rounded-full text-xs font-semibold flex items-center border border-white/10 cursor-pointer hover:bg-white/10 hover:border-primary/50 transition-colors"
+                                                >
+                                                    <FiStar className="text-sm mr-2 text-yellow-500 fill-current" />
+                                                    Avaliar Produto
+                                                </button>
+
+                                                {productRatings[selectedProduct.id] && productRatings[selectedProduct.id].count > 0 && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setRatingProduct(selectedProduct);
+                                                            setShowProductReviewsModal(true);
+                                                        }}
+                                                        className="bg-white/5 text-white px-4 py-2 rounded-full text-xs font-semibold flex items-center border border-white/10 cursor-pointer hover:bg-white/10 hover:border-primary/50 transition-colors"
+                                                    >
+                                                        <FiMessageCircle className="text-sm mr-2 text-primary" />
+                                                        Ver {productRatings[selectedProduct.id].count} {productRatings[selectedProduct.id].count === 1 ? 'Avaliação' : 'Avaliações'} ({productRatings[selectedProduct.id].average.toFixed(1)})
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* ===== GRUPOS DE ADICIONAIS COM CHECKBOX ===== */}
@@ -1116,6 +1143,17 @@ export default function MenuClient({
                     productId={ratingProduct.id}
                     productName={ratingProduct.name}
                     productImage={ratingProduct.image_url}
+                />
+            )}
+            {settings && ratingProduct && (
+                <ProductReviewsModal
+                    isOpen={showProductReviewsModal}
+                    onClose={() => { setShowProductReviewsModal(false); setRatingProduct(null); }}
+                    reviews={allProductReviews.filter((r: { product_id: string }) => r.product_id === ratingProduct.id)}
+                    appName={settings.app_name}
+                    productName={ratingProduct.name}
+                    averageRating={productRatings[ratingProduct.id]?.average || 0}
+                    totalRatings={productRatings[ratingProduct.id]?.count || 0}
                 />
             )}
             {/* Prompt de Instalação PWA Premium — oculto quando modal de produto está aberto */}

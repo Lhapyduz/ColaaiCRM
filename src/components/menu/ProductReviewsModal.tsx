@@ -15,23 +15,25 @@ interface Review {
     replied_at: string | null;
 }
 
-interface StoreReviewsModalProps {
+interface ProductReviewsModalProps {
     isOpen: boolean;
     onClose: () => void;
     reviews: Review[];
     appName: string;
+    productName: string;
     averageRating: number;
     totalRatings: number;
 }
 
-export default function StoreReviewsModal({
+export default function ProductReviewsModal({
     isOpen,
     onClose,
     reviews,
     appName,
+    productName,
     averageRating,
     totalRatings
-}: StoreReviewsModalProps) {
+}: ProductReviewsModalProps) {
     if (!isOpen) return null;
 
     return (
@@ -42,9 +44,12 @@ export default function StoreReviewsModal({
                     onClick={e => e.stopPropagation()}
                     style={{ zIndex: 99999 }}
                 >
-                    <div className="p-6 border-b border-white/5 flex items-center justify-between bg-bg-card sticky top-0 z-10">
-                        <h2 className="text-xl font-bold text-white">Avaliações da Loja</h2>
-                        <button onClick={onClose} className="text-text-secondary hover:text-white p-2 rounded-full hover:bg-white/5 transition-colors">
+                    <div className="p-6 border-b border-white/5 flex items-center justify-between bg-bg-card sticky top-0 z-10 shrink-0">
+                        <div>
+                            <h2 className="text-xl font-bold text-white">Avaliações do Produto</h2>
+                            <p className="text-sm text-text-muted">{productName}</p>
+                        </div>
+                        <button onClick={onClose} className="text-text-secondary hover:text-white p-2 rounded-full hover:bg-white/5 transition-colors self-start mt-1">
                             <FiX size={24} />
                         </button>
                     </div>
@@ -68,7 +73,7 @@ export default function StoreReviewsModal({
                                     <div key={review.id} className="p-4 rounded-xl bg-bg-tertiary border border-white/5 space-y-3">
                                         <div className="flex justify-between items-start">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
                                                     <FiUser size={14} />
                                                 </div>
                                                 <div>
