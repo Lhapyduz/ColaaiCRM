@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiCalendar, FiDollarSign, FiArrowUp, FiArrowDown, FiCheck, FiAlertCircle, FiClock } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiCalendar, FiDollarSign, FiArrowUp, FiArrowDown, FiCheck, FiAlertCircle, FiClock, FiRepeat } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -24,7 +24,11 @@ interface Bill {
     status: 'pending' | 'paid' | 'overdue' | 'cancelled';
     supplier_customer: string | null;
     notes: string | null;
+    recurrence: 'none' | 'weekly' | 'monthly' | 'yearly' | null;
+    recurrence_end_date: string | null;
 }
+
+type RecurrenceType = 'none' | 'weekly' | 'monthly' | 'yearly';
 
 interface BillCategory {
     id: string;
@@ -46,7 +50,7 @@ export default function ContasPage() {
     const [filterStatus, setFilterStatus] = useState<string>('');
     const [showModal, setShowModal] = useState(false);
     const [editingBill, setEditingBill] = useState<Bill | null>(null);
-    const [form, setForm] = useState({ type: 'payable' as 'payable' | 'receivable', description: '', category: '', amount: 0, due_date: '', supplier_customer: '', notes: '' });
+    const [form, setForm] = useState({ type: 'payable' as 'payable' | 'receivable', description: '', category: '', amount: 0, due_date: '', supplier_customer: '', notes: '', recurrence: 'none' as RecurrenceType, recurrence_end_date: '' });
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [newCategory, setNewCategory] = useState({ name: '', type: 'both' as 'payable' | 'receivable' | 'both', icon: '📁', color: '#6366f1' });
 
@@ -105,17 +109,54 @@ export default function ContasPage() {
 
     const handleSave = async () => {
         if (!user) return;
-        const billData = { user_id: user.id, type: form.type, description: form.description, category: form.category, amount: form.amount, due_date: form.due_date, supplier_customer: form.supplier_customer || null, notes: form.notes || null, status: 'pending' };
+        const billData = {
+            user_id: user.id, type: form.type, description: form.description, category: form.category,
+            amount: form.amount, due_date: form.due_date, supplier_customer: form.supplier_customer || null,
+            notes: form.notes || null, status: 'pending',
+            recurrence: form.recurrence || 'none',
+            recurrence_end_date: form.recurrence_end_date || null
+        };
         if (editingBill) await supabase.from('bills').update(billData).eq('id', editingBill.id);
         else await supabase.from('bills').insert(billData);
         toast.success(editingBill ? 'Conta atualizada!' : 'Conta adicionada!');
         setShowModal(false); resetForm(); fetchBills();
     };
 
+    const getNextDueDate = (currentDueDate: string, recurrence: string): string => {
+        const date = new Date(currentDueDate + 'T12:00:00');
+        switch (recurrence) {
+            case 'weekly': date.setDate(date.getDate() + 7); break;
+            case 'monthly': date.setMonth(date.getMonth() + 1); break;
+            case 'yearly': date.setFullYear(date.getFullYear() + 1); break;
+        }
+        return date.toISOString().split('T')[0];
+    };
+
     const handleMarkPaid = async (bill: Bill) => {
         await supabase.from('bills').update({ status: 'paid', payment_date: new Date().toISOString().split('T')[0] }).eq('id', bill.id);
         await supabase.from('cash_flow').insert({ user_id: user!.id, type: bill.type === 'payable' ? 'expense' : 'income', category: bill.category, description: bill.description, amount: bill.amount, transaction_date: new Date().toISOString().split('T')[0], reference_type: 'bill', reference_id: bill.id });
-        toast.success('Conta marcada como paga!');
+
+        // Se for recorrente, gera a próxima conta automaticamente
+        if (bill.recurrence && bill.recurrence !== 'none') {
+            const nextDueDate = getNextDueDate(bill.due_date, bill.recurrence);
+            const endDate = bill.recurrence_end_date ? new Date(bill.recurrence_end_date + 'T12:00:00') : null;
+            const nextDate = new Date(nextDueDate + 'T12:00:00');
+
+            if (!endDate || nextDate <= endDate) {
+                await supabase.from('bills').insert({
+                    user_id: user!.id, type: bill.type, description: bill.description,
+                    category: bill.category, amount: bill.amount, due_date: nextDueDate,
+                    supplier_customer: bill.supplier_customer, notes: bill.notes,
+                    status: 'pending', recurrence: bill.recurrence,
+                    recurrence_end_date: bill.recurrence_end_date
+                });
+                toast.success('Conta paga! Próxima parcela gerada automaticamente 🔄');
+            } else {
+                toast.success('Conta paga! Recorrência finalizada.');
+            }
+        } else {
+            toast.success('Conta marcada como paga!');
+        }
         fetchBills();
     };
 
@@ -135,8 +176,10 @@ export default function ContasPage() {
         fetchCategories();
     };
 
-    const resetForm = () => { setForm({ type: 'payable', description: '', category: '', amount: 0, due_date: '', supplier_customer: '', notes: '' }); setEditingBill(null); };
-    const openEdit = (bill: Bill) => { setEditingBill(bill); setForm({ type: bill.type, description: bill.description, category: bill.category, amount: bill.amount, due_date: bill.due_date, supplier_customer: bill.supplier_customer || '', notes: bill.notes || '' }); setShowModal(true); };
+    const resetForm = () => { setForm({ type: 'payable', description: '', category: '', amount: 0, due_date: '', supplier_customer: '', notes: '', recurrence: 'none', recurrence_end_date: '' }); setEditingBill(null); };
+    const openEdit = (bill: Bill) => { setEditingBill(bill); setForm({ type: bill.type, description: bill.description, category: bill.category, amount: bill.amount, due_date: bill.due_date, supplier_customer: bill.supplier_customer || '', notes: bill.notes || '', recurrence: (bill.recurrence || 'none') as RecurrenceType, recurrence_end_date: bill.recurrence_end_date || '' }); setShowModal(true); };
+
+    const recurrenceLabels: Record<RecurrenceType, string> = { none: 'Única vez', weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual' };
 
     const formatDateForBill = (date: string) => new Date(date + 'T12:00:00').toLocaleDateString('pt-BR');
 
@@ -152,11 +195,14 @@ export default function ContasPage() {
 
     const filteredBills = bills.filter(b => { if (activeTab !== 'all' && b.type !== activeTab) return false; if (filterStatus && b.status !== filterStatus) return false; return true; });
 
+    const recurringBills = bills.filter(b => b.recurrence && b.recurrence !== 'none' && b.status === 'pending');
     const stats = {
         totalPayable: bills.filter(b => b.type === 'payable' && b.status === 'pending').reduce((sum, b) => sum + b.amount, 0),
         totalReceivable: bills.filter(b => b.type === 'receivable' && b.status === 'pending').reduce((sum, b) => sum + b.amount, 0),
         overdue: bills.filter(b => b.status === 'overdue').length,
-        dueThisWeek: bills.filter(b => { if (b.status !== 'pending') return false; const due = new Date(b.due_date); const now = new Date(); const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); return due <= weekFromNow && due >= now; }).length
+        dueThisWeek: bills.filter(b => { if (b.status !== 'pending') return false; const due = new Date(b.due_date); const now = new Date(); const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); return due <= weekFromNow && due >= now; }).length,
+        recurring: recurringBills.length,
+        recurringTotal: recurringBills.reduce((sum, b) => sum + b.amount, 0)
     };
 
     return (
@@ -167,7 +213,7 @@ export default function ContasPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-4 gap-4 mb-6 max-[1024px]:grid-cols-2 max-[480px]:grid-cols-1">
+            <div className="grid grid-cols-5 gap-4 mb-6 max-[1024px]:grid-cols-2 max-[480px]:grid-cols-1">
                 <Card className="flex items-center gap-4 p-5!">
                     <FiArrowDown className="text-2xl p-3 rounded-md bg-error/10 text-error" />
                     <div className="flex flex-col"><span className="text-xl font-bold">{formatCurrency(stats.totalPayable)}</span><span className="text-[0.8125rem] text-text-muted">A Pagar</span></div>
@@ -183,6 +229,10 @@ export default function ContasPage() {
                 <Card className="flex items-center gap-4 p-5!">
                     <FiCalendar className="text-2xl p-3 rounded-md bg-info/10 text-info" />
                     <div className="flex flex-col"><span className="text-xl font-bold">{stats.dueThisWeek}</span><span className="text-[0.8125rem] text-text-muted">Vencem esta semana</span></div>
+                </Card>
+                <Card className="flex items-center gap-4 p-5!">
+                    <FiRepeat className="text-2xl p-3 rounded-md bg-primary/10 text-primary" />
+                    <div className="flex flex-col"><span className="text-xl font-bold">{stats.recurring}</span><span className="text-[0.8125rem] text-text-muted">Recorrentes ({formatCurrency(stats.recurringTotal)})</span></div>
                 </Card>
             </div>
 
@@ -211,7 +261,18 @@ export default function ContasPage() {
                                     <div className="max-md:hidden">
                                         {bill.type === 'payable' ? <span className="w-9 h-9 flex items-center justify-center rounded-full bg-error/10 text-error"><FiArrowDown /></span> : <span className="w-9 h-9 flex items-center justify-center rounded-full bg-accent/10 text-accent"><FiArrowUp /></span>}
                                     </div>
-                                    <div className="flex flex-col gap-0.5"><span className="font-medium">{bill.description}</span><span className="text-xs text-text-muted">{bill.category}</span>{bill.supplier_customer && <span className="text-xs text-text-secondary">{bill.supplier_customer}</span>}</div>
+                                    <div className="flex flex-col gap-0.5">
+                                        <span className="font-medium flex items-center gap-1.5">
+                                            {bill.description}
+                                            {bill.recurrence && bill.recurrence !== 'none' && (
+                                                <span className="inline-flex items-center gap-1 text-[0.625rem] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary" title={`Recorrência: ${recurrenceLabels[bill.recurrence as RecurrenceType]}`}>
+                                                    <FiRepeat size={10} /> {recurrenceLabels[bill.recurrence as RecurrenceType]}
+                                                </span>
+                                            )}
+                                        </span>
+                                        <span className="text-xs text-text-muted">{bill.category}</span>
+                                        {bill.supplier_customer && <span className="text-xs text-text-secondary">{bill.supplier_customer}</span>}
+                                    </div>
                                     <div className="text-right"><span className={bill.type === 'payable' ? 'font-semibold text-error' : 'font-semibold text-accent'}>{bill.type === 'payable' ? '-' : '+'}{formatCurrency(bill.amount)}</span></div>
                                     <div className="flex flex-col items-center max-[1024px]:hidden"><span className="text-[0.6875rem] text-text-muted uppercase">Vencimento</span><span className="text-sm font-medium">{formatDateForBill(bill.due_date)}</span></div>
                                     <div className={cn('flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-sm justify-center max-[1024px]:hidden', statusBadge.class)}>{statusBadge.icon} {statusBadge.label}</div>
@@ -257,6 +318,24 @@ export default function ContasPage() {
                             <div><label className="block text-[0.8125rem] font-medium text-text-secondary mb-2">Vencimento</label><Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></div>
                             <div><label className="block text-[0.8125rem] font-medium text-text-secondary mb-2">{form.type === 'payable' ? 'Fornecedor' : 'Cliente'}</label><Input value={form.supplier_customer} onChange={(e) => setForm({ ...form, supplier_customer: e.target.value })} placeholder="Nome (opcional)" /></div>
                         </div>
+                        {/* Recorrência */}
+                        <div className="mb-4">
+                            <label className="block text-[0.8125rem] font-medium text-text-secondary mb-2">Recorrência</label>
+                            <div className="flex gap-2">
+                                {(['none', 'weekly', 'monthly', 'yearly'] as RecurrenceType[]).map(rec => (
+                                    <button key={rec} className={cn('flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-bg-tertiary border-2 border-border rounded-md text-sm font-medium cursor-pointer transition-all duration-fast hover:border-text-muted', form.recurrence === rec && 'border-primary text-primary bg-primary/10')} onClick={() => setForm({ ...form, recurrence: rec })}>
+                                        {rec !== 'none' && <FiRepeat size={14} />} {recurrenceLabels[rec]}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        {form.recurrence !== 'none' && (
+                            <div className="mb-4">
+                                <label className="block text-[0.8125rem] font-medium text-text-secondary mb-2">Data final da recorrência (opcional)</label>
+                                <Input type="date" value={form.recurrence_end_date} onChange={(e) => setForm({ ...form, recurrence_end_date: e.target.value })} />
+                                <p className="text-xs text-text-muted mt-1">Deixe em branco para repetir indefinidamente</p>
+                            </div>
+                        )}
                         <div className="mb-4"><label className="block text-[0.8125rem] font-medium text-text-secondary mb-2">Observações</label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notas adicionais..." /></div>
                         <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-border"><Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button><Button onClick={handleSave}>{editingBill ? 'Salvar' : 'Adicionar'}</Button></div>
                     </div>

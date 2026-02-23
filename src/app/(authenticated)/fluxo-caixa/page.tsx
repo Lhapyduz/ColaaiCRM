@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiTrendingUp, FiTrendingDown, FiCalendar, FiRefreshCw, FiDollarSign, FiShoppingBag, FiToggleLeft, FiToggleRight } from 'react-icons/fi';
+import { FiTrendingUp, FiTrendingDown, FiCalendar, FiRefreshCw, FiDollarSign, FiShoppingBag, FiToggleLeft, FiToggleRight, FiTrash2 } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
@@ -187,6 +187,24 @@ export default function FluxoCaixaPage() {
         setLoading(false);
     }, [user, dateFrom, dateTo, calculateDailySummaries]);
 
+    const handleDeleteEntry = async (id: string) => {
+        if (!confirm('Tem certeza que deseja excluir esta movimentação? Essa ação não pode ser desfeita.')) return;
+
+        try {
+            const { error } = await supabase
+                .from('cash_flow')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            toast.success('Movimentação excluída com sucesso!');
+            fetchData();
+        } catch (error) {
+            console.error('Erro ao excluir movimentação:', error);
+            toast.error('Erro ao excluir movimentação');
+        }
+    };
+
     useEffect(() => {
         if (user && dateFrom && dateTo && hasAccess) fetchData();
     }, [user, dateFrom, dateTo, hasAccess, fetchData]);
@@ -352,13 +370,20 @@ export default function FluxoCaixaPage() {
                 ) : (
                     <div className="flex flex-col">
                         {entries.map(entry => (
-                            <div key={entry.id} className="grid grid-cols-[40px_1fr_120px_120px] items-center gap-4 py-3 border-b border-border last:border-b-0 max-md:grid-cols-[40px_1fr_80px]">
+                            <div key={entry.id} className="grid grid-cols-[40px_1fr_120px_120px_40px] items-center gap-4 py-3 border-b border-border last:border-b-0 max-md:grid-cols-[40px_1fr_80px_40px]">
                                 <div className={cn('w-9 h-9 flex items-center justify-center rounded-full text-base', entry.type === 'income' ? 'bg-[#27ae60]/10 text-[#27ae60]' : 'bg-error/10 text-error')}>
                                     {entry.type === 'income' ? <FiTrendingUp /> : <FiTrendingDown />}
                                 </div>
                                 <div className="flex flex-col gap-0.5"><span className="font-medium">{entry.description}</span><span className="text-xs text-text-muted">{entry.category}</span></div>
                                 <div className="flex flex-col items-end max-md:hidden"><span className="text-[0.8125rem]">{new Date(entry.transaction_date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>{entry.payment_method && <span className="text-xs text-text-muted">{entry.payment_method}</span>}</div>
                                 <span className={cn('font-semibold text-right', entry.type === 'income' ? 'text-[#27ae60]' : 'text-error')}>{entry.type === 'income' ? '+' : '-'}{formatCurrency(entry.amount)}</span>
+                                <button
+                                    onClick={() => handleDeleteEntry(entry.id)}
+                                    className="p-2 text-text-muted hover:text-error hover:bg-error/10 rounded-md transition-colors flex items-center justify-center"
+                                    title="Excluir movimentação"
+                                >
+                                    <FiTrash2 />
+                                </button>
                             </div>
                         ))}
                     </div>
