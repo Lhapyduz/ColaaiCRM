@@ -56,7 +56,7 @@ export default function HistoricoPage() {
     const getRelativeTime = (dateString: string) => { const date = new Date(dateString); const diffMs = Date.now() - date.getTime(); const diffMins = Math.floor(diffMs / 60000); const diffHours = Math.floor(diffMs / 3600000); const diffDays = Math.floor(diffMs / 86400000); if (diffMins < 1) return 'agora'; if (diffMins < 60) return `há ${diffMins} min`; if (diffHours < 24) return `há ${diffHours}h`; if (diffDays < 7) return `há ${diffDays} dias`; return formatDateTime(dateString); };
 
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-    const actionTypes: ActionType[] = ['create', 'update', 'delete', 'status_change', 'payment', 'print', 'export', 'login', 'logout'];
+    const actionTypes: ActionType[] = ['create', 'update', 'delete', 'status_change', 'payment', 'stock_movement', 'print', 'export', 'login', 'logout'];
     const entityTypes: EntityType[] = ['order', 'product', 'category', 'customer', 'coupon', 'ingredient', 'reward', 'addon', 'settings', 'report'];
 
     return (

@@ -12,6 +12,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
+import { logIngredientCreated, logIngredientUpdated, logIngredientDeleted, logStockMovement } from '@/lib/actionLogger';
 
 interface Ingredient {
     id: string;
@@ -62,8 +63,13 @@ export default function EstoquePage() {
         if (!user || !formName) return;
         try {
             const ingredientData = { user_id: user.id, name: formName, unit: formUnit, min_stock: parseFloat(formMinStock) || 0, cost_per_unit: parseFloat(formCostPerUnit) || 0 };
-            if (editingIngredient) { await supabase.from('ingredients').update(ingredientData).eq('id', editingIngredient.id); }
-            else { await supabase.from('ingredients').insert(ingredientData); }
+            if (editingIngredient) {
+                await supabase.from('ingredients').update(ingredientData).eq('id', editingIngredient.id);
+                logIngredientUpdated(editingIngredient.id, formName);
+            } else {
+                const { data } = await supabase.from('ingredients').insert(ingredientData).select('id').single();
+                if (data) logIngredientCreated(data.id, formName, formUnit);
+            }
             toast.success(editingIngredient ? 'Ingrediente atualizado!' : 'Ingrediente adicionado!');
             setShowModal(false); fetchIngredients();
         } catch (error) { console.error('Error saving ingredient:', error); toast.error('Erro ao salvar ingrediente'); }
@@ -71,7 +77,12 @@ export default function EstoquePage() {
 
     const handleDeleteIngredient = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir este ingrediente?')) return;
-        try { await supabase.from('ingredients').delete().eq('id', id); toast.success('Ingrediente excluído!'); fetchIngredients(); }
+        const ingredient = ingredients.find(i => i.id === id);
+        try {
+            await supabase.from('ingredients').delete().eq('id', id);
+            if (ingredient) logIngredientDeleted(id, ingredient.name);
+            toast.success('Ingrediente excluído!'); fetchIngredients();
+        }
         catch (error) { console.error('Error deleting ingredient:', error); toast.error('Erro ao excluir'); }
     };
 
@@ -81,8 +92,11 @@ export default function EstoquePage() {
             const parsedQty = parseFloat(movementQuantity);
             const quantity = movementType === 'waste' ? -Math.abs(parsedQty) : parsedQty;
             await supabase.from('stock_movements').insert({ ingredient_id: selectedIngredient.id, user_id: user.id, quantity, type: movementType, notes: movementNotes || null });
-            const newStock = movementType === 'adjustment' ? parsedQty : selectedIngredient.current_stock + quantity;
-            await supabase.from('ingredients').update({ current_stock: Math.max(0, newStock), updated_at: new Date().toISOString() }).eq('id', selectedIngredient.id);
+            const previousStock = selectedIngredient.current_stock;
+            const newStock = movementType === 'adjustment' ? parsedQty : previousStock + quantity;
+            const finalStock = Math.max(0, newStock);
+            await supabase.from('ingredients').update({ current_stock: finalStock, updated_at: new Date().toISOString() }).eq('id', selectedIngredient.id);
+            logStockMovement(selectedIngredient.id, selectedIngredient.name, movementType, parsedQty, selectedIngredient.unit, previousStock, finalStock);
             toast.success('Movimentação registrada!');
             setShowMovementModal(false); fetchIngredients();
         } catch (error) { console.error('Error adding stock movement:', error); toast.error('Erro ao registrar movimentação'); }

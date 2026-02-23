@@ -16,7 +16,8 @@ export type ActionType =
     | 'payment'
     | 'refund'
     | 'points_earned'
-    | 'points_redeemed';
+    | 'points_redeemed'
+    | 'stock_movement';
 
 export type EntityType =
     | 'order'
@@ -172,6 +173,62 @@ export function logSettingsUpdated(settingName: string): void {
 }
 
 /**
+ * Log ingredient created
+ */
+export function logIngredientCreated(ingredientId: string, name: string, unit: string): void {
+    logAction({
+        actionType: 'create',
+        entityType: 'ingredient',
+        entityId: ingredientId,
+        entityName: name,
+        description: `Ingrediente "${name}" adicionado ao estoque (${unit})`,
+        metadata: { unit }
+    });
+}
+
+/**
+ * Log ingredient updated
+ */
+export function logIngredientUpdated(ingredientId: string, name: string): void {
+    logAction({
+        actionType: 'update',
+        entityType: 'ingredient',
+        entityId: ingredientId,
+        entityName: name,
+        description: `Ingrediente "${name}" atualizado`
+    });
+}
+
+/**
+ * Log ingredient deleted
+ */
+export function logIngredientDeleted(ingredientId: string, name: string): void {
+    logAction({
+        actionType: 'delete',
+        entityType: 'ingredient',
+        entityId: ingredientId,
+        entityName: name,
+        description: `Ingrediente "${name}" excluído do estoque`
+    });
+}
+
+/**
+ * Log stock movement (purchase/adjustment/waste)
+ */
+export function logStockMovement(ingredientId: string, name: string, type: 'purchase' | 'adjustment' | 'waste', quantity: number, unit: string, previousStock: number, newStock: number): void {
+    const typeLabels: Record<string, string> = { purchase: 'Entrada', adjustment: 'Ajuste', waste: 'Saída' };
+    const typeLabel = typeLabels[type] || type;
+    logAction({
+        actionType: 'stock_movement',
+        entityType: 'ingredient',
+        entityId: ingredientId,
+        entityName: name,
+        description: `${typeLabel} de ${Math.abs(quantity)} ${unit} em "${name}" (${previousStock} ${unit} → ${newStock} ${unit})`,
+        metadata: { movement_type: type, quantity, unit, previous_stock: previousStock, new_stock: newStock }
+    });
+}
+
+/**
  * Get action type label in Portuguese
  */
 export function getActionTypeLabel(actionType: ActionType): string {
@@ -188,7 +245,8 @@ export function getActionTypeLabel(actionType: ActionType): string {
         payment: 'Pagamento',
         refund: 'Reembolso',
         points_earned: 'Pontos Ganhos',
-        points_redeemed: 'Pontos Resgatados'
+        points_redeemed: 'Pontos Resgatados',
+        stock_movement: 'Movimentação de Estoque'
     };
     return labels[actionType] || actionType;
 }
@@ -230,7 +288,8 @@ export function getActionIcon(actionType: ActionType): string {
         payment: '💰',
         refund: '↩️',
         points_earned: '⭐',
-        points_redeemed: '🎁'
+        points_redeemed: '🎁',
+        stock_movement: '📦'
     };
     return icons[actionType] || '📋';
 }
