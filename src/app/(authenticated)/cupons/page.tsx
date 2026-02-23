@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiPercent, FiDollarSign, FiCopy, FiCheck } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency, formatDate } from '@/hooks/useFormatters';
+import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 
 interface Coupon {
@@ -49,17 +49,19 @@ export default function CuponsPage() {
     const [formFirstOrderOnly, setFormFirstOrderOnly] = useState(false);
     const toast = useToast();
 
-    useEffect(() => { if (user && canAccess('coupons')) fetchCoupons(); }, [user, canAccess]);
+    const fetchCoupons = useCallback(async () => {
+        if (!user) return;
+        try { const { data, error } = await supabase.from('coupons').select('*').eq('user_id', user.id).order('created_at', { ascending: false }); if (error) throw error; setCoupons(data || []); }
+        catch (error) { console.error('Error fetching coupons:', error); } finally { setLoading(false); }
+    }, [user]);
+
+    useEffect(() => { if (user && canAccess('coupons')) fetchCoupons(); }, [user, canAccess, fetchCoupons]);
 
     if (!canAccess('coupons')) {
         return <UpgradePrompt feature="Cupons de Desconto" requiredPlan="Profissional" currentPlan={plan} fullPage />;
     }
 
-    const fetchCoupons = async () => {
-        if (!user) return;
-        try { const { data, error } = await supabase.from('coupons').select('*').eq('user_id', user.id).order('created_at', { ascending: false }); if (error) throw error; setCoupons(data || []); }
-        catch (error) { console.error('Error fetching coupons:', error); } finally { setLoading(false); }
-    };
+
 
     const generateRandomCode = () => { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; let code = ''; for (let i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length)); setFormCode(code); };
     const openAddModal = () => { setEditingCoupon(null); setFormCode(''); setFormDescription(''); setFormDiscountType('percentage'); setFormDiscountValue(''); setFormMinOrderValue(''); setFormMaxDiscount(''); setFormUsageLimit(''); setFormValidUntil(''); setFormFirstOrderOnly(false); setShowModal(true); };

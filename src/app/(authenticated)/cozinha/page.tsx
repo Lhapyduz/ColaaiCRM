@@ -9,7 +9,6 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
-import { formatRelativeTime } from '@/hooks/useFormatters';
 import { printKitchenTicket } from '@/lib/print';
 import { cn } from '@/lib/utils';
 
@@ -57,6 +56,42 @@ export default function CozinhaPage() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const toast = useToast();
 
+    const fetchOrders = useCallback(async () => {
+        if (!user) return;
+        try {
+            const { data: ordersData, error } = await supabase
+                .from('orders')
+                .select(`
+                    *,
+                    order_items (
+                        *,
+                        order_item_addons (*)
+                    )
+                `)
+                .eq('user_id', user.id)
+                .in('status', ['pending', 'preparing'])
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const mappedOrders: Order[] = (ordersData || []).map((o: any) => ({
+                ...o,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                items: (o.order_items || []).map((item: any) => ({
+                    ...item,
+                    addons: item.order_item_addons || []
+                }))
+            }));
+
+            setOrders(mappedOrders);
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [user]);
+
     useEffect(() => {
         if (user && canAccess('kitchen')) {
             fetchOrders();
@@ -80,45 +115,13 @@ export default function CozinhaPage() {
                 subscription.unsubscribe();
             };
         }
-    }, [user, soundEnabled, canAccess]);
+    }, [user, soundEnabled, canAccess, fetchOrders]);
 
     if (!canAccess('kitchen')) {
         return (
             <UpgradePrompt feature="Tela de Cozinha" requiredPlan="Profissional" currentPlan={plan} fullPage />
         );
     }
-
-    const fetchOrders = async () => {
-        if (!user) return;
-        try {
-            const { data: ordersData, error } = await supabase
-                .from('orders')
-                .select('*')
-                .eq('user_id', user.id)
-                .in('status', ['pending', 'preparing'])
-                .order('created_at', { ascending: true });
-
-            if (error) throw error;
-
-            const ordersWithItems = await Promise.all(
-                (ordersData || []).map(async (order) => {
-                    const { data: items } = await supabase.from('order_items').select('*').eq('order_id', order.id);
-                    const itemsWithAddons = await Promise.all(
-                        (items || []).map(async (item) => {
-                            const { data: addons } = await supabase.from('order_item_addons').select('id, addon_name, addon_price, quantity').eq('order_item_id', item.id);
-                            return { ...item, addons: addons || [] };
-                        })
-                    );
-                    return { ...order, items: itemsWithAddons };
-                })
-            );
-            setOrders(ordersWithItems);
-        } catch (error) {
-            console.error('Error fetching orders:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const playNotificationSound = () => {
         if (audioRef.current) audioRef.current.play().catch(() => { });
@@ -211,58 +214,58 @@ export default function CozinhaPage() {
             <audio ref={audioRef} src="https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/sons/Cozinha.mp3" preload="auto" />
 
             {/* Header */}
-                <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
-                    <div>
-                        <h1 className="text-[2rem] font-bold mb-2">Cozinha</h1>
-                        <p className="text-text-secondary">Fila de preparo • {orders.length} pedido{orders.length !== 1 ? 's' : ''} ativo{orders.length !== 1 ? 's' : ''}</p>
-                    </div>
-                    <Button variant={soundEnabled ? 'secondary' : 'ghost'} leftIcon={soundEnabled ? <FiVolume2 /> : <FiVolumeX />} onClick={() => setSoundEnabled(!soundEnabled)}>
-                        {soundEnabled ? 'Som Ativo' : 'Som Mudo'}
-                    </Button>
+            <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
+                <div>
+                    <h1 className="text-[2rem] font-bold mb-2">Cozinha</h1>
+                    <p className="text-text-secondary">Fila de preparo • {orders.length} pedido{orders.length !== 1 ? 's' : ''} ativo{orders.length !== 1 ? 's' : ''}</p>
                 </div>
+                <Button variant={soundEnabled ? 'secondary' : 'ghost'} leftIcon={soundEnabled ? <FiVolume2 /> : <FiVolumeX />} onClick={() => setSoundEnabled(!soundEnabled)}>
+                    {soundEnabled ? 'Som Ativo' : 'Som Mudo'}
+                </Button>
+            </div>
 
-                {loading ? (
-                    <div className="grid grid-cols-2 gap-6 max-[1024px]:grid-cols-1">
-                        <div className="h-[200px] rounded-2xl bg-bg-tertiary animate-pulse" />
-                        <div className="h-[200px] rounded-2xl bg-bg-tertiary animate-pulse" />
-                    </div>
-                ) : orders.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 px-5 text-center">
-                        <span className="text-[5rem] mb-5">👨‍🍳</span>
-                        <h3 className="text-2xl mb-2">Nenhum pedido na fila</h3>
-                        <p className="text-text-secondary">Os novos pedidos aparecerão aqui automaticamente</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 gap-6 items-start max-[1024px]:grid-cols-1">
-                        {/* Pending Column */}
-                        <div className="bg-bg-secondary rounded-lg border border-border overflow-hidden">
-                            <div className="flex items-center justify-between px-5 py-4 bg-bg-tertiary border-b border-border">
-                                <span className="flex items-center gap-2.5 font-semibold">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-warning" />
-                                    Aguardando
-                                </span>
-                                <span className="px-3 py-1 bg-bg-card rounded-full text-sm font-semibold">{pendingOrders.length}</span>
-                            </div>
-                            <div className="p-4 flex flex-col gap-3 max-h-[calc(100vh-220px)] overflow-y-auto">
-                                {pendingOrders.map((order) => <OrderCard key={order.id} order={order} />)}
-                            </div>
+            {loading ? (
+                <div className="grid grid-cols-2 gap-6 max-[1024px]:grid-cols-1">
+                    <div className="h-[200px] rounded-2xl bg-bg-tertiary animate-pulse" />
+                    <div className="h-[200px] rounded-2xl bg-bg-tertiary animate-pulse" />
+                </div>
+            ) : orders.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 px-5 text-center">
+                    <span className="text-[5rem] mb-5">👨‍🍳</span>
+                    <h3 className="text-2xl mb-2">Nenhum pedido na fila</h3>
+                    <p className="text-text-secondary">Os novos pedidos aparecerão aqui automaticamente</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-2 gap-6 items-start max-[1024px]:grid-cols-1">
+                    {/* Pending Column */}
+                    <div className="bg-bg-secondary rounded-lg border border-border overflow-hidden">
+                        <div className="flex items-center justify-between px-5 py-4 bg-bg-tertiary border-b border-border">
+                            <span className="flex items-center gap-2.5 font-semibold">
+                                <span className="w-2.5 h-2.5 rounded-full bg-warning" />
+                                Aguardando
+                            </span>
+                            <span className="px-3 py-1 bg-bg-card rounded-full text-sm font-semibold">{pendingOrders.length}</span>
                         </div>
-
-                        {/* Preparing Column */}
-                        <div className="bg-bg-secondary rounded-lg border border-border overflow-hidden">
-                            <div className="flex items-center justify-between px-5 py-4 bg-bg-tertiary border-b border-border">
-                                <span className="flex items-center gap-2.5 font-semibold">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-info" />
-                                    Preparando
-                                </span>
-                                <span className="px-3 py-1 bg-bg-card rounded-full text-sm font-semibold">{preparingOrders.length}</span>
-                            </div>
-                            <div className="p-4 flex flex-col gap-3 max-h-[calc(100vh-220px)] overflow-y-auto">
-                                {preparingOrders.map((order) => <OrderCard key={order.id} order={order} isPreparing />)}
-                            </div>
+                        <div className="p-4 flex flex-col gap-3 max-h-[calc(100vh-220px)] overflow-y-auto">
+                            {pendingOrders.map((order) => <OrderCard key={order.id} order={order} />)}
                         </div>
                     </div>
-                )}
+
+                    {/* Preparing Column */}
+                    <div className="bg-bg-secondary rounded-lg border border-border overflow-hidden">
+                        <div className="flex items-center justify-between px-5 py-4 bg-bg-tertiary border-b border-border">
+                            <span className="flex items-center gap-2.5 font-semibold">
+                                <span className="w-2.5 h-2.5 rounded-full bg-info" />
+                                Preparando
+                            </span>
+                            <span className="px-3 py-1 bg-bg-card rounded-full text-sm font-semibold">{preparingOrders.length}</span>
+                        </div>
+                        <div className="p-4 flex flex-col gap-3 max-h-[calc(100vh-220px)] overflow-y-auto">
+                            {preparingOrders.map((order) => <OrderCard key={order.id} order={order} isPreparing />)}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

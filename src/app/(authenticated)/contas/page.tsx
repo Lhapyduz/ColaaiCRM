@@ -94,13 +94,15 @@ export default function ContasPage() {
     }, [user]);
 
     const fetchData = useCallback(async () => {
-        setLoading(true);
         await Promise.all([fetchBills(), fetchCategories()]);
         setLoading(false);
     }, [fetchBills, fetchCategories]);
 
     useEffect(() => {
-        if (user && hasAccess) fetchData();
+        if (user && hasAccess) {
+            // avoid calling setState directly within the effect synchronously
+            setTimeout(() => fetchData(), 0);
+        }
     }, [user, hasAccess, fetchData]);
 
     if (!hasAccess) {

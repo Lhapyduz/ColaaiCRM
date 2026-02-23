@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FiPlus, FiPackage, FiAlertTriangle, FiTrendingUp, FiTrendingDown, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -46,13 +46,13 @@ export default function EstoquePage() {
     const [movementNotes, setMovementNotes] = useState('');
     const toast = useToast();
 
-    useEffect(() => { if (user && canAccess('inventory')) fetchIngredients(); }, [user, canAccess]);
-
-    const fetchIngredients = async () => {
+    const fetchIngredients = useCallback(async () => {
         if (!user) return;
         try { const { data, error } = await supabase.from('ingredients').select('*').eq('user_id', user.id).order('name'); if (error) throw error; setIngredients(data || []); }
         catch (error) { console.error('Error fetching ingredients:', error); } finally { setLoading(false); }
-    };
+    }, [user]);
+
+    useEffect(() => { if (user && canAccess('inventory')) fetchIngredients(); }, [user, canAccess, fetchIngredients]);
 
     const openAddModal = () => { setEditingIngredient(null); setFormName(''); setFormUnit('un'); setFormMinStock(''); setFormCostPerUnit(''); setShowModal(true); };
     const openEditModal = (ingredient: Ingredient) => { setEditingIngredient(ingredient); setFormName(ingredient.name); setFormUnit(ingredient.unit); setFormMinStock(ingredient.min_stock.toString()); setFormCostPerUnit(ingredient.cost_per_unit.toString()); setShowModal(true); };

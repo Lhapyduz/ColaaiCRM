@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FiCheck, FiPhone, FiMapPin, FiClock, FiVolume2, FiVolumeX } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -35,6 +35,18 @@ export default function EntregasPage() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const toast = useToast();
 
+    const fetchOrders = useCallback(async () => {
+        if (!user) return;
+        try {
+            let query = supabase.from('orders').select('*').eq('user_id', user.id).eq('is_delivery', true).order('created_at', { ascending: activeTab === 'pending' });
+            if (activeTab === 'pending') query = query.in('status', ['ready', 'delivering']);
+            else query = query.eq('status', 'delivered');
+            const { data } = await query;
+            setOrders(data || []);
+        } catch (error) { console.error('Error fetching orders:', error); }
+        finally { setLoading(false); }
+    }, [user, activeTab]);
+
     useEffect(() => {
         if (user && canAccess('deliveries')) {
             fetchOrders();
@@ -61,7 +73,7 @@ export default function EntregasPage() {
                 subscription.unsubscribe();
             };
         }
-    }, [user, soundEnabled, activeTab, canAccess]);
+    }, [user, soundEnabled, canAccess, fetchOrders]);
 
     if (!canAccess('deliveries')) {
         return <UpgradePrompt feature="Gestão de Entregas" requiredPlan="Avançado" currentPlan={plan} fullPage />;
@@ -71,17 +83,7 @@ export default function EntregasPage() {
         if (audioRef.current) audioRef.current.play().catch(() => { });
     };
 
-    const fetchOrders = async () => {
-        if (!user) return;
-        try {
-            let query = supabase.from('orders').select('*').eq('user_id', user.id).eq('is_delivery', true).order('created_at', { ascending: activeTab === 'pending' });
-            if (activeTab === 'pending') query = query.in('status', ['ready', 'delivering']);
-            else query = query.eq('status', 'delivered');
-            const { data } = await query;
-            setOrders(data || []);
-        } catch (error) { console.error('Error fetching orders:', error); }
-        finally { setLoading(false); }
-    };
+
 
     const updateOrderStatus = async (orderId: string, newStatus: string) => {
         try {

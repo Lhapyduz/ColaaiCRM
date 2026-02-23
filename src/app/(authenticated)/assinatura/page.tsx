@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { FiCheck, FiX, FiCreditCard } from 'react-icons/fi';
 import Button from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
@@ -29,12 +29,17 @@ const AssinaturaPage = () => {
     const [pixModalData, setPixModalData] = useState<{ planType: PlanPriceKey, planName: string } | null>(null);
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
 
-    React.useEffect(() => {
-        const query = new URLSearchParams(window.location.search); if (query.get('success') === 'true' || query.get('portal') === 'true') handleSync(); else handleAutoSync(); // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    const handleAutoSync = useCallback(async () => { try { await refreshSubscription(); const res = await fetch('/api/stripe/sync', { method: 'POST' }); if (res.ok) await refreshSubscription(); } catch (e) { console.error(e); } }, [refreshSubscription]);
+    const handleSync = useCallback(async () => { try { setSyncing(true); const res = await fetch('/api/stripe/sync', { method: 'POST' }); if (res.ok) { await refreshSubscription(); window.history.replaceState({}, '', '/assinatura'); } } catch (e) { console.error(e); } finally { setSyncing(false); } }, [refreshSubscription]);
 
-    const handleAutoSync = async () => { try { await refreshSubscription(); const res = await fetch('/api/stripe/sync', { method: 'POST' }); if (res.ok) await refreshSubscription(); } catch (e) { console.error(e); } };
-    const handleSync = async () => { try { setSyncing(true); const res = await fetch('/api/stripe/sync', { method: 'POST' }); if (res.ok) { await refreshSubscription(); window.history.replaceState({}, '', '/assinatura'); } } catch (e) { console.error(e); } finally { setSyncing(false); } };
+    useEffect(() => {
+        const query = new URLSearchParams(window.location.search);
+        if (query.get('success') === 'true' || query.get('portal') === 'true') {
+            handleSync();
+        } else {
+            handleAutoSync();
+        }
+    }, [handleSync, handleAutoSync]);
 
     const handleSubscribe = async (priceId: string | undefined, planType: string) => { if (!user) { router.push('/login?redirect=/assinatura'); return; } if (!priceId) { alert('Configuração de preço ausente.'); return; } setLoadingCheckout(planType); try { const response = await fetch('/api/stripe/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ priceId, planType }) }); if (!response.ok) throw new Error(await response.text() || 'Falha ao iniciar checkout'); const { url } = await response.json(); window.location.href = url; } catch (error: unknown) { const message = error instanceof Error ? error.message : 'Erro desconhecido'; alert(`Erro ao iniciar pagamento: ${message}`); setLoadingCheckout(null); } };
     const handleManageSubscription = async () => { setLoadingPortal(true); try { const response = await fetch('/api/stripe/portal', { method: 'POST' }); if (!response.ok) throw new Error(await response.text() || 'Falha ao abrir portal'); const { url } = await response.json(); window.location.href = url; } catch (error: unknown) { const message = error instanceof Error ? error.message : 'Erro desconhecido'; alert(`Erro ao abrir o portal: ${message}`); setLoadingPortal(false); } };

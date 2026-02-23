@@ -19,7 +19,6 @@ import {
     useSensor,
     useSensors,
     DragEndEvent,
-    DragStartEvent,
 } from '@dnd-kit/core';
 import {
     arrayMove,
@@ -189,8 +188,7 @@ export default function ProdutosPage() {
 
     const {
         categories: cachedCategories,
-        loading: categoriesLoading,
-        refetch: refetchCategories
+        loading: categoriesLoading
     } = useCategoriesCache();
 
     const [categories, setCategories] = useState<Category[]>([]);
@@ -272,24 +270,7 @@ export default function ProdutosPage() {
         }
     }, [user]);
 
-    const fetchData = async () => {
-        if (!user) return;
-        try {
-            const [categoriesRes, productsRes, groupsRes] = await Promise.all([
-                supabase.from('categories').select('*').eq('user_id', user.id),
-                supabase.from('products').select('*').eq('user_id', user.id).order('display_order', { ascending: true }),
-                supabase.from('addon_groups').select('id, name, description, required').eq('user_id', user.id).order('name')
-            ]);
-            if (categoriesRes.data) setCategories(categoriesRes.data);
-            if (productsRes.data) setProducts(productsRes.data);
-            if (groupsRes.data) setAddonGroups(groupsRes.data);
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            toast.error('Erro ao carregar produtos');
-        } finally {
-            setLoading(false);
-        }
-    };
+
 
     const filteredProducts = products.filter(product => {
         const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -299,7 +280,7 @@ export default function ProdutosPage() {
 
     const getCategoryById = (id: string) => categories.find(c => c.id === id);
 
-    const handleDragStart = useCallback((_event: DragStartEvent) => setIsDragging(true), []);
+    const handleDragStart = useCallback(() => setIsDragging(true), []);
 
     const handleDragEnd = useCallback((event: DragEndEvent) => {
         setIsDragging(false);

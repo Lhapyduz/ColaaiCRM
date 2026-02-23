@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -40,6 +40,31 @@ interface AuthContextType {
     previewSettings: (settings: Partial<UserSettings>) => void;
 }
 
+const applyThemeColors = (primary: string, secondary: string, sidebar: string | null) => {
+    const root = typeof document !== 'undefined' ? document.documentElement : null;
+    if (!root) return;
+
+    root.style.setProperty('--primary', primary);
+
+    // Generate RGB values for glow effects
+    const hex2rgb = (hex: string) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `${r}, ${g}, ${b}`;
+    };
+
+    root.style.setProperty('--primary-rgb', hex2rgb(primary));
+    root.style.setProperty('--secondary', secondary);
+
+    // Apply sidebar color if provided, otherwise fallback to secondary (default behavior)
+    if (sidebar) {
+        root.style.setProperty('--sidebar-bg', sidebar);
+    } else {
+        root.style.setProperty('--sidebar-bg', secondary);
+    }
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -48,35 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        // Get initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchUserSettings(session.user.id);
-            } else {
-                setLoading(false);
-            }
-        });
-
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchUserSettings(session.user.id);
-            } else {
-                setUserSettings(null);
-                setLoading(false);
-            }
-        });
-
-        return () => subscription.unsubscribe();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const fetchUserSettings = async (userId: string) => {
+    const fetchUserSettings = useCallback(async (userId: string) => {
         try {
             const { data, error } = await supabase
                 .from('user_settings')
@@ -137,30 +134,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [setUserSettings]);
 
-    const applyThemeColors = (primary: string, secondary: string, sidebar: string | null) => {
-        const root = document.documentElement;
-        root.style.setProperty('--primary', primary);
+    useEffect(() => {
+        // Get initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session?.user) {
+                fetchUserSettings(session.user.id);
+            } else {
+                setLoading(false);
+            }
+        });
 
-        // Generate RGB values for glow effects
-        const hex2rgb = (hex: string) => {
-            const r = parseInt(hex.slice(1, 3), 16);
-            const g = parseInt(hex.slice(3, 5), 16);
-            const b = parseInt(hex.slice(5, 7), 16);
-            return `${r}, ${g}, ${b}`;
-        };
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session?.user) {
+                fetchUserSettings(session.user.id);
+            } else {
+                setUserSettings(null);
+                setLoading(false);
+            }
+        });
 
-        root.style.setProperty('--primary-rgb', hex2rgb(primary));
-        root.style.setProperty('--secondary', secondary);
+        return () => subscription.unsubscribe();
+    }, [fetchUserSettings, setUser, setSession, setLoading, setUserSettings]);
 
-        // Apply sidebar color if provided, otherwise fallback to secondary (default behavior)
-        if (sidebar) {
-            root.style.setProperty('--sidebar-bg', sidebar);
-        } else {
-            root.style.setProperty('--sidebar-bg', secondary);
-        }
-    };
+
 
     const signIn = async (email: string, password: string) => {
         try {
