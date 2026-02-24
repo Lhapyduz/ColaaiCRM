@@ -30,6 +30,17 @@ export async function initOfflineDB(): Promise<IDBDatabase> {
 
         request.onsuccess = () => {
             db = request.result;
+
+            if (db) {
+                db.onclose = () => {
+                    db = null;
+                };
+                db.onversionchange = () => {
+                    db?.close();
+                    db = null;
+                };
+            }
+
             resolve(db);
         };
 
@@ -61,17 +72,39 @@ export async function initOfflineDB(): Promise<IDBDatabase> {
 }
 
 /**
+ * Retorna uma transação segura, forçando a reabertura do banco caso esteja fechado.
+ */
+async function getSafeTransaction(storeName: string, mode: IDBTransactionMode): Promise<{ transaction: IDBTransaction; store: IDBObjectStore }> {
+    try {
+        const database = await initOfflineDB();
+        const transaction = database.transaction(storeName, mode);
+        return { transaction, store: transaction.objectStore(storeName) };
+    } catch (error) {
+        if (error instanceof Error && error.name === 'InvalidStateError') {
+            console.warn('[OfflineStorage] Conexão com banco fechada. Reabrindo...');
+            db = null; // Força reabertura
+            const newDatabase = await initOfflineDB();
+            const transaction = newDatabase.transaction(storeName, mode);
+            return { transaction, store: transaction.objectStore(storeName) };
+        }
+        throw error;
+    }
+}
+
+/**
  * Get all items from a store
  */
 export async function getAll<T>(storeName: string): Promise<T[]> {
-    const database = await initOfflineDB();
-    return new Promise((resolve, reject) => {
-        const transaction = database.transaction(storeName, 'readonly');
-        const store = transaction.objectStore(storeName);
-        const request = store.getAll();
+    return new Promise(async (resolve, reject) => {
+        try {
+            const { store } = await getSafeTransaction(storeName, 'readonly');
+            const request = store.getAll();
 
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -79,14 +112,16 @@ export async function getAll<T>(storeName: string): Promise<T[]> {
  * Get single item by key
  */
 export async function getItem<T>(storeName: string, key: string): Promise<T | undefined> {
-    const database = await initOfflineDB();
-    return new Promise((resolve, reject) => {
-        const transaction = database.transaction(storeName, 'readonly');
-        const store = transaction.objectStore(storeName);
-        const request = store.get(key);
+    return new Promise(async (resolve, reject) => {
+        try {
+            const { store } = await getSafeTransaction(storeName, 'readonly');
+            const request = store.get(key);
 
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -94,14 +129,16 @@ export async function getItem<T>(storeName: string, key: string): Promise<T | un
  * Save item to store
  */
 export async function saveItem<T>(storeName: string, item: T): Promise<void> {
-    const database = await initOfflineDB();
-    return new Promise((resolve, reject) => {
-        const transaction = database.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.put(item);
+    return new Promise(async (resolve, reject) => {
+        try {
+            const { store } = await getSafeTransaction(storeName, 'readwrite');
+            const request = store.put(item);
 
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -109,15 +146,17 @@ export async function saveItem<T>(storeName: string, item: T): Promise<void> {
  * Save multiple items to store
  */
 export async function saveAll<T>(storeName: string, items: T[]): Promise<void> {
-    const database = await initOfflineDB();
-    return new Promise((resolve, reject) => {
-        const transaction = database.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
+    return new Promise(async (resolve, reject) => {
+        try {
+            const { transaction, store } = await getSafeTransaction(storeName, 'readwrite');
 
-        items.forEach(item => store.put(item));
+            items.forEach(item => store.put(item));
 
-        transaction.oncomplete = () => resolve();
-        transaction.onerror = () => reject(transaction.error);
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -125,14 +164,16 @@ export async function saveAll<T>(storeName: string, items: T[]): Promise<void> {
  * Delete item from store
  */
 export async function deleteItem(storeName: string, key: string): Promise<void> {
-    const database = await initOfflineDB();
-    return new Promise((resolve, reject) => {
-        const transaction = database.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.delete(key);
+    return new Promise(async (resolve, reject) => {
+        try {
+            const { store } = await getSafeTransaction(storeName, 'readwrite');
+            const request = store.delete(key);
 
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 
@@ -140,14 +181,16 @@ export async function deleteItem(storeName: string, key: string): Promise<void> 
  * Clear all items from store
  */
 export async function clearStore(storeName: string): Promise<void> {
-    const database = await initOfflineDB();
-    return new Promise((resolve, reject) => {
-        const transaction = database.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.clear();
+    return new Promise(async (resolve, reject) => {
+        try {
+            const { store } = await getSafeTransaction(storeName, 'readwrite');
+            const request = store.clear();
 
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve();
+        } catch (error) {
+            reject(error);
+        }
     });
 }
 

@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription, FeatureKey } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import SupportTab from '@/components/settings/SupportTab';
+import { useToast } from '@/components/ui/Toast';
 import {
     updateStoreStatus,
     updateDeliveryTime,
@@ -59,6 +60,7 @@ function ConfiguracoesContent() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [activeTab, setActiveTab] = useState<SettingsTab>('geral');
+    const toast = useToast();
     const [appName, setAppName] = useState(userSettings?.app_name || 'Cola Aí');
     const [slogan, setSlogan] = useState(userSettings?.slogan || '');
     const [primaryColor, setPrimaryColor] = useState(userSettings?.primary_color || '#ff6b35');
@@ -228,8 +230,9 @@ function ConfiguracoesContent() {
                 merchant_city: merchantCity || null, delivery_fee_value: deliveryFee, store_open: storeOpen, delivery_time_min: deliveryTimeMin, delivery_time_max: deliveryTimeMax
             });
             await Promise.all([updateStoreStatus(storeOpen), updateDeliveryTime(deliveryTimeMin, deliveryTimeMax), updateSidebarColor(sidebarColor), saveOpeningHours(openingHours)]);
-            if (!error) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
-        } catch (error) { console.error('Error saving settings:', error); } finally { setSaving(false); }
+            if (!error) { setSaved(true); toast.success('Configurações salvas com sucesso!'); setTimeout(() => setSaved(false), 3000); }
+            else { toast.error('Erro ao salvar as configurações'); }
+        } catch (error) { console.error('Error saving settings:', error); toast.error('Erro ao salvar as configurações'); } finally { setSaving(false); }
     };
 
 
