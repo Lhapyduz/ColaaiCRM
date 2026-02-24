@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { FiArrowLeft, FiUser, FiPhone, FiMapPin, FiTag, FiCheck, FiX, FiMessageCircle } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion';
+import { IconArrowLeft as FiArrowLeft, IconUser as FiUser, IconPhone as FiPhone, IconMapPin as FiMapPin, IconTag as FiTag, IconCheck as FiCheck, IconX as FiX, IconMessageCircle as FiMessageCircle } from '@/components/ui/Icons';
+
 import Image from 'next/image';
 import { formatCurrency, getWhatsAppUrl, EMOJIS } from '@/lib/whatsapp';
 import { supabase } from '@/lib/supabase';
@@ -373,39 +373,32 @@ export default function CheckoutClient({ slug, settings, couponsEnabled }: Check
                         ))}
                     </div>
 
-                    <AnimatePresence>
-                        {deliveryMode === 'delivery' && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="overflow-hidden space-y-3"
-                            >
-                                <div className="grid grid-cols-3 gap-3">
-                                    <input
-                                        type="text" placeholder="Rua *"
-                                        value={street} onChange={e => setStreet(e.target.value)}
-                                        className="col-span-2 px-4 py-3.5 bg-[#121212] border border-white/5 rounded-xl text-sm text-white focus:border-primary focus:outline-none placeholder:text-gray-600"
-                                    />
-                                    <input
-                                        type="text" placeholder="Nº *"
-                                        value={houseNumber} onChange={e => setHouseNumber(e.target.value)}
-                                        className="px-4 py-3.5 bg-[#121212] border border-white/5 rounded-xl text-sm text-white focus:border-primary focus:outline-none placeholder:text-gray-600"
-                                    />
-                                </div>
+                    {deliveryMode === 'delivery' && (
+                        <div className="space-y-3 mt-3 animate-in fade-in duration-300">
+                            <div className="grid grid-cols-3 gap-3">
                                 <input
-                                    type="text" placeholder="Bairro *"
-                                    value={neighborhood} onChange={e => setNeighborhood(e.target.value)}
-                                    className="w-full px-4 py-3.5 bg-[#121212] border border-white/5 rounded-xl text-sm text-white focus:border-primary focus:outline-none placeholder:text-gray-600"
+                                    type="text" placeholder="Rua *"
+                                    value={street} onChange={e => setStreet(e.target.value)}
+                                    className="col-span-2 px-4 py-3.5 bg-[#121212] border border-white/5 rounded-xl text-sm text-white focus:border-primary focus:outline-none placeholder:text-gray-600"
                                 />
                                 <input
-                                    type="text" placeholder="Complemento (opcional)"
-                                    value={complement} onChange={e => setComplement(e.target.value)}
-                                    className="w-full px-4 py-3.5 bg-[#121212] border border-white/5 rounded-xl text-sm text-white focus:border-primary focus:outline-none placeholder:text-gray-600"
+                                    type="text" placeholder="Nº *"
+                                    value={houseNumber} onChange={e => setHouseNumber(e.target.value)}
+                                    className="px-4 py-3.5 bg-[#121212] border border-white/5 rounded-xl text-sm text-white focus:border-primary focus:outline-none placeholder:text-gray-600"
                                 />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            </div>
+                            <input
+                                type="text" placeholder="Bairro *"
+                                value={neighborhood} onChange={e => setNeighborhood(e.target.value)}
+                                className="w-full px-4 py-3.5 bg-[#121212] border border-white/5 rounded-xl text-sm text-white focus:border-primary focus:outline-none placeholder:text-gray-600"
+                            />
+                            <input
+                                type="text" placeholder="Complemento (opcional)"
+                                value={complement} onChange={e => setComplement(e.target.value)}
+                                className="w-full px-4 py-3.5 bg-[#121212] border border-white/5 rounded-xl text-sm text-white focus:border-primary focus:outline-none placeholder:text-gray-600"
+                            />
+                        </div>
+                    )}
                 </section>
 
                 {/* ── 4. Cupom ────────────────────────────────── */}
@@ -466,32 +459,25 @@ export default function CheckoutClient({ slug, settings, couponsEnabled }: Check
                         ))}
                     </div>
 
-                    <AnimatePresence>
-                        {paymentMethod === 'cash' && (
-                            <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="overflow-hidden space-y-3"
-                            >
-                                <label className="flex items-center gap-3 cursor-pointer">
-                                    <input
-                                        type="checkbox" checked={needChange}
-                                        onChange={e => setNeedChange(e.target.checked)}
-                                        className="w-5 h-5 rounded bg-[#121212] border-white/10 accent-primary"
-                                    />
-                                    <span className="text-sm text-gray-300">Preciso de troco</span>
-                                </label>
-                                {needChange && (
-                                    <input
-                                        type="number" placeholder="Troco para quanto? (ex: 50)"
-                                        value={changeFor} onChange={e => setChangeFor(e.target.value)}
-                                        className="w-full px-4 py-3.5 bg-[#121212] border border-white/5 rounded-xl text-sm text-white focus:border-primary focus:outline-none placeholder:text-gray-600"
-                                    />
-                                )}
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {paymentMethod === 'cash' && (
+                        <div className="space-y-3 mt-3 animate-in fade-in duration-300">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox" checked={needChange}
+                                    onChange={e => setNeedChange(e.target.checked)}
+                                    className="w-5 h-5 rounded bg-[#121212] border-white/10 accent-primary"
+                                />
+                                <span className="text-sm text-gray-300">Preciso de troco</span>
+                            </label>
+                            {needChange && (
+                                <input
+                                    type="number" placeholder="Troco para quanto? (ex: 50)"
+                                    value={changeFor} onChange={e => setChangeFor(e.target.value)}
+                                    className="w-full px-4 py-3.5 bg-[#121212] border border-white/5 rounded-xl text-sm text-white focus:border-primary focus:outline-none placeholder:text-gray-600"
+                                />
+                            )}
+                        </div>
+                    )}
                 </section>
 
                 {/* ── 6. Observações ──────────────────────────── */}
@@ -542,11 +528,7 @@ export default function CheckoutClient({ slug, settings, couponsEnabled }: Check
                     >
                         {isSubmitting ? (
                             <span className="flex items-center gap-2">
-                                <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                                    className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full"
-                                />
+                                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                                 Processando...
                             </span>
                         ) : (

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { FiX, FiMessageCircle, FiUser } from 'react-icons/fi';
+import { IconX as FiX, IconMessageCircle as FiMessageCircle, IconUser as FiUser } from '@/components/ui/Icons';
 import StarRating from '@/components/ui/StarRating';
 import { Portal } from '@/components/ui/Portal';
 

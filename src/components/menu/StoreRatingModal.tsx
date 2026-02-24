@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import { IconX as FiX, IconCheck as FiCheck, IconAlertCircle as FiAlertCircle } from '@/components/ui/Icons';
 import StarRating from '@/components/ui/StarRating';
 import { addStoreRating } from '@/app/actions/store';
 import { Portal } from '@/components/ui/Portal';

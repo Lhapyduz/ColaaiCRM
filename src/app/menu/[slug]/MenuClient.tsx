@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { FiShoppingBag, FiMinus, FiPlus, FiX, FiMessageCircle, FiStar, FiClock, FiChevronDown } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion';
+import { IconShoppingBag as FiShoppingBag, IconMinus as FiMinus, IconPlus as FiPlus, IconX as FiX, IconMessageCircle as FiMessageCircle, IconStar as FiStar, IconClock as FiClock, IconChevronDown as FiChevronDown } from '@/components/ui/Icons';
+
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
@@ -520,38 +520,31 @@ export default function MenuClient({
                         )}
                     </div>
 
-                    <AnimatePresence>
-                        {showSchedules && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="max-w-md mx-auto mt-6 bg-[#1E1E1E] border border-white/10 rounded-2xl p-4 shadow-2xl relative z-20"
-                            >
-                                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2 justify-center">
-                                    <FiClock size={14} /> Horário de Funcionamento
-                                </h3>
-                                <div className="space-y-2">
-                                    {dayNames.map((day, index) => {
-                                        const schedule = openingHours.find(h => h.day_of_week === index);
-                                        const isToday = new Date().getDay() === index;
-                                        return (
-                                            <div key={day} className={cn("flex justify-between text-sm py-1 border-b border-white/5 last:border-0", isToday && "text-primary font-bold")}>
-                                                <span className="opacity-80">{day}</span>
-                                                <span>
-                                                    {schedule && !schedule.is_closed && schedule.open_time ? (
-                                                        `${schedule.open_time.slice(0, 5)} - ${schedule.close_time?.slice(0, 5)}`
-                                                    ) : (
-                                                        <span className="text-red-500 opacity-60">Fechado</span>
-                                                    )}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {showSchedules && (
+                        <div className="max-w-md mx-auto mt-6 bg-[#1E1E1E] border border-white/10 rounded-2xl p-4 shadow-2xl relative z-20 animate-in fade-in zoom-in-95 duration-200">
+                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2 justify-center">
+                                <FiClock size={14} /> Horário de Funcionamento
+                            </h3>
+                            <div className="space-y-2">
+                                {dayNames.map((day, index) => {
+                                    const schedule = openingHours.find(h => h.day_of_week === index);
+                                    const isToday = new Date().getDay() === index;
+                                    return (
+                                        <div key={day} className={cn("flex justify-between text-sm py-1 border-b border-white/5 last:border-0", isToday && "text-primary font-bold")}>
+                                            <span className="opacity-80">{day}</span>
+                                            <span>
+                                                {schedule && !schedule.is_closed && schedule.open_time ? (
+                                                    `${schedule.open_time.slice(0, 5)} - ${schedule.close_time?.slice(0, 5)}`
+                                                ) : (
+                                                    <span className="text-red-500 opacity-60">Fechado</span>
+                                                )}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -784,58 +777,44 @@ export default function MenuClient({
             </div>
 
             {/* Mobile Cart Bar - Stitch style — Oculta quando detalhe do produto está aberto */}
-            <AnimatePresence>
-                {
-                    cart.length > 0 && !showProductDetail && (
-                        <motion.div
-                            initial={{ y: 100 }}
-                            animate={{ y: 0 }}
-                            exit={{ y: 100 }}
-                            className="lg:hidden fixed bottom-6 left-4 right-4 z-dropdown"
+            {
+                cart.length > 0 && !showProductDetail && (
+                    <div className="lg:hidden fixed bottom-6 left-4 right-4 z-dropdown animate-in slide-in-from-bottom-5 duration-300">
+                        <button
+                            onClick={() => setShowMobileCart(true)}
+                            className="w-full bg-[#1A1A1A] border border-white/10 rounded-2xl shadow-2xl p-4 flex items-center justify-between group overflow-hidden relative"
                         >
-                            <button
-                                onClick={() => setShowMobileCart(true)}
-                                className="w-full bg-[#1A1A1A] border border-white/10 rounded-2xl shadow-2xl p-4 flex items-center justify-between group overflow-hidden relative"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-lg shadow-primary/30 relative">
-                                        {totalItems}
-                                        <FiShoppingBag className="absolute -bottom-1 -right-1 text-[10px] bg-white text-primary rounded-full p-0.5" />
-                                    </div>
-                                    <div className="text-left">
-                                        <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest leading-none mb-1">Total do Pedido</p>
-                                        <p className="text-xl font-black text-white">
-                                            {formatCurrency(totalPrice)}
-                                        </p>
-                                    </div>
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-primary text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-lg shadow-primary/30 relative">
+                                    {totalItems}
+                                    <FiShoppingBag className="absolute -bottom-1 -right-1 text-[10px] bg-white text-primary rounded-full p-0.5" />
                                 </div>
-                                <div className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl font-bold text-sm">
-                                    Ver Sacola <FiChevronDown />
+                                <div className="text-left">
+                                    <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest leading-none mb-1">Total do Pedido</p>
+                                    <p className="text-xl font-black text-white">
+                                        {formatCurrency(totalPrice)}
+                                    </p>
                                 </div>
-                            </button>
-                        </motion.div>
-                    )
-                }
-            </AnimatePresence>
+                            </div>
+                            <div className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl font-bold text-sm">
+                                Ver Sacola <FiChevronDown />
+                            </div>
+                        </button>
+                    </div>
+                )
+            }
 
             {/* Mobile Cart Modal */}
             {typeof document !== 'undefined' && createPortal(
-                <AnimatePresence>
+                <>
                     {
                         showMobileCart && (
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-modal lg:hidden flex items-end"
+                            <div
+                                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-modal lg:hidden flex items-end animate-in fade-in duration-300"
                                 onClick={() => setShowMobileCart(false)}
                             >
-                                <motion.div
-                                    initial={{ y: '100%' }}
-                                    animate={{ y: 0 }}
-                                    exit={{ y: '100%' }}
-                                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                                    className="w-full h-[85vh] bg-[#121212] rounded-t-[32px] overflow-hidden flex flex-col shadow-2xl border-t border-white/5"
+                                <div
+                                    className="w-full h-[85vh] bg-[#121212] rounded-t-[32px] overflow-hidden flex flex-col shadow-2xl border-t border-white/5 animate-in slide-in-from-bottom-full duration-300"
                                     onClick={e => e.stopPropagation()}
                                 >
                                     <div className="flex justify-between items-center p-6 border-b border-white/5 bg-[#1A1A1A]">
@@ -879,34 +858,27 @@ export default function MenuClient({
                                         </button>
                                         {!isStoreOpen && <p className="text-[10px] text-center text-red-500 font-bold uppercase tracking-widest">Loja Fechada</p>}
                                     </div>
-                                </motion.div>
-                            </motion.div>
+                                </div>
+                            </div>
                         )
                     }
-                </AnimatePresence>,
+                </>,
                 document.body
             )}
 
             {/* Product Detail — Mobile: Fullscreen (estilo iFood) / Desktop: Modal lado a lado */}
             {typeof document !== 'undefined' && createPortal(
-                <AnimatePresence>
+                <>
                     {showProductDetail && selectedProduct && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-modal md:flex md:items-center md:justify-center md:p-6 md:bg-black/80 md:backdrop-blur-xl"
+                        <div
+                            className="fixed inset-0 z-modal md:flex md:items-center md:justify-center md:p-6 md:bg-black/80 md:backdrop-blur-xl animate-in fade-in duration-300"
                             onClick={() => { setShowProductDetail(false); setSelectedProduct(null); }}
                         >
                             {/* Mobile: bg preto fullscreen / Desktop: overlay já está no parent */}
                             <div className="absolute inset-0 bg-[#121212] md:hidden" />
 
-                            <motion.div
-                                initial={{ y: '100%', opacity: 1 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: '100%', opacity: 0 }}
-                                transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-                                className="relative w-full h-full md:h-auto md:max-w-5xl md:max-h-[90vh] bg-[#121212] md:rounded-[32px] overflow-hidden flex flex-col md:flex-row shadow-2xl md:border md:border-white/5"
+                            <div
+                                className="relative w-full h-full md:h-auto md:max-w-5xl md:max-h-[90vh] bg-[#121212] md:rounded-[32px] overflow-hidden flex flex-col md:flex-row shadow-2xl md:border md:border-white/5 animate-in slide-in-from-bottom-10 md:zoom-in-95 duration-300"
                                 onClick={e => e.stopPropagation()}
                             >
                                 {/* ===== IMAGEM DO PRODUTO ===== */}
@@ -1110,10 +1082,10 @@ export default function MenuClient({
                                         </button>
                                     </div>
                                 </div>
-                            </motion.div>
-                        </motion.div>
+                            </div>
+                        </div>
                     )}
-                </AnimatePresence>,
+                </>,
                 document.body
             )}
 
@@ -1165,6 +1137,6 @@ export default function MenuClient({
                     className={cart.length > 0 ? "bottom-28" : "bottom-6"}
                 />
             )}
-        </div>
+        </div >
     );
 }
