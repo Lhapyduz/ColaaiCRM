@@ -28,11 +28,15 @@ const AssinaturaPage = () => {
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
     const [pixModalData, setPixModalData] = useState<{ planType: PlanPriceKey, planName: string } | null>(null);
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+    const syncCheckedRef = React.useRef(false);
 
     const handleAutoSync = useCallback(async () => { try { await refreshSubscription(); const res = await fetch('/api/stripe/sync', { method: 'POST' }); if (res.ok) await refreshSubscription(); } catch (e) { console.error(e); } }, [refreshSubscription]);
     const handleSync = useCallback(async () => { try { setSyncing(true); const res = await fetch('/api/stripe/sync', { method: 'POST' }); if (res.ok) { await refreshSubscription(); window.history.replaceState({}, '', '/assinatura'); } } catch (e) { console.error(e); } finally { setSyncing(false); } }, [refreshSubscription]);
 
     useEffect(() => {
+        if (syncCheckedRef.current) return;
+        syncCheckedRef.current = true;
+
         const query = new URLSearchParams(window.location.search);
         if (query.get('success') === 'true' || query.get('portal') === 'true') {
             handleSync();

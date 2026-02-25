@@ -40,6 +40,7 @@ import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import { useProductsCache, useCategoriesCache } from '@/hooks/useDataCache';
+import { revalidateStoreMenu } from '@/app/actions/menu';
 
 interface Category {
     id: string;
@@ -296,6 +297,7 @@ export default function ProdutosPage() {
                         await Promise.all(newItems.map((item, index) =>
                             supabase.from('products').update({ display_order: index }).eq('id', item.id)
                         ));
+                        revalidateStoreMenu();
                     } catch (error) {
                         console.error('Failed to save product order:', error);
                     }
@@ -380,6 +382,7 @@ export default function ProdutosPage() {
             }
             toast.success(editingProduct ? 'Produto atualizado!' : 'Produto criado!');
             refetchProducts(); // Invalida o cache
+            revalidateStoreMenu();
             closeProductModal();
         } catch (error) {
             console.error('Error saving product:', error);
@@ -402,6 +405,7 @@ export default function ProdutosPage() {
             await supabase.from('products').delete().eq('id', id);
             toast.success('Produto excluído!');
             refetchProducts(); // Invalida o cache
+            revalidateStoreMenu();
         } catch (error) {
             console.error('Error deleting product:', error);
             toast.error('Erro ao excluir produto');
@@ -412,6 +416,7 @@ export default function ProdutosPage() {
         try {
             await supabase.from('products').update({ available: !product.available }).eq('id', product.id);
             refetchProducts(); // Invalida o cache
+            revalidateStoreMenu();
         } catch (error) {
             console.error('Error toggling availability:', error);
         }

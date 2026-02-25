@@ -11,7 +11,6 @@ import {
     useSensor,
     useSensors,
     DragEndEvent,
-    DragStartEvent,
 } from '@dnd-kit/core';
 import {
     arrayMove,
@@ -29,6 +28,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import { revalidateStoreMenu } from '@/app/actions/menu';
 
 interface Category {
     id: string;
@@ -113,9 +113,7 @@ export default function CategoriasPage() {
         }
     }, [isDragging]);
 
-    useEffect(() => { if (user) fetchCategories(); }, [user]);
-
-    const fetchCategories = async () => {
+    const fetchCategories = useCallback(async () => {
         if (!user) return;
         try {
             const { data: categoriesData } = await supabase.from('categories').select('*').eq('user_id', user.id).order('display_order', { ascending: true });
@@ -128,9 +126,11 @@ export default function CategoriasPage() {
             }
         } catch (error) { console.error('Error fetching categories:', error); }
         finally { setLoading(false); }
-    };
+    }, [user]);
 
-    const handleDragStart = useCallback((_event: DragStartEvent) => setIsDragging(true), []);
+    useEffect(() => { if (user) fetchCategories(); }, [user, fetchCategories]);
+
+    const handleDragStart = useCallback(() => setIsDragging(true), []);
     const handleDragEnd = useCallback((event: DragEndEvent) => {
         setIsDragging(false);
         const { active, over } = event;
@@ -141,7 +141,10 @@ export default function CategoriasPage() {
                 const newItems = arrayMove(items, oldIndex, newIndex);
                 if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
                 saveTimeoutRef.current = setTimeout(async () => {
-                    try { await Promise.all(newItems.map((item, index) => supabase.from('categories').update({ display_order: index }).eq('id', item.id))); }
+                    try {
+                        await Promise.all(newItems.map((item, index) => supabase.from('categories').update({ display_order: index }).eq('id', item.id)));
+                        revalidateStoreMenu();
+                    }
                     catch (error) { console.error('Failed to save category order:', error); }
                 }, 500);
                 return newItems;
@@ -168,6 +171,7 @@ export default function CategoriasPage() {
                 const maxOrder = categories.length > 0 ? Math.max(...categories.map(c => c.display_order || 0)) : -1;
                 await supabase.from('categories').insert({ ...categoryData, display_order: maxOrder + 1 });
             }
+            revalidateStoreMenu();
             fetchCategories(); closeModal();
         } catch (error) { console.error('Error saving category:', error); }
         finally { setSaving(false); }
@@ -177,7 +181,11 @@ export default function CategoriasPage() {
         const category = categories.find(c => c.id === id);
         if (category && (category.productCount || 0) > 0) { alert('Não é possível excluir uma categoria que possui produtos.'); return; }
         if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
-        try { await supabase.from('categories').delete().eq('id', id); fetchCategories(); }
+        try {
+            await supabase.from('categories').delete().eq('id', id);
+            revalidateStoreMenu();
+            fetchCategories();
+        }
         catch (error) { console.error('Error deleting category:', error); }
     };
 

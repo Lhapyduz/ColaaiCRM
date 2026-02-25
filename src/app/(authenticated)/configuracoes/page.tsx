@@ -35,6 +35,7 @@ import {
     replyToProductRating,
     type OpeningHourInput
 } from '@/app/actions/store';
+import { revalidateStoreMenu } from '@/app/actions/menu';
 import styles from './page.module.css';
 import OpeningHoursScheduler from '@/components/settings/OpeningHoursScheduler';
 
@@ -230,6 +231,9 @@ function ConfiguracoesContent() {
                 merchant_city: merchantCity || null, delivery_fee_value: deliveryFee, store_open: storeOpen, delivery_time_min: deliveryTimeMin, delivery_time_max: deliveryTimeMax
             });
             await Promise.all([updateStoreStatus(storeOpen), updateDeliveryTime(deliveryTimeMin, deliveryTimeMax), updateSidebarColor(sidebarColor), saveOpeningHours(openingHours)]);
+
+            revalidateStoreMenu();
+
             if (!error) { setSaved(true); toast.success('Configurações salvas com sucesso!'); setTimeout(() => setSaved(false), 3000); }
             else { toast.error('Erro ao salvar as configurações'); }
         } catch (error) { console.error('Error saving settings:', error); toast.error('Erro ao salvar as configurações'); } finally { setSaving(false); }
@@ -248,6 +252,7 @@ function ConfiguracoesContent() {
             if (uploadError) throw uploadError;
             const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(fileName);
             await updateSettings({ logo_url: publicUrl });
+            revalidateStoreMenu();
         } catch (error) { console.error('Error uploading logo:', error); } finally { setUploading(false); }
     };
 
@@ -261,6 +266,7 @@ function ConfiguracoesContent() {
         try {
             const urlParts = userSettings.logo_url.split('/'); const fileName = `${user.id}/${urlParts[urlParts.length - 1]}`;
             await supabase.storage.from('logos').remove([fileName]); await updateSettings({ logo_url: null });
+            revalidateStoreMenu();
         } catch (error) { console.error('Error removing logo:', error); }
     };
 

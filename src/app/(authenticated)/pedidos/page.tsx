@@ -15,7 +15,7 @@ import { FaWhatsapp } from 'react-icons/fa';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { StatusBadge, PaymentMethodBadge, getStatusLabel, type OrderStatus, type PaymentMethod } from '@/components/ui/StatusBadge';
+import { StatusBadge, PaymentMethodBadge, type OrderStatus, type PaymentMethod } from '@/components/ui/StatusBadge';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -23,6 +23,9 @@ import { formatCurrency, formatDateTime } from '@/hooks/useFormatters';
 import { openWhatsAppNotification, shouldNotifyOnStatusChange, OrderDetails } from '@/lib/whatsapp';
 import { logOrderStatusChange, logPaymentReceived } from '@/lib/actionLogger';
 import { cn } from '@/lib/utils';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useUpdateOrderStatus, useUpdatePaymentStatus, useDeleteOrder } from '@/hooks/useOrderMutations';
+import { updateLoyaltyPoints } from '@/app/actions/loyalty';
 
 interface Order {
     id: string;
@@ -49,103 +52,92 @@ const statusOptions = [
     { value: 'cancelled', label: 'Cancelado' }
 ];
 
+const ORDERS_QUERY_KEY = ['orders'];
+const ORDERS_PER_PAGE = 30;
+
 export default function PedidosPage() {
     const { user, userSettings } = useAuth();
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [showDropdown, setShowDropdown] = useState<string | null>(null);
     const [showWhatsAppModal, setShowWhatsAppModal] = useState<Order | null>(null);
+    const [pendingStatusForModal, setPendingStatusForModal] = useState<string | null>(null);
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
-    const ORDERS_PER_PAGE = 30;
 
     const toast = useToast();
+    const queryClient = useQueryClient();
 
-    const fetchOrders = useCallback(async (reset = false) => {
-        if (!user) return;
+    // ── React Query para buscar pedidos ──
+    const queryKey = useMemo(() => [...ORDERS_QUERY_KEY, statusFilter, page], [statusFilter, page]);
 
-        const currentPage = reset ? 0 : page;
-        const from = currentPage * ORDERS_PER_PAGE;
-        const to = from + ORDERS_PER_PAGE - 1;
+    const { data: orders = [], isLoading: loading } = useQuery({
+        queryKey,
+        queryFn: async () => {
+            if (!user) return [];
 
-        try {
+            const from = page * ORDERS_PER_PAGE;
+            const to = from + ORDERS_PER_PAGE - 1;
+
             let query = supabase
                 .from('orders')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
-                .range(from, to); // Paginação: economia de ~80% nas leituras
+                .range(from, to);
 
             if (statusFilter !== 'all') {
                 query = query.eq('status', statusFilter);
             }
 
             const { data, error } = await query;
-
             if (error) throw error;
 
             const newOrders = data || [];
             setHasMore(newOrders.length === ORDERS_PER_PAGE);
+            return newOrders as Order[];
+        },
+        enabled: !!user,
+        staleTime: 30_000, // 30s antes de considerar stale
+    });
 
-            if (reset) {
-                setOrders(newOrders);
-                setPage(0);
-            } else {
-                setOrders(prev => currentPage === 0 ? newOrders : [...prev, ...newOrders]);
-            }
-        } catch (error) {
-            console.error('Error fetching orders:', error);
-            toast.error('Erro ao carregar pedidos');
-        } finally {
-            setLoading(false);
-        }
-    }, [user, statusFilter, toast, page]);
+    // ── Mutations com Optimistic Updates ──
+    const updateStatusMutation = useUpdateOrderStatus<Order>(queryKey);
+    const updatePaymentMutation = useUpdatePaymentStatus<Order>(queryKey);
+    const deleteOrderMutation = useDeleteOrder<Order>(queryKey);
 
-    // Fetch orders and setup real-time subscription (INSERT only)
+    // ── Realtime: apenas INSERT para novos pedidos ──
     useEffect(() => {
-        if (user) {
-            fetchOrders(true);
+        if (!user) return;
 
-            // Realtime seletivo: apenas INSERT para novos pedidos
-            // Economia: ~50% das mensagens Realtime
-            const subscription = supabase
-                .channel('orders-realtime')
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'INSERT', // Apenas novos pedidos, não UPDATE/DELETE
-                        schema: 'public',
-                        table: 'orders',
-                        filter: `user_id=eq.${user.id}`
-                    },
-                    () => {
-                        // Play notification sound for new orders
-                        const audio = new Audio('/notification.mp3');
-                        audio.play().catch(() => { });
-                        toast.info('Novo pedido recebido!');
-                        fetchOrders(true); // Refresh da lista
-                    }
-                )
-                .subscribe();
+        const subscription = supabase
+            .channel('orders-realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `user_id=eq.${user.id}`
+                },
+                () => {
+                    const audio = new Audio('/notification.mp3');
+                    audio.play().catch(() => { });
+                    toast.info('Novo pedido recebido!');
+                    queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+                }
+            )
+            .subscribe();
 
-            return () => {
-                subscription.unsubscribe();
-            };
-        }
-    }, [user, statusFilter, fetchOrders, toast]);
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, [user, queryClient, toast]);
 
     // Carregar mais pedidos
     const loadMore = useCallback(() => {
         setPage(prev => prev + 1);
     }, []);
-
-    useEffect(() => {
-        if (page > 0) {
-            fetchOrders();
-        }
-    }, [page, fetchOrders]);
 
     const ordersMap = useMemo(() => {
         const map = new Map<string, Order>();
@@ -176,31 +168,27 @@ export default function PedidosPage() {
         openWhatsAppNotification(orderDetails, notificationSettings, newStatus, baseUrl);
     };
 
-    const updateOrderStatus = async (orderId: string, newStatus: string, sendNotification: boolean = false) => {
-        try {
-            const order = ordersMap.get(orderId);
+    // ── Wrapper de updateOrderStatus com Optimistic Update ──
+    const updateOrderStatus = (orderId: string, newStatus: string, sendNotification: boolean = false) => {
+        const order = ordersMap.get(orderId);
 
-            const { error } = await supabase
-                .from('orders')
-                .update({ status: newStatus, updated_at: new Date().toISOString() })
-                .eq('id', orderId);
-
-            if (error) throw error;
-
-            if (order) {
-                logOrderStatusChange(orderId, order.order_number, order.status, newStatus);
-            }
-
-            if (sendNotification && order?.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
-                sendWhatsAppNotification(order, newStatus);
-            }
-
-            toast.success(`Status atualizado para ${getStatusLabel(newStatus)}`);
-            fetchOrders();
-        } catch (error) {
-            console.error('Error updating order:', error);
-            toast.error('Erro ao atualizar status do pedido');
+        // Log antes da mutation
+        if (order) {
+            logOrderStatusChange(orderId, order.order_number, order.status, newStatus);
         }
+
+        // Optimistic mutation — UI atualiza instantaneamente
+        updateStatusMutation.mutate(
+            { orderId, newStatus },
+            {
+                onSuccess: () => {
+                    if (sendNotification && order?.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
+                        sendWhatsAppNotification(order, newStatus);
+                    }
+                },
+            }
+        );
+
         setShowDropdown(null);
         setShowWhatsAppModal(null);
     };
@@ -208,91 +196,38 @@ export default function PedidosPage() {
     const handleStatusChangeWithNotification = (order: Order, newStatus: string) => {
         if (order.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
             setShowWhatsAppModal(order);
-            (order as any)._pendingStatus = newStatus;
+            setPendingStatusForModal(newStatus);
         } else {
             updateOrderStatus(order.id, newStatus, false);
         }
     };
 
-    const updatePaymentStatus = async (orderId: string) => {
-        try {
-            const order = ordersMap.get(orderId);
-            if (!order) return;
+    // ── Confirmar pagamento com Optimistic Update + Fidelidade em background ──
+    const updatePaymentStatus = (orderId: string) => {
+        const order = ordersMap.get(orderId);
+        if (!order) return;
 
-            const { error } = await supabase
-                .from('orders')
-                .update({ payment_status: 'paid', updated_at: new Date().toISOString() })
-                .eq('id', orderId);
+        logPaymentReceived(orderId, order.order_number, order.total, order.payment_method);
 
-            if (error) throw error;
+        // Optimistic mutation — botão "Recebido" reage instantaneamente
+        updatePaymentMutation.mutate({ orderId });
 
-            logPaymentReceived(orderId, order.order_number, order.total, order.payment_method);
-
-            if (order.customer_phone && user) {
-                try {
-                    const cleanPhone = order.customer_phone.replace(/\D/g, '');
-
-                    const { data: customer } = await supabase
-                        .from('customers')
-                        .select('id, total_spent, total_points')
-                        .eq('user_id', user.id)
-                        .eq('phone', cleanPhone)
-                        .single();
-
-                    if (customer) {
-                        const { data: settings } = await supabase
-                            .from('loyalty_settings')
-                            .select('points_per_real')
-                            .eq('user_id', user.id)
-                            .single();
-
-                        const pointsPerReal = settings?.points_per_real || 1;
-                        const pointsEarned = Math.floor(order.total * pointsPerReal);
-
-                        await supabase
-                            .from('customers')
-                            .update({
-                                total_spent: (customer.total_spent || 0) + order.total,
-                                total_points: (customer.total_points || 0) + pointsEarned
-                            })
-                            .eq('id', customer.id);
-
-                        if (pointsEarned > 0) {
-                            await supabase.from('points_transactions').insert({
-                                user_id: user.id,
-                                customer_id: customer.id,
-                                points: pointsEarned,
-                                type: 'earned',
-                                description: `Pedido #${order.order_number}`,
-                                order_id: order.id
-                            });
-                        }
-                    }
-                } catch (loyaltyErr) {
-                    console.warn('Failed to update customer loyalty data:', loyaltyErr);
-                }
-            }
-
-            toast.success('Pagamento confirmado!');
-            fetchOrders();
-        } catch (error) {
-            console.error('Error updating payment status:', error);
-            toast.error('Erro ao atualizar status de pagamento');
+        // Disparar atualização de fidelidade em background (Server Action)
+        if (order.customer_phone && user) {
+            void updateLoyaltyPoints({
+                userId: user.id,
+                orderId: order.id,
+                orderNumber: order.order_number,
+                orderTotal: order.total,
+                customerPhone: order.customer_phone,
+            });
         }
     };
 
-    const deleteOrder = async (orderId: string) => {
+    // ── Excluir pedido com Optimistic Update ──
+    const deleteOrder = (orderId: string) => {
         if (!confirm('Tem certeza que deseja excluir este pedido?')) return;
-
-        try {
-            await supabase.from('order_items').delete().eq('order_id', orderId);
-            await supabase.from('orders').delete().eq('id', orderId);
-            toast.success('Pedido excluído');
-            fetchOrders();
-        } catch (error) {
-            console.error('Error deleting order:', error);
-            toast.error('Erro ao excluir pedido');
-        }
+        deleteOrderMutation.mutate({ orderId });
     };
 
     const filteredOrders = orders.filter(order =>
@@ -539,8 +474,9 @@ export default function PedidosPage() {
                             <Button
                                 variant="outline"
                                 onClick={() => {
-                                    const pendingStatus = (showWhatsAppModal as any)._pendingStatus;
-                                    updateOrderStatus(showWhatsAppModal.id, pendingStatus, false);
+                                    if (pendingStatusForModal) {
+                                        updateOrderStatus(showWhatsAppModal.id, pendingStatusForModal, false);
+                                    }
                                 }}
                             >
                                 Não Notificar
@@ -548,8 +484,9 @@ export default function PedidosPage() {
                             <Button
                                 leftIcon={<FaWhatsapp />}
                                 onClick={() => {
-                                    const pendingStatus = (showWhatsAppModal as any)._pendingStatus;
-                                    updateOrderStatus(showWhatsAppModal.id, pendingStatus, true);
+                                    if (pendingStatusForModal) {
+                                        updateOrderStatus(showWhatsAppModal.id, pendingStatusForModal, true);
+                                    }
                                 }}
                                 style={{ background: '#25D366' }}
                             >

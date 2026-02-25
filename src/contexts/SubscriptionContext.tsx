@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -134,16 +134,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     const [subscription, setSubscription] = useState<Subscription | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (user) {
-            fetchSubscription();
-        } else {
-            setSubscription(null);
-            setLoading(false);
-        }
-    }, [user]);
 
-    const fetchSubscription = async () => {
+    const fetchSubscription = useCallback(async () => {
         if (!user) return;
 
         try {
@@ -169,7 +161,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (user) {
+            fetchSubscription();
+        } else {
+            setSubscription(null);
+            setLoading(false);
+        }
+    }, [user, fetchSubscription]);
 
     useEffect(() => {
         if (!user) return;
@@ -200,9 +201,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         };
     }, [user]);
 
-    const refreshSubscription = async () => {
+    const refreshSubscription = useCallback(async () => {
         await fetchSubscription();
-    };
+    }, [fetchSubscription]);
 
     // Get current plan (default to basic if no subscription)
     const plan: PlanType = subscription?.plan_type || 'Basico';

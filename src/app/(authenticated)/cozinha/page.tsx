@@ -5,12 +5,13 @@ import { FiClock, FiCheck, FiVolume2, FiVolumeX, FiPrinter } from 'react-icons/f
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
-import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import { printKitchenTicket } from '@/lib/print';
 import { cn } from '@/lib/utils';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useUpdateOrderStatus } from '@/hooks/useOrderMutations';
 
 interface OrderItemAddon {
     id: string;
@@ -47,18 +48,21 @@ interface Order {
     items: OrderItem[];
 }
 
+const KITCHEN_QUERY_KEY = ['kitchen-orders'];
+
 export default function CozinhaPage() {
     const { user } = useAuth();
     const { plan, canAccess } = useSubscription();
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const audioRef = useRef<HTMLAudioElement | null>(null);
-    const toast = useToast();
+    const queryClient = useQueryClient();
 
-    const fetchOrders = useCallback(async () => {
-        if (!user) return;
-        try {
+    // ── React Query para buscar pedidos da cozinha ──
+    const { data: orders = [], isLoading: loading } = useQuery({
+        queryKey: KITCHEN_QUERY_KEY,
+        queryFn: async () => {
+            if (!user) return [];
+
             const { data: ordersData, error } = await supabase
                 .from('orders')
                 .select(`
@@ -84,38 +88,43 @@ export default function CozinhaPage() {
                 }))
             }));
 
-            setOrders(mappedOrders);
-        } catch (error) {
-            console.error('Error fetching orders:', error);
-        } finally {
-            setLoading(false);
-        }
-    }, [user]);
+            return mappedOrders;
+        },
+        enabled: !!user && canAccess('kitchen'),
+        refetchInterval: 30_000, // Auto-refresh a cada 30s como fallback
+    });
 
+    // ── Mutation com Optimistic Update ──
+    const updateStatusMutation = useUpdateOrderStatus<Order>(KITCHEN_QUERY_KEY);
+
+    const playNotificationSound = useCallback(() => {
+        if (audioRef.current) audioRef.current.play().catch(() => { });
+    }, []);
+
+    // ── Realtime: todos os eventos de orders ──
     useEffect(() => {
-        if (user && canAccess('kitchen')) {
-            fetchOrders();
-            const subscription = supabase
-                .channel('kitchen_orders')
-                .on('postgres_changes', {
-                    event: '*',
-                    schema: 'public',
-                    table: 'orders',
-                    filter: `user_id=eq.${user.id}`
-                }, (payload) => {
-                    console.log('Order change:', payload);
-                    fetchOrders();
-                    if (payload.eventType === 'INSERT' && soundEnabled) {
-                        playNotificationSound();
-                    }
-                })
-                .subscribe();
+        if (!user || !canAccess('kitchen')) return;
 
-            return () => {
-                subscription.unsubscribe();
-            };
-        }
-    }, [user, soundEnabled, canAccess, fetchOrders]);
+        const subscription = supabase
+            .channel('kitchen_orders')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'orders',
+                filter: `user_id=eq.${user.id}`
+            }, (payload) => {
+                console.log('Order change:', payload);
+                queryClient.invalidateQueries({ queryKey: KITCHEN_QUERY_KEY });
+                if (payload.eventType === 'INSERT' && soundEnabled) {
+                    playNotificationSound();
+                }
+            })
+            .subscribe();
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, [user, soundEnabled, canAccess, queryClient, playNotificationSound]);
 
     if (!canAccess('kitchen')) {
         return (
@@ -123,20 +132,9 @@ export default function CozinhaPage() {
         );
     }
 
-    const playNotificationSound = () => {
-        if (audioRef.current) audioRef.current.play().catch(() => { });
-    };
-
-    const updateOrderStatus = async (orderId: string, newStatus: string) => {
-        try {
-            const { error } = await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId);
-            if (error) throw error;
-            toast.success(newStatus === 'preparing' ? 'Preparo iniciado!' : 'Pedido marcado como pronto!');
-            fetchOrders();
-        } catch (error) {
-            console.error('Error updating order:', error);
-            toast.error('Erro ao atualizar pedido');
-        }
+    // ── Wrapper de updateOrderStatus com Optimistic Update ──
+    const updateOrderStatus = (orderId: string, newStatus: string) => {
+        updateStatusMutation.mutate({ orderId, newStatus });
     };
 
     const getTimeElapsed = (date: string) => {

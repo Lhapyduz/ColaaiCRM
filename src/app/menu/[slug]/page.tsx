@@ -1,22 +1,59 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
+import { unstable_cache } from 'next/cache';
+import { supabase } from '@/lib/supabase';
 import MenuClient from './MenuClient';
+
+// Cache helpers - usamos a instância anônima do supabase (sem cookies) para permitir o cache estático
+const getCachedSettings = (slug: string) =>
+    unstable_cache(
+        async () => {
+            const { data } = await supabase
+                .from('user_settings')
+                .select('*')
+                .eq('public_slug', slug)
+                .single();
+            return data;
+        },
+        [`menu-settings-${slug}`],
+        { tags: [`menu-${slug}`], revalidate: 300 } // 5 minutos TTL + invalidação on-demand
+    )();
+
+const getCachedMenu = (userId: string, slug: string) =>
+    unstable_cache(
+        async () => {
+            const [
+                { data: categories },
+                { data: products },
+            ] = await Promise.all([
+                supabase
+                    .from('categories')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('name'),
+                supabase
+                    .from('products')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .eq('available', true)
+                    .order('name'),
+            ]);
+            return { categories: categories || [], products: products || [] };
+        },
+        [`menu-data-${userId}`],
+        { tags: [`menu-${slug}`], revalidate: 300 }
+    )();
 
 interface PageProps {
     params: Promise<{ slug: string }>;
 }
 
-// Dynamic metadata based on user settings
+// Dynamic metadata based on user settings (cached)
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { slug } = await params;
-    const supabase = await createClient();
 
-    const { data: settings } = await supabase
-        .from('user_settings')
-        .select('app_name, logo_url')
-        .eq('public_slug', slug)
-        .single();
+    // unstable_cache garante que não faremos duas chamadas (uma aqui e uma no MenuPage)
+    const settings = await getCachedSettings(slug);
 
     if (!settings) {
         return {
@@ -38,36 +75,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function MenuPage({ params }: PageProps) {
     const { slug } = await params;
-    const supabase = await createClient();
 
-    // Fetch settings first
-    const { data: settings, error: settingsError } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('public_slug', slug)
-        .single();
+    // Fetch settings (will hit cache se o generateMetadata já tiver rodado)
+    const settings = await getCachedSettings(slug);
 
-    if (settingsError || !settings) {
+    if (!settings) {
         notFound();
     }
 
-    // Fetch all data in parallel for faster load
-    const [
-        { data: categories },
-        { data: products },
-    ] = await Promise.all([
-        supabase
-            .from('categories')
-            .select('*')
-            .eq('user_id', settings.user_id)
-            .order('name'),
-        supabase
-            .from('products')
-            .select('*')
-            .eq('user_id', settings.user_id)
-            .eq('available', true)
-            .order('name'),
-    ]);
+    // Fetch products and categories (cached)
+    const { categories, products } = await getCachedMenu(settings.user_id, slug);
 
     return (
         <MenuClient
