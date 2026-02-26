@@ -48,11 +48,12 @@ next-env.d.ts
 .turbo/
 
 # PWA files
-public/sw.js
-public/workbox-*.js
-public/worker-*.js
-public/sw.js.map
-public/workbox-*.js.map
+# (Comentados/Removidos para que a Vercel consiga servir o sw.js em produção)
+# public/sw.js
+# public/workbox-*.js
+# public/worker-*.js
+# public/sw.js.map
+# public/workbox-*.js.map
 
 # Logs
 logs/

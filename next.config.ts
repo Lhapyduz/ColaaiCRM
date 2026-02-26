@@ -92,7 +92,6 @@ export default withSentryConfig(
     project: "my-project",
     silent: !process.env.CI,
     widenClientFileUpload: true,
-    reactComponentAnnotation: { enabled: true },
     tunnelRoute: "/monitoring",
     sourcemaps: {
       disable: true,
