@@ -9,7 +9,6 @@ import {
 } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
 import { cn } from '@/lib/utils';
-import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
 import { motion, AnimatePresence } from 'framer-motion';
 import ComparisonTable, { PlanFeature } from '@/components/vendas/ComparisonTable';
 import PricingCard from '@/components/vendas/PricingCard';
@@ -85,7 +84,6 @@ export default function VendasPage() {
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div className="absolute top-0 right-0 w-[50vw] h-[50vh] bg-primary/5 blur-[120px] rounded-full mix-blend-screen" />
                 <div className="absolute bottom-0 left-0 w-[40vw] h-[40vh] bg-accent/5 blur-[100px] rounded-full mix-blend-screen" />
-                <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.02]" />
             </div>
 
             {/* Navbar (Simplified) */}
@@ -458,10 +456,6 @@ export default function VendasPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
-            <PWAInstallPrompt
-                appName="Cola Aí - Gestão Inteligente"
-                logoUrl="https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp"
-            />
         </div>
     );
 }

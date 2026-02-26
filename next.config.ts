@@ -1,4 +1,13 @@
+import { withSentryConfig } from "@sentry/nextjs";
+import withSerwistInit from "@serwist/next";
 import type { NextConfig } from "next";
+
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV === "development", // Serwist NÃO funciona com Turbopack — testar PWA via: npm run build && npm run start
+  register: true,
+});
 
 const nextConfig: NextConfig = {
   // Forçar Turbopack a usar este diretório como raiz do workspace
@@ -75,5 +84,18 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 };
 
-export default nextConfig;
-
+// Ao invés de usar a string direta 'export default nextConfig', envelopamos nos modulos acima
+export default withSentryConfig(
+  withSerwist(nextConfig),
+  {
+    org: "my-org",
+    project: "my-project",
+    silent: !process.env.CI,
+    widenClientFileUpload: true,
+    reactComponentAnnotation: { enabled: true },
+    tunnelRoute: "/monitoring",
+    sourcemaps: {
+      disable: true,
+    },
+  }
+);

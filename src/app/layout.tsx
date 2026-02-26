@@ -11,6 +11,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import QueryProvider from "@/components/providers/QueryProvider";
 import PWARegistry from "@/components/providers/PWARegistry";
 import { Toaster } from 'react-hot-toast';
+import { StorageIndicator } from "@/components/ui/StorageIndicator";
+import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import "./globals.css";
 
 const inter = Inter({
@@ -94,6 +96,8 @@ export default function RootLayout({
                       <RouteGuard>
                         <KeyboardShortcutsProvider>
                           {children}
+                          <StorageIndicator />
+                          <PWAInstallPrompt appName="Cola Aí" />
                         </KeyboardShortcutsProvider>
                       </RouteGuard>
                     </ToastProvider>

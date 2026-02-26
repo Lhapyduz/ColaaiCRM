@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { isOnline, getAll, saveItem } from '@/lib/offlineStorage';
 
 interface UserSettings {
     id: string;
@@ -76,6 +77,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const fetchUserSettings = useCallback(async (userId: string) => {
         try {
+            if (!isOnline()) {
+                const cachedSettings = await getAll<UserSettings>('userSettings');
+                const userSetting = cachedSettings.find((s) => s.user_id === userId);
+                if (userSetting) {
+                    setUserSettings(userSetting);
+                    applyThemeColors(
+                        userSetting.primary_color,
+                        userSetting.secondary_color,
+                        userSetting.sidebar_color || userSetting.secondary_color
+                    );
+                }
+                setLoading(false);
+                return;
+            }
+
             const { data, error } = await supabase
                 .from('user_settings')
                 .select('*')
@@ -124,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             if (data) {
+                await saveItem('userSettings', data);
                 setUserSettings(data);
                 applyThemeColors(
                     data.primary_color,
@@ -264,7 +281,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .eq('user_id', user.id);
 
             if (!error) {
-                setUserSettings(prev => prev ? { ...prev, ...settings } : null);
+                const newSettings = userSettings ? { ...userSettings, ...settings } : null;
+                setUserSettings(newSettings);
+                if (newSettings) {
+                    await saveItem('userSettings', newSettings);
+                }
+
                 if (settings.primary_color || settings.secondary_color || settings.sidebar_color) {
                     applyThemeColors(
                         settings.primary_color || userSettings?.primary_color || '#ff6b35',

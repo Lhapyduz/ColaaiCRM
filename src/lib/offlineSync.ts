@@ -8,8 +8,9 @@ import {
     getPendingActions,
     removePendingAction,
     clearStore,
-    isOnline
+    isOnline,
 } from './offlineStorage';
+import type { CachedProduct, CachedCategory, CachedOrder } from './db';
 
 interface SyncResult {
     synced: number;
@@ -109,7 +110,7 @@ export async function syncPendingActions(): Promise<SyncResult> {
 /**
  * Get products (from cache if offline)
  */
-export async function getProductsOfflineFirst(userId: string) {
+export async function getProductsOfflineFirst(userId: string): Promise<CachedProduct[]> {
     if (isOnline()) {
         const { data, error } = await supabase
             .from('products')
@@ -118,17 +119,17 @@ export async function getProductsOfflineFirst(userId: string) {
 
         if (!error && data) {
             await saveAll('products', data);
-            return data;
+            return data as CachedProduct[];
         }
     }
 
-    return getAll('products');
+    return getAll<CachedProduct>('products');
 }
 
 /**
  * Get categories (from cache if offline)
  */
-export async function getCategoriesOfflineFirst(userId: string) {
+export async function getCategoriesOfflineFirst(userId: string): Promise<CachedCategory[]> {
     if (isOnline()) {
         const { data, error } = await supabase
             .from('categories')
@@ -137,17 +138,17 @@ export async function getCategoriesOfflineFirst(userId: string) {
 
         if (!error && data) {
             await saveAll('categories', data);
-            return data;
+            return data as CachedCategory[];
         }
     }
 
-    return getAll('categories');
+    return getAll<CachedCategory>('categories');
 }
 
 /**
  * Get orders (from cache if offline)
  */
-export async function getOrdersOfflineFirst(userId: string) {
+export async function getOrdersOfflineFirst(userId: string): Promise<CachedOrder[]> {
     if (isOnline()) {
         const { data, error } = await supabase
             .from('orders')
@@ -158,11 +159,11 @@ export async function getOrdersOfflineFirst(userId: string) {
 
         if (!error && data) {
             await saveAll('orders', data);
-            return data;
+            return data as CachedOrder[];
         }
     }
 
-    return getAll('orders');
+    return getAll<CachedOrder>('orders');
 }
 
 /**
@@ -172,7 +173,7 @@ export async function clearOfflineCache(): Promise<void> {
     await clearStore('products');
     await clearStore('categories');
     await clearStore('orders');
-    await clearStore('settings');
+    await clearStore('userSettings');
     await clearStore('pendingActions');
 }
 
@@ -181,9 +182,9 @@ export async function clearOfflineCache(): Promise<void> {
  */
 export async function getOfflineStatus() {
     const pendingActions = await getPendingActions();
-    const products = await getAll('products');
-    const categories = await getAll('categories');
-    const orders = await getAll('orders');
+    const products = await getAll<CachedProduct>('products');
+    const categories = await getAll<CachedCategory>('categories');
+    const orders = await getAll<CachedOrder>('orders');
 
     return {
         isOnline: isOnline(),

@@ -1,0 +1,41 @@
+
+> cola-ai@0.1.0 build
+> next build
+
+[@serwist/next] WARNING: You are using '@serwist/next' with `next dev --turbopack`, but it doesn't support Turbopack. Do one of the following:
+
+- Set `disable` to `process.env.NODE_ENV !== "production"`.
+
+- Use webpack by running `next dev --webpack` instead of `next dev --turbopack`.
+
+- Migrate to '@serwist/turbopack' which has experimental support for Turbopack. See https://serwist.pages.dev/docs/next/turbo for more information.
+
+- Migrate to configurator mode which has support for Turbopack. See https://serwist.pages.dev/docs/next/config for more information. 
+
+Follow https://github.com/serwist/serwist/issues/54 for progress on Serwist + Turbopack. You can also suppress this warning by setting SERWIST_SUPPRESS_TURBOPACK_WARNING=1.
+
+[@sentry/nextjs] DEPRECATION WARNING: reactComponentAnnotation is deprecated and will be removed in a future version. Use webpack.reactComponentAnnotation instead. (Not supported with Turbopack.)
+Ôû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  ┬À clientTraceMetadata
+
+  Creating an optimized production build ...
+[@sentry/nextjs] DEPRECATION WARNING: reactComponentAnnotation is deprecated and will be removed in a future version. Use webpack.reactComponentAnnotation instead. (Not supported with Turbopack.)
+Ô£ô Compiled successfully in 13.4s
+  Running next.config.js provided runAfterProductionCompile ...
+Ô£ô Completed runAfterProductionCompile in 564ms
+  Running TypeScript ...
+Failed to compile.
+
+./src/components/ui/OfflineIndicator.tsx:9:13
+Type error: Property 'online' does not exist on type 'OfflineContextType'.
+
+   7 |
+   8 | export default function OfflineIndicator() {
+>  9 |     const { online, pendingCount, syncing, lastSync, syncNow } = useOffline();
+     |             ^
+  10 |
+  11 |     const formatLastSync = () => {
+  12 |         if (!lastSync) return 'Nunca';
+Next.js build worker exited with code: 1 and signal: null
