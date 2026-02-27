@@ -226,7 +226,37 @@ export default function MenuClient({
 
     // 3. Carousel State
     const promotionalCarouselRef = useRef<HTMLDivElement>(null);
-    const [isDraggingCarousel] = useState(false);
+    const [isDown, setIsDown] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
+    const [hasDragged, setHasDragged] = useState(false);
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!promotionalCarouselRef.current) return;
+        setIsDown(true);
+        setHasDragged(false);
+        setStartX(e.pageX - promotionalCarouselRef.current.offsetLeft);
+        setScrollLeft(promotionalCarouselRef.current.scrollLeft);
+    };
+
+    const handleMouseLeave = () => {
+        setIsDown(false);
+    };
+
+    const handleMouseUp = () => {
+        setIsDown(false);
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDown || !promotionalCarouselRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - promotionalCarouselRef.current.offsetLeft;
+        const walk = (x - startX) * 2;
+        if (Math.abs(walk) > 5) {
+            setHasDragged(true);
+        }
+        promotionalCarouselRef.current.scrollLeft = scrollLeft - walk;
+    };
 
     useEffect(() => {
         if (settings) {
@@ -597,18 +627,37 @@ export default function MenuClient({
                             </div>
                             <div
                                 ref={promotionalCarouselRef}
-                                className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 -mx-4 px-4 lg:snap-none snap-x snap-mandatory no-scrollbar cursor-grab active:cursor-grabbing select-none"
-                                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                                className={cn(
+                                    "flex gap-3 sm:gap-4 overflow-x-auto pb-4 -mx-4 px-4 no-scrollbar select-none",
+                                    isDown ? "cursor-grabbing snap-none" : "cursor-grab snap-x snap-mandatory lg:snap-none"
+                                )}
+                                style={{
+                                    scrollbarWidth: 'none',
+                                    msOverflowStyle: 'none',
+                                    scrollBehavior: isDown ? 'auto' : 'smooth'
+                                }}
+                                onMouseDown={handleMouseDown}
+                                onMouseLeave={handleMouseLeave}
+                                onMouseUp={handleMouseUp}
+                                onMouseMove={handleMouseMove}
                             >
                                 {products.filter(p => p.promo_enabled).map((product, index) => {
                                     const price = getProductPrice(product);
                                     return (
                                         <div
                                             key={product.id}
-                                            onClick={() => !isDraggingCarousel && handleProductClick(product)}
-                                            className="min-w-[85vw] sm:min-w-[320px] max-w-[320px] lg:snap-align-none snap-start bg-linear-to-br from-[#1E1E1E] to-[#151515] rounded-2xl overflow-hidden border border-primary/20 shadow-lg shadow-primary/5 cursor-grab active:cursor-grabbing select-none group hover:border-primary/40 transition-all duration-300"
+                                            onDragStart={(e) => e.preventDefault()}
+                                            onClick={(e) => {
+                                                if (hasDragged) {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    return;
+                                                }
+                                                handleProductClick(product);
+                                            }}
+                                            className="min-w-[85vw] sm:min-w-[320px] max-w-[320px] lg:snap-align-none snap-start bg-linear-to-br from-[#1E1E1E] to-[#151515] rounded-2xl overflow-hidden border border-primary/20 shadow-lg shadow-primary/5 select-none group hover:border-primary/40 transition-all duration-300"
                                         >
-                                            <div className="relative h-36 sm:h-44 overflow-hidden">
+                                            <div className="relative h-36 sm:h-44 overflow-hidden" onDragStart={(e) => e.preventDefault()}>
                                                 {product.image_url ? (
                                                     <Image
                                                         src={product.image_url}
@@ -617,6 +666,7 @@ export default function MenuClient({
                                                         priority={index < 2}
                                                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                                                         sizes="(max-width: 640px) 100vw, 320px"
+                                                        draggable={false}
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full bg-[#2A2A2A] flex items-center justify-center">
