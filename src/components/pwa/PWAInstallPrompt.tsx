@@ -37,6 +37,7 @@ export default function PWAInstallPrompt({ appName, logoUrl, className }: PWAIns
     const isIOS = isBrowser && /ipad|iphone|ipod/.test(navigator.userAgent.toLowerCase()) &&
         !(window as unknown as { MSStream: unknown }).MSStream;
     const isFirefox = isBrowser && navigator.userAgent.toLowerCase().includes('firefox');
+    const isVivaldi = isBrowser && navigator.userAgent.toLowerCase().includes('vivaldi');
 
     useEffect(() => {
         if (!isBrowser) return;
@@ -59,8 +60,10 @@ export default function PWAInstallPrompt({ appName, logoUrl, className }: PWAIns
         }
 
         // Listen for installation prompt
+        let gotPromptEvent = false;
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
+            gotPromptEvent = true;
             setDeferredPrompt(e as BeforeInstallPromptEvent);
             // Delay showing to not be intrusive immediately
             const timer = setTimeout(() => setIsVisible(true), 3000);
@@ -69,21 +72,26 @@ export default function PWAInstallPrompt({ appName, logoUrl, className }: PWAIns
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-        // Manual show for iOS and Firefox (which don't support beforeinstallprompt)
-        // We check isStandalone logic above, so here we just check UA
-        if ((isIOS || isFirefox) && !isStandalone) {
-            const timer = setTimeout(() => setIsVisible(true), 5000);
-            return () => clearTimeout(timer);
-        }
+        // Fallback: if no prompt event fires after 8 seconds, show manual instruction
+        // This covers iOS, Firefox, Vivaldi, and other browsers that don't fire the event
+        const fallbackTimer = setTimeout(() => {
+            if (!gotPromptEvent && !isStandalone) {
+                setIsVisible(true);
+            }
+        }, isIOS ? 5000 : 8000);
 
-        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => {
+            window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+            clearTimeout(fallbackTimer);
+        };
     }, [isBrowser, isIOS, isFirefox]);
 
     const handleInstall = async () => {
-        if (isIOS || isFirefox) return;
+        if (isIOS) return;
 
         if (!deferredPrompt) {
-            console.warn('PWA: Prompt not ready.');
+            // No deferred prompt — show browser-specific instruction
+            // For Vivaldi/Firefox, the install is done via menu
             return;
         }
 
@@ -125,7 +133,7 @@ export default function PWAInstallPrompt({ appName, logoUrl, className }: PWAIns
                     <div className="flex items-start gap-4">
                         <div className="w-16 h-16 rounded-2xl bg-bg-secondary border border-white/10 shrink-0 overflow-hidden shadow-2xl relative flex items-center justify-center">
                             <Image
-                                src={logoUrl || "https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp"}
+                                src={logoUrl || "/icon-192x192.png"}
                                 alt={appName}
                                 fill
                                 className="object-cover"
@@ -137,13 +145,13 @@ export default function PWAInstallPrompt({ appName, logoUrl, className }: PWAIns
                             <p className="text-xs text-text-muted leading-relaxed font-medium">
                                 {isIOS
                                     ? "Compartilhar > Adicionar à Tela de Início para ter acesso rápido."
-                                    : isFirefox
-                                        ? "Abra o menu do Firefox (três pontos) e selecione 'Instalar'."
+                                    : (isFirefox || isVivaldi || !deferredPrompt)
+                                        ? `Abra o menu do navegador (⋮) e selecione 'Instalar app' ou 'Instalar ${appName}'.`
                                         : "Instale como aplicativo nativo para uma experiência premium e mais rápida."}
                             </p>
 
                             <div className="mt-3 flex items-center gap-3">
-                                {(!isIOS && !isFirefox) ? (
+                                {(!isIOS && !isFirefox && !isVivaldi && deferredPrompt) ? (
                                     <button
                                         onClick={handleInstall}
                                         className="bg-primary hover:bg-primary-hover text-white text-xs font-black py-2.5 px-6 rounded-xl transition-all shadow-[0_0_20px_-5px_rgba(255,107,53,0.5)] active:scale-95 flex items-center gap-2"
@@ -153,7 +161,7 @@ export default function PWAInstallPrompt({ appName, logoUrl, className }: PWAIns
                                 ) : (
                                     <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-primary font-bold text-xs flex items-center gap-2">
                                         {isIOS ? <FiShare size={14} /> : <FiDownload size={14} />}
-                                        {isIOS ? 'iOS: Menu Compartilhar' : 'Firefox: Menu > Instalar'}
+                                        {isIOS ? 'iOS: Menu Compartilhar' : 'Menu ⋮ > Instalar app'}
                                     </div>
                                 )}
 

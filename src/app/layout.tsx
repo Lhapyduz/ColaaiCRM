@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   other: {
-    'theme-color': '#ff6b35',
+    'theme-color': '#0f0f0f',
     'mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-title': 'Cola Aí',
     'msapplication-TileColor': '#0f0f0f',
@@ -72,15 +72,15 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://js.stripe.com" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192x192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512x512.png" />
-        <link rel="apple-touch-icon" href="https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp" />
-        <link rel="apple-touch-icon" sizes="180x180" href="https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp" />
-        <meta name="theme-color" content="#ff6b35" />
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icon-192x192.png" />
+        <meta name="theme-color" content="#0f0f0f" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="application-name" content="Cola Aí - Gestão Inteligente" />
         <meta name="apple-mobile-web-app-title" content="Cola Aí" />
-        <meta name="msapplication-navbutton-color" content="#ff6b35" />
+        <meta name="msapplication-navbutton-color" content="#0f0f0f" />
         <meta name="msapplication-starturl" content="/" />
       </head>
       <body>

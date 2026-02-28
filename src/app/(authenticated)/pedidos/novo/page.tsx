@@ -24,6 +24,25 @@ import { logOrderCreated } from '@/lib/actionLogger';
 import { formatCurrency } from '@/hooks/useFormatters';
 import styles from './page.module.css';
 
+// Função para disparar notificação local
+async function sendNewOrderPush(userId: string, orderNumber: number, customerName: string, total: number) {
+    try {
+        const formattedTotal = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total);
+        await fetch('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId,
+                title: '🔔 Novo Pedido!',
+                message: `Pedido #${orderNumber} de ${customerName} — ${formattedTotal}`,
+                url: '/pedidos'
+            })
+        });
+    } catch (e) {
+        console.error('Push error:', e);
+    }
+}
+
 interface Category {
     id: string;
     name: string;
@@ -89,7 +108,7 @@ export default function NovoPedidoPage() {
     const [isDelivery, setIsDelivery] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('money');
     const [isPaid, setIsPaid] = useState(false);
-    const [notes, setNotes] = useState('');
+    const [notes] = useState('');
     const [deliveryFee, setDeliveryFee] = useState(0);
 
     // Coupon state
@@ -121,6 +140,7 @@ export default function NovoPedidoPage() {
         if (user) {
             fetchData();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     const fetchData = async () => {
@@ -187,14 +207,18 @@ export default function NovoPedidoPage() {
         if (!groupLinks) return [];
 
         return groupLinks
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .filter((link: any) => link.addon_groups)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .map((link: any) => ({
                 id: link.addon_groups.id,
                 name: link.addon_groups.name,
                 required: link.addon_groups.required,
                 max_selection: link.addon_groups.max_selection,
                 addons: (link.addon_groups.addon_group_items || [])
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     .filter((item: any) => item.product_addons?.available)
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     .map((item: any) => ({
                         id: item.product_addons.id,
                         name: item.product_addons.name,
@@ -351,7 +375,7 @@ export default function NovoPedidoPage() {
                 discount_type: coupon.discount_type,
                 discount_value: coupon.discount_value
             });
-        } catch (err) {
+        } catch {
             setCouponError('Erro ao validar cupom');
         } finally {
             setValidatingCoupon(false);
@@ -386,6 +410,7 @@ export default function NovoPedidoPage() {
             }
         }, 500);
         return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [customerPhone]);
 
 
@@ -531,12 +556,14 @@ export default function NovoPedidoPage() {
                         console.warn('Phone number too short for loyalty registration:', cleanPhone);
                     } else {
                         // Get or create customer
-                        let { data: customer, error: fetchError } = await supabase
+                        const { data: customerData, error: fetchError } = await supabase
                             .from('customers')
                             .select('id, total_points, total_spent, total_orders')
                             .eq('user_id', user.id)
                             .eq('phone', cleanPhone)
                             .single();
+
+                        let customer = customerData;
 
                         if (fetchError && fetchError.code === 'PGRST116') {
                             // Customer doesn't exist - create new one
@@ -624,6 +651,10 @@ export default function NovoPedidoPage() {
                 }
             }
 
+            if (user) {
+                sendNewOrderPush(user.id, orderNumber, customerName, total);
+            }
+
             toast.success(`Pedido #${orderNumber} criado com sucesso!`);
             router.push('/pedidos');
         } catch (error) {
@@ -639,298 +670,298 @@ export default function NovoPedidoPage() {
         <div className={styles.container}>
             {/* Header */}
             <div className={styles.header}>
-                    <button className={styles.backBtn} onClick={() => router.back()}>
-                        <FiArrowLeft />
-                    </button>
-                    <div>
-                        <h1 className={styles.title}>Novo Pedido</h1>
-                        <p className={styles.subtitle}>Adicione os produtos e informações do cliente</p>
-                    </div>
+                <button className={styles.backBtn} onClick={() => router.back()}>
+                    <FiArrowLeft />
+                </button>
+                <div>
+                    <h1 className={styles.title}>Novo Pedido</h1>
+                    <p className={styles.subtitle}>Adicione os produtos e informações do cliente</p>
                 </div>
+            </div>
 
-                <div className={styles.content}>
-                    {/* Products Section */}
-                    <div className={styles.productsSection}>
-                        {/* Categories */}
-                        <div className={styles.categories}>
-                            {categories.map((category) => (
-                                <button
-                                    key={category.id}
-                                    className={`${styles.categoryBtn} ${selectedCategory === category.id ? styles.active : ''}`}
-                                    onClick={() => setSelectedCategory(category.id)}
-                                >
-                                    <span className={styles.categoryIcon}>{category.icon}</span>
-                                    <span className={styles.categoryName}>{category.name}</span>
-                                </button>
+            <div className={styles.content}>
+                {/* Products Section */}
+                <div className={styles.productsSection}>
+                    {/* Categories */}
+                    <div className={styles.categories}>
+                        {categories.map((category) => (
+                            <button
+                                key={category.id}
+                                className={`${styles.categoryBtn} ${selectedCategory === category.id ? styles.active : ''}`}
+                                onClick={() => setSelectedCategory(category.id)}
+                            >
+                                <span className={styles.categoryIcon}>{category.icon}</span>
+                                <span className={styles.categoryName}>{category.name}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Products Grid */}
+                    {loading ? (
+                        <div className={styles.productsGrid}>
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className="skeleton" style={{ height: 100, borderRadius: 12 }} />
                             ))}
                         </div>
+                    ) : filteredProducts.length > 0 ? (
+                        <div className={styles.productsGrid}>
+                            {filteredProducts.map((product) => {
+                                const inCart = cart.find(item => item.product.id === product.id);
+                                return (
+                                    <Card
+                                        key={product.id}
+                                        className={`${styles.productCard} ${inCart ? styles.inCart : ''}`}
+                                        onClick={() => handleAddToCart(product)}
+                                        hoverable
+                                    >
+                                        <div className={styles.productInfo}>
+                                            <span className={styles.productName}>{product.name}</span>
+                                            <span className={styles.productPrice}>{formatCurrency(product.price)}</span>
+                                        </div>
+                                        {inCart && (
+                                            <span className={styles.cartBadge}>{inCart.quantity}</span>
+                                        )}
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className={styles.emptyProducts}>
+                            <p>Nenhum produto nesta categoria</p>
+                        </div>
+                    )}
+                </div>
 
-                        {/* Products Grid */}
-                        {loading ? (
-                            <div className={styles.productsGrid}>
-                                {[1, 2, 3, 4].map(i => (
-                                    <div key={i} className="skeleton" style={{ height: 100, borderRadius: 12 }} />
-                                ))}
-                            </div>
-                        ) : filteredProducts.length > 0 ? (
-                            <div className={styles.productsGrid}>
-                                {filteredProducts.map((product) => {
-                                    const inCart = cart.find(item => item.product.id === product.id);
-                                    return (
-                                        <Card
-                                            key={product.id}
-                                            className={`${styles.productCard} ${inCart ? styles.inCart : ''}`}
-                                            onClick={() => handleAddToCart(product)}
-                                            hoverable
-                                        >
-                                            <div className={styles.productInfo}>
-                                                <span className={styles.productName}>{product.name}</span>
-                                                <span className={styles.productPrice}>{formatCurrency(product.price)}</span>
-                                            </div>
-                                            {inCart && (
-                                                <span className={styles.cartBadge}>{inCart.quantity}</span>
-                                            )}
-                                        </Card>
-                                    );
-                                })}
+                {/* Cart Section */}
+                <div className={styles.cartSection}>
+                    <Card className={styles.cartCard}>
+                        <h2 className={styles.cartTitle}>Carrinho</h2>
+
+                        {cart.length === 0 ? (
+                            <div className={styles.emptyCart}>
+                                <p>Adicione produtos ao pedido</p>
                             </div>
                         ) : (
-                            <div className={styles.emptyProducts}>
-                                <p>Nenhum produto nesta categoria</p>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Cart Section */}
-                    <div className={styles.cartSection}>
-                        <Card className={styles.cartCard}>
-                            <h2 className={styles.cartTitle}>Carrinho</h2>
-
-                            {cart.length === 0 ? (
-                                <div className={styles.emptyCart}>
-                                    <p>Adicione produtos ao pedido</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className={styles.cartItems}>
-                                        {cart.map((item, index) => {
-                                            const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
-                                            const itemTotal = (item.product.price + addonTotal) * item.quantity;
-                                            return (
-                                                <div key={`${item.product.id}-${index}`} className={styles.cartItem}>
-                                                    <div className={styles.cartItemInfo}>
-                                                        <span className={styles.cartItemName}>
-                                                            {item.product.name}
-                                                            {item.addons.length > 0 && (
-                                                                <span style={{ fontSize: '0.75rem', color: '#888', display: 'block' }}>
-                                                                    + {item.addons.map(a => a.name).join(', ')}
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                        <span className={styles.cartItemPrice}>
-                                                            {formatCurrency(itemTotal)}
-                                                        </span>
-                                                    </div>
-                                                    <div className={styles.cartItemActions}>
-                                                        <div className={styles.quantityControl}>
-                                                            <button onClick={() => updateQuantity(item.product.id, -1)}>
-                                                                <FiMinus />
-                                                            </button>
-                                                            <span>{item.quantity}</span>
-                                                            <button onClick={() => updateQuantity(item.product.id, 1)}>
-                                                                <FiPlus />
-                                                            </button>
-                                                        </div>
-                                                        <button
-                                                            className={styles.removeBtn}
-                                                            onClick={() => removeFromCart(item.product.id)}
-                                                        >
-                                                            <FiTrash2 />
+                            <>
+                                <div className={styles.cartItems}>
+                                    {cart.map((item, index) => {
+                                        const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
+                                        const itemTotal = (item.product.price + addonTotal) * item.quantity;
+                                        return (
+                                            <div key={`${item.product.id}-${index}`} className={styles.cartItem}>
+                                                <div className={styles.cartItemInfo}>
+                                                    <span className={styles.cartItemName}>
+                                                        {item.product.name}
+                                                        {item.addons.length > 0 && (
+                                                            <span style={{ fontSize: '0.75rem', color: '#888', display: 'block' }}>
+                                                                + {item.addons.map(a => a.name).join(', ')}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <span className={styles.cartItemPrice}>
+                                                        {formatCurrency(itemTotal)}
+                                                    </span>
+                                                </div>
+                                                <div className={styles.cartItemActions}>
+                                                    <div className={styles.quantityControl}>
+                                                        <button onClick={() => updateQuantity(item.product.id, -1)}>
+                                                            <FiMinus />
+                                                        </button>
+                                                        <span>{item.quantity}</span>
+                                                        <button onClick={() => updateQuantity(item.product.id, 1)}>
+                                                            <FiPlus />
                                                         </button>
                                                     </div>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Observação..."
-                                                        value={item.notes}
-                                                        onChange={(e) => updateItemNotes(item.product.id, e.target.value)}
-                                                        className={styles.itemNotes}
-                                                    />
+                                                    <button
+                                                        className={styles.removeBtn}
+                                                        onClick={() => removeFromCart(item.product.id)}
+                                                    >
+                                                        <FiTrash2 />
+                                                    </button>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    <div className={styles.cartDivider} />
-
-                                    {/* Customer Info */}
-                                    <div className={styles.customerSection}>
-                                        <Input
-                                            label="Nome do Cliente"
-                                            placeholder="Nome"
-                                            value={customerName}
-                                            onChange={(e) => setCustomerName(e.target.value)}
-                                            leftIcon={<FiUser />}
-                                            required
-                                        />
-
-                                        <Input
-                                            label="Telefone"
-                                            placeholder="(00) 00000-0000"
-                                            value={customerPhone}
-                                            onChange={(e) => setCustomerPhone(e.target.value)}
-                                            leftIcon={<FiPhone />}
-                                        />
-
-                                        <div className={styles.deliveryToggle}>
-                                            <button
-                                                className={`${styles.toggleBtn} ${!isDelivery ? styles.active : ''}`}
-                                                onClick={() => setIsDelivery(false)}
-                                            >
-                                                🏪 Balcão
-                                            </button>
-                                            <button
-                                                className={`${styles.toggleBtn} ${isDelivery ? styles.active : ''}`}
-                                                onClick={() => setIsDelivery(true)}
-                                            >
-                                                🚚 Entrega
-                                            </button>
-                                        </div>
-
-                                        {isDelivery && (
-                                            <>
-                                                <Input
-                                                    label="Endereço"
-                                                    placeholder="Rua, número, bairro..."
-                                                    value={customerAddress}
-                                                    onChange={(e) => setCustomerAddress(e.target.value)}
-                                                    leftIcon={<FiMapPin />}
+                                                <input
+                                                    type="text"
+                                                    placeholder="Observação..."
+                                                    value={item.notes}
+                                                    onChange={(e) => updateItemNotes(item.product.id, e.target.value)}
+                                                    className={styles.itemNotes}
                                                 />
-                                                <Input
-                                                    label="Taxa de Entrega"
-                                                    type="number"
-                                                    placeholder="0,00"
-                                                    value={deliveryFee.toString()}
-                                                    onChange={(e) => setDeliveryFee(Number(e.target.value))}
-                                                />
-                                            </>
-                                        )}
-                                    </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
 
-                                    <div className={styles.cartDivider} />
+                                <div className={styles.cartDivider} />
 
-                                    {/* Payment */}
-                                    <div className={styles.paymentSection}>
-                                        <label className={styles.sectionLabel}>Forma de Pagamento</label>
-                                        <div className={styles.paymentMethods}>
-                                            {paymentMethods.map((method) => (
-                                                <button
-                                                    key={method.value}
-                                                    className={`${styles.paymentBtn} ${paymentMethod === method.value ? styles.active : ''}`}
-                                                    onClick={() => setPaymentMethod(method.value)}
-                                                >
-                                                    {method.label}
-                                                </button>
-                                            ))}
-                                        </div>
+                                {/* Customer Info */}
+                                <div className={styles.customerSection}>
+                                    <Input
+                                        label="Nome do Cliente"
+                                        placeholder="Nome"
+                                        value={customerName}
+                                        onChange={(e) => setCustomerName(e.target.value)}
+                                        leftIcon={<FiUser />}
+                                        required
+                                    />
 
+                                    <Input
+                                        label="Telefone"
+                                        placeholder="(00) 00000-0000"
+                                        value={customerPhone}
+                                        onChange={(e) => setCustomerPhone(e.target.value)}
+                                        leftIcon={<FiPhone />}
+                                    />
+
+                                    <div className={styles.deliveryToggle}>
                                         <button
-                                            className={`${styles.paidToggle} ${isPaid ? styles.active : ''}`}
-                                            onClick={() => setIsPaid(!isPaid)}
+                                            className={`${styles.toggleBtn} ${!isDelivery ? styles.active : ''}`}
+                                            onClick={() => setIsDelivery(false)}
                                         >
-                                            <span className={styles.checkbox}>
-                                                {isPaid && <FiCheck />}
-                                            </span>
-                                            Pagamento Recebido
+                                            🏪 Balcão
+                                        </button>
+                                        <button
+                                            className={`${styles.toggleBtn} ${isDelivery ? styles.active : ''}`}
+                                            onClick={() => setIsDelivery(true)}
+                                        >
+                                            🚚 Entrega
                                         </button>
                                     </div>
 
-                                    <div className={styles.cartDivider} />
-
-                                    {/* Coupon Section - only show if coupons are enabled */}
-                                    {appSettings?.coupons_enabled !== false && (
-                                        <div className={styles.couponSection}>
-                                            <label className={styles.sectionLabel}>Cupom de Desconto</label>
-                                            <div className={styles.couponInput}>
-                                                <Input
-                                                    placeholder="Digite o cupom"
-                                                    value={couponCode}
-                                                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                                    leftIcon={<FiTag />}
-                                                    disabled={!!appliedCoupon}
-                                                />
-                                                {appliedCoupon ? (
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}
-                                                    >
-                                                        Remover
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={validateCoupon}
-                                                        isLoading={validatingCoupon}
-                                                        disabled={!couponCode.trim()}
-                                                    >
-                                                        Aplicar
-                                                    </Button>
-                                                )}
-                                            </div>
-                                            {couponError && <p className={styles.couponError}>{couponError}</p>}
-                                            {appliedCoupon && (
-                                                <p className={styles.couponSuccess}>
-                                                    ✓ Desconto de {appliedCoupon.discount_type === 'percentage'
-                                                        ? `${appliedCoupon.discount_value}%`
-                                                        : formatCurrency(appliedCoupon.discount_value)} aplicado!
-                                                </p>
-                                            )}
-                                        </div>
+                                    {isDelivery && (
+                                        <>
+                                            <Input
+                                                label="Endereço"
+                                                placeholder="Rua, número, bairro..."
+                                                value={customerAddress}
+                                                onChange={(e) => setCustomerAddress(e.target.value)}
+                                                leftIcon={<FiMapPin />}
+                                            />
+                                            <Input
+                                                label="Taxa de Entrega"
+                                                type="number"
+                                                placeholder="0,00"
+                                                value={deliveryFee.toString()}
+                                                onChange={(e) => setDeliveryFee(Number(e.target.value))}
+                                            />
+                                        </>
                                     )}
+                                </div>
 
-                                    {/* Totals */}
-                                    <div className={styles.totals}>
-                                        <div className={styles.totalRow}>
-                                            <span>Subtotal</span>
-                                            <span>{formatCurrency(subtotal)}</span>
-                                        </div>
-                                        {appliedCoupon && (
-                                            <div className={`${styles.totalRow} ${styles.discountRow}`}>
-                                                <span>🎫 {appliedCoupon.code}</span>
-                                                <span>-{formatCurrency(discount)}</span>
-                                            </div>
-                                        )}
-                                        {isDelivery && deliveryFee > 0 && (
-                                            <div className={styles.totalRow}>
-                                                <span>Taxa de Entrega</span>
-                                                <span>{formatCurrency(deliveryFee)}</span>
-                                            </div>
-                                        )}
-                                        <div className={`${styles.totalRow} ${styles.grandTotal}`}>
-                                            <span>Total</span>
-                                            <span>{formatCurrency(total)}</span>
-                                        </div>
-                                        {loyaltyCustomer && (
-                                            <div className={styles.loyaltyInfo}>
-                                                <FiGift />
-                                                <span>Cliente: {loyaltyCustomer.name} • {loyaltyCustomer.total_points} pts</span>
-                                            </div>
-                                        )}
+                                <div className={styles.cartDivider} />
+
+                                {/* Payment */}
+                                <div className={styles.paymentSection}>
+                                    <label className={styles.sectionLabel}>Forma de Pagamento</label>
+                                    <div className={styles.paymentMethods}>
+                                        {paymentMethods.map((method) => (
+                                            <button
+                                                key={method.value}
+                                                className={`${styles.paymentBtn} ${paymentMethod === method.value ? styles.active : ''}`}
+                                                onClick={() => setPaymentMethod(method.value)}
+                                            >
+                                                {method.label}
+                                            </button>
+                                        ))}
                                     </div>
 
-                                    <Button
-                                        fullWidth
-                                        size="lg"
-                                        onClick={handleSubmit}
-                                        isLoading={submitting}
-                                        disabled={!customerName || cart.length === 0}
+                                    <button
+                                        className={`${styles.paidToggle} ${isPaid ? styles.active : ''}`}
+                                        onClick={() => setIsPaid(!isPaid)}
                                     >
-                                        Criar Pedido
-                                    </Button>
-                                </>
-                            )}
-                        </Card>
-                    </div>
+                                        <span className={styles.checkbox}>
+                                            {isPaid && <FiCheck />}
+                                        </span>
+                                        Pagamento Recebido
+                                    </button>
+                                </div>
+
+                                <div className={styles.cartDivider} />
+
+                                {/* Coupon Section - only show if coupons are enabled */}
+                                {appSettings?.coupons_enabled !== false && (
+                                    <div className={styles.couponSection}>
+                                        <label className={styles.sectionLabel}>Cupom de Desconto</label>
+                                        <div className={styles.couponInput}>
+                                            <Input
+                                                placeholder="Digite o cupom"
+                                                value={couponCode}
+                                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                                leftIcon={<FiTag />}
+                                                disabled={!!appliedCoupon}
+                                            />
+                                            {appliedCoupon ? (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => { setAppliedCoupon(null); setCouponCode(''); }}
+                                                >
+                                                    Remover
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={validateCoupon}
+                                                    isLoading={validatingCoupon}
+                                                    disabled={!couponCode.trim()}
+                                                >
+                                                    Aplicar
+                                                </Button>
+                                            )}
+                                        </div>
+                                        {couponError && <p className={styles.couponError}>{couponError}</p>}
+                                        {appliedCoupon && (
+                                            <p className={styles.couponSuccess}>
+                                                ✓ Desconto de {appliedCoupon.discount_type === 'percentage'
+                                                    ? `${appliedCoupon.discount_value}%`
+                                                    : formatCurrency(appliedCoupon.discount_value)} aplicado!
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Totals */}
+                                <div className={styles.totals}>
+                                    <div className={styles.totalRow}>
+                                        <span>Subtotal</span>
+                                        <span>{formatCurrency(subtotal)}</span>
+                                    </div>
+                                    {appliedCoupon && (
+                                        <div className={`${styles.totalRow} ${styles.discountRow}`}>
+                                            <span>🎫 {appliedCoupon.code}</span>
+                                            <span>-{formatCurrency(discount)}</span>
+                                        </div>
+                                    )}
+                                    {isDelivery && deliveryFee > 0 && (
+                                        <div className={styles.totalRow}>
+                                            <span>Taxa de Entrega</span>
+                                            <span>{formatCurrency(deliveryFee)}</span>
+                                        </div>
+                                    )}
+                                    <div className={`${styles.totalRow} ${styles.grandTotal}`}>
+                                        <span>Total</span>
+                                        <span>{formatCurrency(total)}</span>
+                                    </div>
+                                    {loyaltyCustomer && (
+                                        <div className={styles.loyaltyInfo}>
+                                            <FiGift />
+                                            <span>Cliente: {loyaltyCustomer.name} • {loyaltyCustomer.total_points} pts</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <Button
+                                    fullWidth
+                                    size="lg"
+                                    onClick={handleSubmit}
+                                    isLoading={submitting}
+                                    disabled={!customerName || cart.length === 0}
+                                >
+                                    Criar Pedido
+                                </Button>
+                            </>
+                        )}
+                    </Card>
                 </div>
+            </div>
 
             {/* Addon Selection Modal */}
             {showAddonModal && pendingProduct && (

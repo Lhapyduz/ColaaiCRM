@@ -27,6 +27,24 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUpdateOrderStatus, useUpdatePaymentStatus, useDeleteOrder } from '@/hooks/useOrderMutations';
 import { updateLoyaltyPoints } from '@/app/actions/loyalty';
 
+// Função para disparar notificação local de status
+async function sendStatusChangePush(userId: string, orderNumber: number, status: string) {
+    try {
+        await fetch('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId,
+                title: `Mudança no Pedido #${orderNumber}`,
+                message: `O status do pedido mudou para: ${status}`,
+                url: '/pedidos'
+            })
+        });
+    } catch (e) {
+        console.error('Push error:', e);
+    }
+}
+
 interface Order {
     id: string;
     order_number: number;
@@ -184,6 +202,9 @@ export default function PedidosPage() {
                 onSuccess: () => {
                     if (sendNotification && order?.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
                         sendWhatsAppNotification(order, newStatus);
+                    }
+                    if (user && order) {
+                        sendStatusChangePush(user.id, order.order_number, newStatus);
                     }
                 },
             }

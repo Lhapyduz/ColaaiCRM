@@ -87,5 +87,15 @@ export async function createOrder(rawOrder: z.infer<typeof OrderSchema>) {
 
     revalidatePath('/pedidos');
     revalidatePath('/dashboard');
+
+    try {
+        // Disparar a notificação push via server-side de forma separada
+        const { notifyNewOrder } = await import('@/lib/pushNotification');
+        // Usamos catch pra evitar que um erro no firebase/web-push jogue exceção pro cliente
+        notifyNewOrder(order.user_id, nextOrderNumber, order.customerName, order.total).catch(console.error);
+    } catch (e) {
+        console.error('Failed to load push library or send push:', e);
+    }
+
     return { success: true, orderId: orderData.id, orderNumber: nextOrderNumber };
 }

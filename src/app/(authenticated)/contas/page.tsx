@@ -50,7 +50,7 @@ export default function ContasPage() {
     const [filterStatus, setFilterStatus] = useState<string>('');
     const [showModal, setShowModal] = useState(false);
     const [editingBill, setEditingBill] = useState<Bill | null>(null);
-    const [form, setForm] = useState({ type: 'payable' as 'payable' | 'receivable', description: '', category: '', amount: 0, due_date: '', supplier_customer: '', notes: '', recurrence: 'none' as RecurrenceType, recurrence_end_date: '' });
+    const [form, setForm] = useState({ type: 'payable' as 'payable' | 'receivable', description: '', category: '', amount: '' as string | number, due_date: '', supplier_customer: '', notes: '', recurrence: 'none' as RecurrenceType, recurrence_end_date: '' });
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [newCategory, setNewCategory] = useState({ name: '', type: 'both' as 'payable' | 'receivable' | 'both', icon: '📁', color: '#6366f1' });
 
@@ -113,7 +113,7 @@ export default function ContasPage() {
         if (!user) return;
         const billData = {
             user_id: user.id, type: form.type, description: form.description, category: form.category,
-            amount: form.amount, due_date: form.due_date, supplier_customer: form.supplier_customer || null,
+            amount: Number(form.amount) || 0, due_date: form.due_date, supplier_customer: form.supplier_customer || null,
             notes: form.notes || null, status: 'pending',
             recurrence: form.recurrence || 'none',
             recurrence_end_date: form.recurrence_end_date || null
@@ -178,7 +178,7 @@ export default function ContasPage() {
         fetchCategories();
     };
 
-    const resetForm = () => { setForm({ type: 'payable', description: '', category: '', amount: 0, due_date: '', supplier_customer: '', notes: '', recurrence: 'none', recurrence_end_date: '' }); setEditingBill(null); };
+    const resetForm = () => { setForm({ type: 'payable', description: '', category: '', amount: '', due_date: '', supplier_customer: '', notes: '', recurrence: 'none', recurrence_end_date: '' }); setEditingBill(null); };
     const openEdit = (bill: Bill) => { setEditingBill(bill); setForm({ type: bill.type, description: bill.description, category: bill.category, amount: bill.amount, due_date: bill.due_date, supplier_customer: bill.supplier_customer || '', notes: bill.notes || '', recurrence: (bill.recurrence || 'none') as RecurrenceType, recurrence_end_date: bill.recurrence_end_date || '' }); setShowModal(true); };
 
     const recurrenceLabels: Record<RecurrenceType, string> = { none: 'Única vez', weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual' };
@@ -314,7 +314,7 @@ export default function ContasPage() {
                                     <button type="button" onClick={() => setShowCategoryModal(true)} className="px-3 py-3 bg-primary text-white rounded-md hover:bg-primary-hover transition-all" title="Criar categoria"><FiPlus /></button>
                                 </div>
                             </div>
-                            <div><label className="block text-[0.8125rem] font-medium text-text-secondary mb-2">Valor (R$)</label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })} min={0} step={0.01} /></div>
+                            <div><label className="block text-[0.8125rem] font-medium text-text-secondary mb-2">Valor (R$)</label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value === '' ? '' : parseFloat(e.target.value) })} min={0} step={0.01} placeholder="Digite o valor" /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-4 max-md:grid-cols-1">
                             <div><label className="block text-[0.8125rem] font-medium text-text-secondary mb-2">Vencimento</label><Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} /></div>

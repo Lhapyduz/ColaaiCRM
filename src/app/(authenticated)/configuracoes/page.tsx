@@ -38,6 +38,7 @@ import {
 import { revalidateStoreMenu } from '@/app/actions/menu';
 import styles from './page.module.css';
 import OpeningHoursScheduler from '@/components/settings/OpeningHoursScheduler';
+import { PushNotificationPrompt } from '@/components/pwa/PushNotificationPrompt';
 
 const colorPresets = [
     { name: 'Laranja', primary: '#ff6b35', secondary: '#2d3436' },
@@ -317,6 +318,18 @@ function ConfiguracoesContent() {
                             <div className={styles.formGroup}><label><FaWhatsapp style={{ marginRight: '8px', color: '#25D366' }} />WhatsApp</label><Input value={formatWhatsApp(whatsappNumber)} onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))} placeholder="(11) 99999-9999" maxLength={16} /><span className={styles.hint}>Usado para receber pedidos via WhatsApp</span></div>
                         </div>
                         <div className={styles.formGroup}><label>Logo do Negócio</label><div className={styles.logoUpload}><div className={styles.currentLogo}>{userSettings?.logo_url ? <div className="relative w-full h-full"><Image src={userSettings.logo_url} alt="Logo" fill className="object-contain" /></div> : <span className={styles.logoEmoji}>🌭</span>}</div><div className={styles.logoActions}><input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} hidden /><Button variant="outline" leftIcon={<FiUpload />} onClick={() => fileInputRef.current?.click()} isLoading={uploading}>{userSettings?.logo_url ? 'Trocar' : 'Carregar'}</Button>{userSettings?.logo_url && <Button variant="danger" leftIcon={<FiTrash2 />} onClick={handleRemoveLogo}>Remover</Button>}</div></div></div>
+
+                        <div className={styles.sectionHeader} style={{ marginTop: '2rem' }}><h2>Notificações</h2><p>Gerencie os alertas e avisos do sistema</p></div>
+                        <div className={styles.formGroup}>
+                            <label>Notificações Push no Computador/Celular</label>
+                            <div className="bg-bg-tertiary border border-border p-4 rounded-xl flex flex-col items-start gap-4">
+                                <p className="text-sm text-text-secondary m-0">Ative para receber avisos em tempo real e com som sempre que um novo pedido chegar.</p>
+                                <div className="w-full sm:w-auto">
+                                    <PushNotificationPrompt />
+                                </div>
+                            </div>
+                        </div>
+
                         <div className={styles.saveSection}><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={handleSave} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Alterações'}</Button></div>
                     </div>
                 );
