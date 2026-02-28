@@ -20,10 +20,10 @@ export default function Home() {
       if (user) {
         router.push('/dashboard');
       } else {
-        router.push('/login');
+        router.push('/vendas');
       }
     } else if (timedOut) {
-      router.push('/login');
+      router.push('/vendas');
     }
   }, [user, loading, router, timedOut]);
 

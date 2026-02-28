@@ -68,6 +68,7 @@ export default function VendasPage() {
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
     const [openFaq, setOpenFaq] = useState<number | null>(null);
     const [showFomo, setShowFomo] = useState(false);
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
     React.useEffect(() => {
         const timer = setTimeout(() => setShowFomo(true), 5000);
@@ -77,7 +78,7 @@ export default function VendasPage() {
     const jsonLd = { "@context": "https://schema.org", "@graph": [{ "@type": "Organization", "@id": "https://colaai.com.br/#organization", "name": "Cola Aí", "url": "https://colaai.com.br", "logo": { "@type": "ImageObject", "url": "https://colaai.com.br/logo.png" } }, { "@type": "WebSite", "@id": "https://colaai.com.br/#website", "url": "https://colaai.com.br", "name": "Cola Aí", "publisher": { "@id": "https://colaai.com.br/#organization" } }, { "@type": "SoftwareApplication", "name": "Cola Aí", "applicationCategory": "BusinessApplication", "operatingSystem": "Web", "offers": { "@type": "AggregateOffer", "priceCurrency": "BRL", "lowPrice": "49", "highPrice": "149", "offerCount": "3" }, "aggregateRating": { "@type": "AggregateRating", "ratingValue": "5", "ratingCount": "3", "bestRating": "5", "worstRating": "1" } }, { "@type": "FAQPage", "mainEntity": faqs.map(faq => ({ "@type": "Question", "name": faq.question, "acceptedAnswer": { "@type": "Answer", "text": faq.answer } })) }] };
 
     return (
-        <div className="min-h-screen bg-bg-primary overflow-x-hidden font-sans selection:bg-primary/20">
+        <div className="min-h-screen bg-bg-primary overflow-x-hidden font-sans selection:bg-primary/20 relative">
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
             {/* Background Texture/Gradient */}
@@ -160,7 +161,10 @@ export default function VendasPage() {
                                 Quero Testar Grátis Agora
                                 <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
                             </Link>
-                            <button className="px-8 py-4 bg-bg-tertiary text-text-primary rounded-xl font-bold text-lg border border-border hover:border-text-secondary transition-all flex items-center justify-center gap-2">
+                            <button
+                                onClick={() => setIsVideoModalOpen(true)}
+                                className="px-8 py-4 bg-bg-tertiary text-text-primary rounded-xl font-bold text-lg border border-border hover:border-text-secondary transition-all flex items-center justify-center gap-2"
+                            >
                                 <FiPlay className="fill-current" />
                                 Ver como funciona
                             </button>
@@ -454,6 +458,46 @@ export default function VendasPage() {
                             <FiX className="text-text-muted" />
                         </button>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Video Modal */}
+            <AnimatePresence>
+                {isVideoModalOpen && (
+                    <div className="fixed inset-0 z-sticky flex items-center justify-center p-4 sm:p-6" style={{ pointerEvents: 'auto' }}>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsVideoModalOpen(false)}
+                            className="absolute inset-0 bg-black/80 backdrop-blur-sm cursor-pointer"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+                        >
+                            <button
+                                onClick={() => setIsVideoModalOpen(false)}
+                                className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center bg-black/50 hover:bg-black/80 text-white rounded-full transition-colors backdrop-blur-md"
+                            >
+                                <FiX className="text-xl" />
+                            </button>
+
+                            {/* Placeholder/Mock of Video Player since we don't have a real URL right now. */}
+                            {/* Change the YouTube ID in the src below when you have the real video */}
+                            <iframe
+                                className="w-full h-full"
+                                src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
+                                title="Cola Aí - Demo"
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerPolicy="strict-origin-when-cross-origin"
+                                allowFullScreen
+                            ></iframe>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
         </div>
