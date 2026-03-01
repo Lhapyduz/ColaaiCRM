@@ -19,7 +19,7 @@ interface LoyaltySettings { id: string; points_per_real: number; min_points_to_r
 interface AppSettings { id: string; loyalty_enabled: boolean; coupons_enabled: boolean; }
 type TabType = 'customers' | 'rewards' | 'settings';
 
-export default function FidelidadePage() {
+export function FidelidadeTab() {
     const { user } = useAuth();
     const { plan, canAccess } = useSubscription();
     const [activeTab, setActiveTab] = useState<TabType>('customers');

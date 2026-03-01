@@ -29,7 +29,7 @@ interface Coupon {
     first_order_only: boolean;
 }
 
-export default function CuponsPage() {
+export function CuponsTab() {
     const { user } = useAuth();
     const { plan, canAccess } = useSubscription();
     const [coupons, setCoupons] = useState<Coupon[]>([]);
