@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import {
     ArrowLeft, Printer, ReceiptText, Clock, Users, History,
     PlusCircle, Minus, Plus, CreditCard, Banknote, QrCode,
-    CheckCircle, Share, Info, Ticket, UtensilsCrossed, Loader2
+    CheckCircle, Share, Info, Ticket, UtensilsCrossed, Loader2, Search
 } from 'lucide-react';
 import { useFormatters } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
@@ -49,6 +49,7 @@ export default function MesaDetailsPage() {
 
     const [view, setView] = useState<'detalhes' | 'pagamento'>('detalhes');
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const loadMesa = async () => {
         setLoading(true);
@@ -100,8 +101,24 @@ export default function MesaDetailsPage() {
     }, [user]);
 
     const filteredProducts = useMemo(() => {
-        return products.filter(p => p.category_id === activeCategory);
-    }, [activeCategory, products]);
+        const normalize = (text: string) =>
+            text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+        const searchNormalized = normalize(searchTerm);
+
+        return products.filter(p => {
+            const productNameNormalized = normalize(p.name);
+            const matchesSearch = productNameNormalized.includes(searchNormalized);
+
+            // Se houver busca, ignoramos o filtro de categoria (busca global)
+            if (searchTerm.trim() !== '') {
+                return matchesSearch;
+            }
+
+            // Se não houver busca, filtramos por categoria
+            return p.category_id === activeCategory;
+        });
+    }, [activeCategory, products, searchTerm]);
 
     // Payment state
     const [splitCount, setSplitCount] = useState(1);
@@ -577,7 +594,29 @@ export default function MesaDetailsPage() {
                                 <h3 className="text-text-primary font-bold">Adicionar Pedido</h3>
                                 <PlusCircle className="text-text-muted w-5 h-5" />
                             </div>
-                            <div className="p-4">
+                            <div className="p-4 space-y-4">
+                                {/* Search Box */}
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Search className="h-4 text-text-muted group-focus-within:text-primary transition-colors" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar produto..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full bg-bg-tertiary border border-border rounded-xl pl-10 pr-4 py-2 text-sm text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                                    />
+                                    {searchTerm && (
+                                        <button
+                                            onClick={() => setSearchTerm('')}
+                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-text-muted hover:text-text-primary cursor-pointer"
+                                        >
+                                            <span className="text-lg">×</span>
+                                        </button>
+                                    )}
+                                </div>
+
                                 {/* Category Tabs */}
                                 <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
                                     {categories.map(cat => (
