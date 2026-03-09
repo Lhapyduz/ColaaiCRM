@@ -20,7 +20,7 @@ function MainLayoutContent({ children }: MainLayoutProps) {
         <div className="flex min-h-screen">
             <Sidebar />
             <main className={cn(
-                "flex-1 p-6 bg-bg-primary will-change-[margin-left]",
+                "relative flex-1 p-6 bg-bg-primary will-change-[margin-left]",
                 // Only enable transitions after hydration to prevent FOUC
                 isHydrated ? "transition-[margin-left] duration-normal" : "",
                 "max-md:ml-0 max-md:pt-20 max-md:px-4 max-md:pb-4",
@@ -37,17 +37,27 @@ function MainLayoutContent({ children }: MainLayoutProps) {
 export default function MainLayout({ children }: MainLayoutProps) {
     const { loading, userSettings } = useAuth();
     const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+    const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Safety timeout: if loading takes more than 10s, force continue
     useEffect(() => {
+        if (timerRef.current) {
+            clearTimeout(timerRef.current);
+            timerRef.current = null;
+        }
+
         if (loading) {
-            const timer = setTimeout(() => {
+            timerRef.current = setTimeout(() => {
                 setLoadingTimedOut(true);
             }, 10000);
-            return () => clearTimeout(timer);
-        } else {
-            setLoadingTimedOut(false);
         }
+
+        return () => {
+            if (timerRef.current) {
+                clearTimeout(timerRef.current);
+                timerRef.current = null;
+            }
+        };
     }, [loading]);
 
     // Apply theme settings

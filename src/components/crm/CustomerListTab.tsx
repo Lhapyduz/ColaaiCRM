@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiSearch, FiMessageCircle, FiFilter, FiUser, FiClock, FiDollarSign, FiShoppingBag, FiCheck } from 'react-icons/fi';
+import { FiSearch, FiMessageCircle, FiFilter, FiUser, FiClock, FiShoppingBag } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -135,7 +135,7 @@ export function CustomerListTab() {
     return (
         <div className="flex flex-col gap-6">
             <Card className="flex items-center justify-between gap-4 flex-wrap p-4!">
-                <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+                <div className="flex items-center gap-3 flex-1 min-w-sidebar">
                     <Input
                         placeholder="Buscar por nome ou telefone..."
                         leftIcon={<FiSearch />}

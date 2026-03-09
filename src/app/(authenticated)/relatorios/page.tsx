@@ -656,7 +656,7 @@ export default function RelatoriosPage() {
                             document={
                                 <RelatorioPDFCompleto
                                     reportData={{
-                                        businessName: userSettings?.app_name || 'Ligeirinho Hotdog',
+                                        businessName: userSettings?.app_name || 'Cola Aí',
                                         periodoSelecionado: periodLabels[period],
                                         secoes: [
                                             {

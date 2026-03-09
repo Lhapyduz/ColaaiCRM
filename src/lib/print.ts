@@ -1,10 +1,6 @@
 // Print Utility Functions
 // Handles printing receipts and kitchen tickets
 
-import { createRoot } from 'react-dom/client';
-import React from 'react';
-import OrderReceipt from '@/components/print/OrderReceipt';
-import KitchenReceipt from '@/components/print/KitchenReceipt';
 import { formatCurrency } from '@/hooks/useFormatters';
 
 interface OrderItem {
@@ -33,6 +29,7 @@ interface OrderData {
     created_at: string;
     items: OrderItem[];
     coupon_discount?: number;
+    service_fee?: number;
 }
 
 interface PrintOptions {
@@ -204,6 +201,7 @@ function generateCustomerReceiptHTML(order: OrderData, appName: string): string 
             <div style="margin: 6px 0;">
                 <div style="display: flex; justify-content: space-between; font-size: 12px;"><span>Subtotal</span><span>${formatCurrency(order.subtotal)}</span></div>
                 ${order.delivery_fee > 0 ? `<div style="display: flex; justify-content: space-between; font-size: 12px;"><span>Taxa de Entrega</span><span>${formatCurrency(order.delivery_fee)}</span></div>` : ''}
+                ${(order.service_fee && order.service_fee > 0) ? `<div style="display: flex; justify-content: space-between; font-size: 12px;"><span>Taxa de Serviço</span><span>${formatCurrency(order.service_fee)}</span></div>` : ''}
                 ${(order.coupon_discount && order.coupon_discount > 0) ? `<div style="display: flex; justify-content: space-between; font-size: 12px; color: green;"><span>Desconto</span><span>-${formatCurrency(order.coupon_discount)}</span></div>` : ''}
                 <div class="grandTotal"><span>TOTAL</span><span>${formatCurrency(order.total)}</span></div>
             </div>

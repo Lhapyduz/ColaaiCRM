@@ -1,0 +1,217 @@
+'use client';
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Search, PlusCircle, Combine, Map, Filter, Clock, Loader2 } from 'lucide-react';
+import { MesaWithActiveSession, getMesas, createMesaSeed } from '@/lib/services/mesas';
+import { MesaCard } from '@/components/mesas/MesaCard';
+import { cn } from '@/lib/utils';
+
+export default function MesasPage() {
+    const router = useRouter();
+
+    const [mesas, setMesas] = useState<MesaWithActiveSession[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'todas' | 'livre' | 'ocupada' | 'fechando' | 'suja'>('todas');
+
+    useEffect(() => {
+        carregarMesas();
+    }, []);
+
+    const carregarMesas = async () => {
+        try {
+            setLoading(true);
+            const data = await getMesas();
+            setMesas(data);
+        } catch (error) {
+            console.error('Erro:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreateMesaSeed = async () => {
+        try {
+            await createMesaSeed(1);
+            carregarMesas();
+        } catch (error) {
+            console.error("Erro ao dar seed em mesa:", error);
+        }
+    };
+
+    /* ——————— KPIs ——————— */
+    const kpiCounts = useMemo(() => {
+        const counts: Record<string, number> = { total: mesas.length };
+        mesas.forEach(m => {
+            const st = m.active_session?.status || 'livre';
+            counts[st] = (counts[st] || 0) + 1;
+        });
+        return counts;
+    }, [mesas]);
+
+    /* ——————— Filtros ——————— */
+    const filteredMesas = useMemo(() => {
+        return mesas.filter(mesa => {
+            const term = searchTerm.toLowerCase().trim();
+            const status = mesa.active_session?.status || 'livre';
+
+            const matchSearch =
+                !term ||
+                String(mesa.numero_mesa).includes(term) ||
+                (mesa.active_session?.garcom && mesa.active_session.garcom.toLowerCase().includes(term));
+
+            const matchStatus = statusFilter === 'todas' || status === statusFilter;
+            return matchSearch && matchStatus;
+        });
+    }, [searchTerm, statusFilter, mesas]);
+
+    const getCurrentTime = () => {
+        const now = new Date();
+        return now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    };
+
+    return (
+        <div className="relative flex flex-col h-full w-full bg-bg-primary overflow-hidden animate-fadeIn">
+            {/* Header */}
+            <header className="h-16 border-b border-border flex items-center justify-between px-8 bg-bg-secondary backdrop-blur-md shrink-0">
+                <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-bold tracking-tight">Gestão de Mesas <span className="text-text-muted mx-2">—</span> <span className="text-text-secondary font-normal">Salão Principal</span></h2>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="relative hidden md:block">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4" />
+                        <input
+                            type="text"
+                            placeholder="Buscar mesa..."
+                            className="pl-10 pr-4 py-1.5 bg-bg-tertiary border-none outline-none rounded-lg text-sm focus:ring-2 focus:ring-primary w-64 text-text-primary"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-primary/20">
+                        <PlusCircle className="w-5 h-5" />
+                        Nova Reserva
+                    </button>
+                </div>
+            </header>
+
+            {/* Sub-Header / Filtros */}
+            <div className="px-8 py-4 border-b border-border flex flex-wrap items-center justify-between bg-bg-card/20 shrink-0 gap-4">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+                    <button
+                        onClick={() => setStatusFilter('todas')}
+                        className={cn(
+                            "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
+                            statusFilter === 'todas'
+                                ? "bg-primary text-white"
+                                : "bg-bg-tertiary border border-border text-text-secondary hover:border-primary/50"
+                        )}
+                    >
+                        Todos
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('livre')}
+                        className={cn(
+                            "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
+                            statusFilter === 'livre'
+                                ? "bg-emerald-500 text-white"
+                                : "bg-bg-tertiary border border-border text-text-secondary hover:border-emerald-500/50"
+                        )}
+                    >
+                        Livres ({kpiCounts['livre'] || 0})
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('ocupada')}
+                        className={cn(
+                            "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
+                            statusFilter === 'ocupada'
+                                ? "bg-red-500 text-white"
+                                : "bg-bg-tertiary border border-border text-text-secondary hover:border-red-500/50"
+                        )}
+                    >
+                        Ocupadas ({kpiCounts['ocupada'] || 0})
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('fechando')}
+                        className={cn(
+                            "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
+                            statusFilter === 'fechando'
+                                ? "bg-amber-500 text-white"
+                                : "bg-bg-tertiary border border-border text-text-secondary hover:border-amber-500/50"
+                        )}
+                    >
+                        Pedindo Conta ({kpiCounts['fechando'] || 0})
+                    </button>
+                    <button
+                        onClick={() => setStatusFilter('suja')}
+                        className={cn(
+                            "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
+                            statusFilter === 'suja'
+                                ? "bg-blue-500 text-white"
+                                : "bg-bg-tertiary border border-border text-text-secondary hover:border-blue-500/50"
+                        )}
+                    >
+                        Em Limpeza ({kpiCounts['suja'] || 0})
+                    </button>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button className="p-2 rounded-lg hover:bg-bg-tertiary text-text-muted transition-colors" title="Unir Mesas">
+                        <Combine className="w-5 h-5" />
+                    </button>
+                    <button className="p-2 rounded-lg hover:bg-bg-tertiary text-text-muted transition-colors" title="Configurar Mapa">
+                        <Map className="w-5 h-5" />
+                    </button>
+                    <div className="h-6 w-px bg-border mx-2"></div>
+                    <button className="p-2 rounded-lg hover:bg-bg-tertiary text-text-muted transition-colors">
+                        <Filter className="w-5 h-5" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Grid Area */}
+            <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-bg-primary">
+                {loading ? (
+                    <div className="flex justify-center items-center h-full text-text-muted w-full">
+                        <Loader2 className="w-8 h-8 animate-spin text-primary mr-2" /> Carregando mesas...
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                        {filteredMesas.map((mesa, i) => (
+                            <MesaCard key={mesa.id} mesa={mesa} onClick={(m) => router.push(`/mesas/${m.id}`)} index={i} />
+                        ))}
+                        {/* Add Table Button - para dev (Seed) */}
+                        <div onClick={handleCreateMesaSeed} className="bg-bg-card rounded-xl border-2 border-dashed border-border p-5 flex flex-col gap-4 relative group hover:border-primary/50 transition-all cursor-pointer opacity-60">
+                            <div className="flex flex-col items-center justify-center h-full py-6">
+                                <PlusCircle className="w-8 h-8 text-text-muted mb-2 group-hover:text-primary transition-colors" />
+                                <span className="text-xs font-bold text-text-muted uppercase tracking-widest group-hover:text-primary transition-colors">Adicionar Mesa</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </main>
+
+            {/* Footer de Status */}
+            <footer className="h-12 border-t border-border px-8 flex items-center justify-between text-[11px] text-text-muted font-medium bg-bg-secondary shrink-0">
+                <div className="flex gap-6 overflow-x-auto scrollbar-hide">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="size-2 rounded-full bg-emerald-500"></span> Livre: {kpiCounts['livre'] || 0}
+                    </div>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="size-2 rounded-full bg-red-500"></span> Ocupada: {kpiCounts['ocupada'] || 0}
+                    </div>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="size-2 rounded-full bg-amber-500"></span> Pedindo Conta: {kpiCounts['fechando'] || 0}
+                    </div>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="size-2 rounded-full bg-blue-500"></span> Em Limpeza: {kpiCounts['suja'] || 0}
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5" />
+                    Última atualização: {getCurrentTime()}
+                </div>
+            </footer>
+        </div>
+    );
+}
