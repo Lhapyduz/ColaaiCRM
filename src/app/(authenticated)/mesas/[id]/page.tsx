@@ -124,9 +124,9 @@ export default function MesaDetailsPage() {
     const [splitCount, setSplitCount] = useState(1);
     const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
 
-    // Taxa de serviço configurável
-    const [taxaServicoEnabled, setTaxaServicoEnabled] = useState(true);
-    const [taxaServicoPercent, setTaxaServicoPercent] = useState(10);
+    // Taxa de serviço configurável (agora vem do userSettings)
+    const taxaServicoEnabled = userSettings?.taxa_servico_enabled ?? false;
+    const taxaServicoPercent = userSettings?.taxa_servico_percent ?? 10;
 
     if (loading) {
         return (
@@ -288,7 +288,8 @@ export default function MesaDetailsPage() {
                 total: item.preco_total,
                 notes: item.observacao
             })),
-            coupon_discount: desconto + (taxaServicoEnabled ? 0 : 0) // Just to have a value if needed, but taxa is handled separately in generateCustomerReceiptHTML? No, wait.
+            service_fee: taxaServicoEnabled ? taxaServico : 0,
+            coupon_discount: desconto
         };
 
         // Wait, print.ts doesn't have a 'taxa_servico' field in OrderData. 
@@ -768,61 +769,15 @@ export default function MesaDetailsPage() {
                                     <span className="font-medium">{formatCurrency(subtotal)}</span>
                                 </div>
 
-                                {/* Taxa de serviço — toggle + porcentagem configurável */}
-                                <div className="rounded-xl border border-border p-3 space-y-3">
-                                    <div className="flex items-center justify-between">
+                                {taxaServicoEnabled && (
+                                    <div className="flex justify-between text-text-muted text-sm">
                                         <div className="flex items-center gap-2">
-                                            <span className="text-sm text-text-primary font-medium">Taxa de Serviço</span>
-                                            <Info className="w-3.5 h-3.5 text-text-muted" />
+                                            <span>Taxa de Serviço ({taxaServicoPercent}%)</span>
+                                            <Info className="w-3.5 h-3.5" />
                                         </div>
-                                        <button
-                                            onClick={() => setTaxaServicoEnabled(!taxaServicoEnabled)}
-                                            className={cn(
-                                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer",
-                                                taxaServicoEnabled ? "bg-primary" : "bg-bg-tertiary border border-border"
-                                            )}
-                                        >
-                                            <span
-                                                className={cn(
-                                                    "inline-block size-4 transform rounded-full bg-white transition-transform shadow-sm",
-                                                    taxaServicoEnabled ? "translate-x-6" : "translate-x-1"
-                                                )}
-                                            />
-                                        </button>
+                                        <span className="font-medium">{formatCurrency(taxaServico)}</span>
                                     </div>
-                                    {taxaServicoEnabled && (
-                                        <div className="flex items-center justify-between gap-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-text-muted">Porcentagem:</span>
-                                                <div className="flex items-center gap-1">
-                                                    <button
-                                                        onClick={() => setTaxaServicoPercent(Math.max(1, taxaServicoPercent - 1))}
-                                                        className="size-6 rounded-md bg-bg-tertiary flex items-center justify-center text-text-muted hover:bg-primary hover:text-white transition-colors cursor-pointer"
-                                                    >
-                                                        <Minus className="w-3 h-3" />
-                                                    </button>
-                                                    <input
-                                                        type="number"
-                                                        value={taxaServicoPercent}
-                                                        onChange={(e) => {
-                                                            const val = parseInt(e.target.value);
-                                                            if (!isNaN(val) && val >= 0 && val <= 100) setTaxaServicoPercent(val);
-                                                        }}
-                                                        className="w-12 text-center bg-bg-tertiary rounded-md py-1 text-sm font-bold text-text-primary border-none outline-none focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                    />
-                                                    <button
-                                                        onClick={() => setTaxaServicoPercent(Math.min(100, taxaServicoPercent + 1))}
-                                                        className="size-6 rounded-md bg-bg-tertiary flex items-center justify-center text-text-muted hover:bg-primary hover:text-white transition-colors cursor-pointer"
-                                                    >
-                                                        <Plus className="w-3 h-3" />
-                                                    </button>
-                                                    <span className="text-xs text-text-muted font-bold">%</span>
-                                                </div>
-                                            </div>
-                                            <span className="text-sm font-bold text-primary">{formatCurrency(taxaServico)}</span>
-                                        </div>
-                                    )}
-                                </div>
+                                )}
 
                                 {desconto > 0 && (
                                     <div className="flex justify-between text-emerald-500 text-sm font-medium">

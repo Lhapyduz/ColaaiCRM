@@ -95,13 +95,20 @@ export async function abrirMesa(mesaId: string, garcom?: string) {
     if (!userRes.data.user) throw new Error("Usuário não autenticado");
     const userId = userRes.data.user.id;
 
+    // Buscar configurações do usuário para pegar a taxa padrão
+    const { data: settings } = await supabase
+        .from('user_settings')
+        .select('taxa_servico_enabled, taxa_servico_percent')
+        .eq('user_id', userId)
+        .single();
+
     const sessionToInsert: Database['public']['Tables']['mesa_sessions']['Insert'] = {
         mesa_id: mesaId,
         user_id: userId,
         status: 'ocupada',
         garcom: garcom && garcom.trim() !== '' ? garcom.trim() : 'Nenhum',
         valor_parcial: 0,
-        taxa_servico_percent: 10,
+        taxa_servico_percent: settings?.taxa_servico_enabled ? (Number(settings.taxa_servico_percent) || 10) : 0,
         desconto: 0,
         total_final: 0
     };

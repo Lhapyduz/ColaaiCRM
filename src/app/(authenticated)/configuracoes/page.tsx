@@ -26,6 +26,7 @@ import {
     updateSidebarColor,
     saveOpeningHours,
     getOpeningHours,
+    updateTaxaServico,
     getRecentRatings,
     toggleStoreRatingVisibility,
     toggleProductRatingVisibility,
@@ -80,6 +81,8 @@ function ConfiguracoesContent() {
     const [hiddenSidebarItems, setHiddenSidebarItems] = useState<string[]>(userSettings?.hidden_sidebar_items || []);
     const [copiedLink, setCopiedLink] = useState<string | null>(null);
     const [deliveryFee, setDeliveryFee] = useState<number>(userSettings?.delivery_fee_value ?? 5);
+    const [taxaServicoEnabled, setTaxaServicoEnabled] = useState(userSettings?.taxa_servico_enabled ?? false);
+    const [taxaServicoPercent, setTaxaServicoPercent] = useState<number>(userSettings?.taxa_servico_percent ?? 10);
 
     // New Store Settings State
     const [storeOpen, setStoreOpen] = useState(userSettings?.store_open ?? true);
@@ -145,6 +148,8 @@ function ConfiguracoesContent() {
             setDeliveryTimeMin(userSettings.delivery_time_min ?? 30);
             setDeliveryTimeMax(userSettings.delivery_time_max ?? 45);
             setSidebarColor(userSettings.sidebar_color ?? userSettings.secondary_color ?? '#2d3436');
+            setTaxaServicoEnabled(userSettings.taxa_servico_enabled ?? false);
+            setTaxaServicoPercent(userSettings.taxa_servico_percent ?? 10);
         }
     }, [userSettings]);
 
@@ -228,10 +233,16 @@ function ConfiguracoesContent() {
             }
             const { error } = await updateSettings({
                 app_name: appName, slogan: slogan || null, primary_color: primaryColor, secondary_color: secondaryColor, sidebar_color: sidebarColor,
-                whatsapp_number: whatsappNumber || null, public_slug: publicSlug || null, pix_key: pixKey || null, pix_key_type: pixKeyType || null,
-                merchant_city: merchantCity || null, delivery_fee_value: deliveryFee, store_open: storeOpen, delivery_time_min: deliveryTimeMin, delivery_time_max: deliveryTimeMax
+                merchant_city: merchantCity || null, delivery_fee_value: deliveryFee, store_open: storeOpen, delivery_time_min: deliveryTimeMin, delivery_time_max: deliveryTimeMax,
+                taxa_servico_enabled: taxaServicoEnabled, taxa_servico_percent: taxaServicoPercent
             });
-            await Promise.all([updateStoreStatus(storeOpen), updateDeliveryTime(deliveryTimeMin, deliveryTimeMax), updateSidebarColor(sidebarColor), saveOpeningHours(openingHours)]);
+            await Promise.all([
+                updateStoreStatus(storeOpen),
+                updateDeliveryTime(deliveryTimeMin, deliveryTimeMax),
+                updateSidebarColor(sidebarColor),
+                updateTaxaServico(taxaServicoEnabled, taxaServicoPercent),
+                saveOpeningHours(openingHours)
+            ]);
 
             revalidateStoreMenu();
 
@@ -318,6 +329,41 @@ function ConfiguracoesContent() {
                             <div className={styles.formGroup}><label><FaWhatsapp style={{ marginRight: '8px', color: '#25D366' }} />WhatsApp</label><Input value={formatWhatsApp(whatsappNumber)} onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))} placeholder="(11) 99999-9999" maxLength={16} /><span className={styles.hint}>Usado para receber pedidos via WhatsApp</span></div>
                         </div>
                         <div className={styles.formGroup}><label>Logo do Negócio</label><div className={styles.logoUpload}><div className={styles.currentLogo}>{userSettings?.logo_url ? <div className="relative w-full h-full"><Image src={userSettings.logo_url} alt="Logo" fill className="object-contain" /></div> : <span className={styles.logoEmoji}>🌭</span>}</div><div className={styles.logoActions}><input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} hidden /><Button variant="outline" leftIcon={<FiUpload />} onClick={() => fileInputRef.current?.click()} isLoading={uploading}>{userSettings?.logo_url ? 'Trocar' : 'Carregar'}</Button>{userSettings?.logo_url && <Button variant="danger" leftIcon={<FiTrash2 />} onClick={handleRemoveLogo}>Remover</Button>}</div></div></div>
+
+                        <div className={styles.sectionHeader} style={{ marginTop: '2rem' }}><h2>Taxa de Serviço (Mesas)</h2><p>Configure a taxa de serviço cobrada nos pedidos de Mesas</p></div>
+                        <div className="bg-bg-tertiary border border-border p-4 rounded-xl flex flex-col gap-6 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-base font-bold text-text-primary">Habilitar Taxa de Serviço</h3>
+                                    <p className="text-sm text-text-secondary m-0">Define se a taxa será sugerida no fechamento da conta das mesas.</p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={taxaServicoEnabled}
+                                        onChange={(e) => setTaxaServicoEnabled(e.target.checked)}
+                                        className="sr-only peer"
+                                    />
+                                    <div className="w-11 h-6 bg-bg-card peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                </label>
+                            </div>
+
+                            {taxaServicoEnabled && (
+                                <div className="animate-slideDown">
+                                    <label className="text-sm font-bold text-text-secondary mb-2 block tracking-tight">Percentual da Taxa (%)</label>
+                                    <div className="relative w-32">
+                                        <Input
+                                            type="number"
+                                            value={taxaServicoPercent}
+                                            onChange={(e) => setTaxaServicoPercent(parseFloat(e.target.value) || 0)}
+                                            className="text-center font-bold"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted font-bold">%</span>
+                                    </div>
+                                    <p className="text-xs text-text-muted mt-2">Valor padrão sugerido para garçom.</p>
+                                </div>
+                            )}
+                        </div>
 
                         <div className={styles.sectionHeader} style={{ marginTop: '2rem' }}><h2>Notificações</h2><p>Gerencie os alertas e avisos do sistema</p></div>
                         <div className={styles.formGroup}>

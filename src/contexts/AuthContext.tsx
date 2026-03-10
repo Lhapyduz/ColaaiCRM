@@ -24,6 +24,8 @@ interface UserSettings {
     access_token: string | null;
     delivery_fee_type: 'fixed' | 'neighborhood' | null;
     delivery_fee_value: number | null;
+    taxa_servico_enabled: boolean | null;
+    taxa_servico_percent: number | null;
     store_open: boolean | null;
     delivery_time_min: number | null;
     delivery_time_max: number | null;

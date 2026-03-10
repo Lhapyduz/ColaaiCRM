@@ -80,6 +80,8 @@ export interface CachedUserSetting {
     delivery_time_min: number | null;
     delivery_time_max: number | null;
     sidebar_color: string | null;
+    taxa_servico_enabled: boolean | null;
+    taxa_servico_percent: number | null;
 }
 
 export interface PendingAction {

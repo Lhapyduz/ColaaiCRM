@@ -38,6 +38,8 @@ export type Database = {
                     secondary_color: string;
                     delivery_fee_type: 'fixed' | 'neighborhood';
                     delivery_fee_value: number;
+                    taxa_servico_enabled: boolean;
+                    taxa_servico_percent: number;
                     created_at: string;
                 };
                 Insert: {
