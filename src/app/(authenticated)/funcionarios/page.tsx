@@ -11,7 +11,7 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
-interface Employee { id: string; name: string; email: string | null; phone: string | null; role: 'admin' | 'manager' | 'cashier' | 'kitchen' | 'attendant' | 'delivery'; pin_code: string | null; is_active: boolean; is_fixed?: boolean; permissions: Record<string, boolean>; hourly_rate: number | null; created_at: string; }
+interface Employee { id: string; name: string; email: string | null; phone: string | null; role: 'admin' | 'manager' | 'cashier' | 'kitchen' | 'attendant' | 'delivery'; pin_code: string | null; is_active: boolean; is_fixed?: boolean; permissions: Record<string, boolean>; hourly_rate: number | null; salario_fixo?: number | null; created_at: string; }
 
 const ROLES = [
     { value: 'admin', label: 'Administrador', icon: '👑', color: '#9b59b6' },
@@ -39,7 +39,7 @@ export default function FuncionariosPage() {
     const [showModal, setShowModal] = useState(false);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-    const [form, setForm] = useState({ name: '', email: '', phone: '', role: 'attendant' as Employee['role'], pin_code: '', hourly_rate: 0, is_active: true });
+    const [form, setForm] = useState({ name: '', email: '', phone: '', role: 'attendant' as Employee['role'], pin_code: '', hourly_rate: 0, salario_fixo: 0, is_active: true });
 
 
 
@@ -51,13 +51,18 @@ export default function FuncionariosPage() {
         setLoading(false);
     }, [user]);
 
-    useEffect(() => { if (user) fetchEmployees(); }, [user, fetchEmployees]);
+    useEffect(() => {
+        if (user) {
+            // eslint-disable-next-line
+            fetchEmployees();
+        }
+    }, [user, fetchEmployees]);
     const handleAddClick = () => { const regularEmployees = employees.filter(e => !e.is_fixed); if (!isWithinLimit('employees', regularEmployees.length)) { setShowUpgradeModal(true); return; } resetForm(); setShowModal(true); };
 
     const handleSave = async () => {
         if (!user) return;
         if (editingEmployee?.is_fixed) { await supabase.from('employees').update({ pin_code: form.pin_code || null }).eq('id', editingEmployee.id).eq('user_id', user.id); setShowModal(false); resetForm(); fetchEmployees(); return; }
-        const employeeData = { user_id: user.id, name: form.name, email: form.email || null, phone: form.phone || null, role: form.role, pin_code: form.pin_code || null, hourly_rate: form.hourly_rate || null, is_active: form.is_active, permissions: DEFAULT_PERMISSIONS[form.role] };
+        const employeeData = { user_id: user.id, name: form.name, email: form.email || null, phone: form.phone || null, role: form.role, pin_code: form.pin_code || null, hourly_rate: form.hourly_rate || null, salario_fixo: form.salario_fixo || 0, is_active: form.is_active, permissions: DEFAULT_PERMISSIONS[form.role] };
         if (editingEmployee) await supabase.from('employees').update(employeeData).eq('id', editingEmployee.id).eq('user_id', user.id);
         else await supabase.from('employees').insert(employeeData);
         setShowModal(false); resetForm(); fetchEmployees();
@@ -65,8 +70,8 @@ export default function FuncionariosPage() {
 
     const handleToggleActive = async (employee: Employee) => { if (!user) return; await supabase.from('employees').update({ is_active: !employee.is_active }).eq('id', employee.id).eq('user_id', user.id); fetchEmployees(); };
     const handleDelete = async (employee: Employee) => { if (!user) return; if (employee.is_fixed) { alert('Este funcionário é fixo e não pode ser removido.'); return; } if (!confirm('Excluir este funcionário?')) return; await supabase.from('employees').delete().eq('id', employee.id).eq('user_id', user.id); fetchEmployees(); };
-    const resetForm = () => { setForm({ name: '', email: '', phone: '', role: 'attendant', pin_code: '', hourly_rate: 0, is_active: true }); setEditingEmployee(null); };
-    const openEdit = (employee: Employee) => { setEditingEmployee(employee); setForm({ name: employee.name, email: employee.email || '', phone: employee.phone || '', role: employee.role, pin_code: employee.pin_code || '', hourly_rate: employee.hourly_rate || 0, is_active: employee.is_active }); setShowModal(true); };
+    const resetForm = () => { setForm({ name: '', email: '', phone: '', role: 'attendant', pin_code: '', hourly_rate: 0, salario_fixo: 0, is_active: true }); setEditingEmployee(null); };
+    const openEdit = (employee: Employee) => { setEditingEmployee(employee); setForm({ name: employee.name, email: employee.email || '', phone: employee.phone || '', role: employee.role, pin_code: employee.pin_code || '', hourly_rate: employee.hourly_rate || 0, salario_fixo: employee.salario_fixo || 0, is_active: employee.is_active }); setShowModal(true); };
     const getRoleInfo = (role: string) => ROLES.find(r => r.value === role) || ROLES[4];
     const generatePin = () => { const pin = Math.floor(1000 + Math.random() * 9000).toString(); setForm({ ...form, pin_code: pin }); };
 
@@ -104,7 +109,7 @@ export default function FuncionariosPage() {
                                     <div className="flex-1 min-w-[150px]"><span className="font-medium block">{employee.name}</span><div className="flex items-center gap-3 text-xs text-text-muted mt-1 flex-wrap">{employee.email && <span className="flex items-center gap-1"><FiMail size={12} /> {employee.email}</span>}{employee.phone && <span className="flex items-center gap-1"><FiPhone size={12} /> {employee.phone}</span>}</div></div>
                                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium" style={{ background: `${roleInfo.color}20`, color: roleInfo.color }}><FiShield size={12} />{roleInfo.label}{employee.is_fixed && <span className="flex items-center gap-1 ml-1 text-[10px] opacity-70" title="Fixo"><FiLock size={10} /> FIXO</span>}</div>
                                     <button className={cn('p-1 bg-transparent border-none cursor-pointer transition-all duration-fast', employee.is_active ? 'text-[#27ae60]' : 'text-text-muted')} onClick={() => handleToggleActive(employee)} title={employee.is_active ? 'Desativar' : 'Ativar'} disabled={employee.is_fixed}>{employee.is_active ? <FiToggleRight size={24} /> : <FiToggleLeft size={24} />}</button>
-                                    <div className="flex gap-2"><button className="p-2 bg-transparent border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:text-text-primary hover:border-border-light" onClick={() => openEdit(employee)} title={employee.is_fixed ? 'Alterar PIN' : 'Editar'}><FiEdit2 /></button>{!employee.is_fixed && <button className="p-2 bg-transparent border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:text-error hover:border-error" onClick={() => handleDelete(employee)}><FiTrash2 /></button>}</div>
+                                    <div className="flex gap-2"><button className="p-2 bg-transparent border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:text-primary hover:border-primary" onClick={() => window.location.href = `/funcionarios/${employee.id}`} title="Painel de Ganhos">📊</button><button className="p-2 bg-transparent border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:text-text-primary hover:border-border-light" onClick={() => openEdit(employee)} title={employee.is_fixed ? 'Alterar PIN' : 'Editar'}><FiEdit2 /></button>{!employee.is_fixed && <button className="p-2 bg-transparent border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:text-error hover:border-error" onClick={() => handleDelete(employee)}><FiTrash2 /></button>}</div>
                                 </div>
                             );
                         })}
@@ -129,6 +134,11 @@ export default function FuncionariosPage() {
                             <div><label className="block text-sm text-text-secondary mb-2">PIN de Acesso</label><div className="flex gap-2"><Input value={form.pin_code} onChange={(e) => setForm({ ...form, pin_code: e.target.value })} placeholder="4 dígitos" maxLength={6} /><Button variant="outline" size="sm" onClick={generatePin}>Gerar</Button></div></div>
                             {!editingEmployee?.is_fixed && <div><label className="block text-sm text-text-secondary mb-2">Valor por Hora (R$)</label><Input type="number" value={form.hourly_rate} onChange={(e) => setForm({ ...form, hourly_rate: parseFloat(e.target.value) || 0 })} min={0} step={0.01} /></div>}
                         </div>
+                        {!editingEmployee?.is_fixed && (
+                            <div className="mb-4 grid grid-cols-1">
+                                <div><label className="block text-sm text-text-secondary mb-2">Salário Fixo / Base (R$)</label><Input type="number" value={form.salario_fixo} onChange={(e) => setForm({ ...form, salario_fixo: parseFloat(e.target.value) || 0 })} min={0} step={0.01} placeholder="0.00" /></div>
+                            </div>
+                        )}
                         {!editingEmployee?.is_fixed && (
                             <div className="bg-bg-tertiary rounded-md p-4 mb-4"><h4 className="flex items-center gap-2 text-sm font-medium mb-2"><FiShield /> Permissões do cargo:</h4><div className="flex flex-wrap gap-2">{Object.entries(DEFAULT_PERMISSIONS[form.role]).map(([perm, allowed]) => (<span key={perm} className={cn('px-2 py-1 rounded-sm text-xs', allowed ? 'bg-[#27ae60]/10 text-[#27ae60]' : 'bg-error/10 text-error')}>{allowed ? '✓' : '✗'} {perm}</span>))}</div></div>
                         )}

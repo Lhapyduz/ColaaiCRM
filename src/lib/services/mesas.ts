@@ -247,6 +247,21 @@ export async function fecharMesaSessao(
         'debit': 'debit'
     };
 
+    // Tentar localizar o ID do garçom pelo nome salvo na sessão
+    let garcom_id = null;
+    if (session.garcom && session.garcom !== 'Nenhum') {
+        const { data: garcomData } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('user_id', session.user_id)
+            .ilike('name', session.garcom)
+            .maybeSingle(); // maybeSingle para não dar erro se não achar exatamente
+
+        if (garcomData) {
+            garcom_id = garcomData.id;
+        }
+    }
+
     const dbPaymentMethod = paymentMethodMap[paymentMethod] || 'money';
 
     const { data: order, error: orderError } = await supabase
@@ -262,6 +277,7 @@ export async function fecharMesaSessao(
             total: totalFinal,
             discount_amount: desconto,
             service_fee: taxaServico,
+            garcom_id: garcom_id,
             is_delivery: false,
             notes: `Fechamento de mesa via PDV`
         })
