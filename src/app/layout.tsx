@@ -5,7 +5,6 @@ import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { KeyboardShortcutsProvider } from "@/contexts/KeyboardShortcutsContext";
 import { OfflineProvider } from "@/contexts/OfflineContext";
 import { EmployeeProvider } from "@/contexts/EmployeeContext";
-import { RouteGuard } from "@/components/RouteGuard";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import QueryProvider from "@/components/providers/QueryProvider";
@@ -93,13 +92,11 @@ export default function RootLayout({
                 <OfflineProvider>
                   <EmployeeProvider>
                     <ToastProvider>
-                      <RouteGuard>
-                        <KeyboardShortcutsProvider>
-                          {children}
-                          <StorageIndicator />
-                          <PWAInstallPrompt appName="Cola Aí" />
-                        </KeyboardShortcutsProvider>
-                      </RouteGuard>
+                      <KeyboardShortcutsProvider>
+                        {children}
+                        <StorageIndicator />
+                        <PWAInstallPrompt appName="Cola Aí" />
+                      </KeyboardShortcutsProvider>
                     </ToastProvider>
                   </EmployeeProvider>
                 </OfflineProvider>

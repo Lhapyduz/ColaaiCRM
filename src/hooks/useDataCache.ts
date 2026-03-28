@@ -37,6 +37,7 @@ const PRODUCTS_CACHE_KEY = 'cola_ai_products_cache';
 const CATEGORIES_CACHE_KEY = 'cola_ai_categories_cache';
 
 function getCachedData<T>(key: string, userId: string): T[] | null {
+    if (typeof window === 'undefined') return null;
     try {
         const cached = localStorage.getItem(key);
         if (!cached) return null;
@@ -54,6 +55,7 @@ function getCachedData<T>(key: string, userId: string): T[] | null {
 }
 
 function setCachedData<T>(key: string, data: T[], userId: string): void {
+    if (typeof window === 'undefined') return;
     try {
         const cacheData: CacheData<T> = {
             data,
@@ -247,6 +249,7 @@ export function usePublicMenuCache(userId: string) {
 
 // Limpar todo o cache (para logout ou troca de usuário)
 export function clearAllCache() {
+    if (typeof window === 'undefined') return;
     try {
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {

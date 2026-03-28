@@ -39,7 +39,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const [loadingTimedOut, setLoadingTimedOut] = useState(false);
     const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Safety timeout: if loading takes more than 10s, force continue
+    // Safety timeout: if loading takes more than 5s, force continue
     useEffect(() => {
         if (timerRef.current) {
             clearTimeout(timerRef.current);
@@ -49,7 +49,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
         if (loading) {
             timerRef.current = setTimeout(() => {
                 setLoadingTimedOut(true);
-            }, 10000);
+            }, 5000);
         }
 
         return () => {

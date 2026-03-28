@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { verifyPin, isLegacyPin, hashPin } from '@/lib/pinSecurity';
@@ -31,7 +31,12 @@ const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined
 export function EmployeeProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth();
     const [activeEmployee, setActiveEmployee] = useState<Employee | null>(null);
-    const [isLocked, setIsLocked] = useState(false);
+    const [isLocked, setIsLocked] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return sessionStorage.getItem('isLocked') === 'true';
+        }
+        return false;
+    });
     const [loading, setLoading] = useState(true);
 
     const [hasAdmin, setHasAdmin] = useState(false);
@@ -40,10 +45,10 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
     const employeeSessionRef = useRef<Employee | null>(null);
 
     // Check for admin existence
-    const checkAdminExistence = async () => {
+    const checkAdminExistence = useCallback(async () => {
         if (!user) return;
 
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('employees')
             .select('id')
             .eq('user_id', user.id)
@@ -56,17 +61,10 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
         } else {
             setHasAdmin(false);
         }
-    };
+    }, [user]);
 
     // Load active employee from memory ref on mount
     useEffect(() => {
-        // Check if we have a stored lock state
-        const storedLocked = sessionStorage.getItem('isLocked');
-
-        if (storedLocked === 'true') {
-            setIsLocked(true);
-        }
-
         // Restore from memory ref (not storage for security)
         if (employeeSessionRef.current) {
             setActiveEmployee(employeeSessionRef.current);
@@ -74,7 +72,7 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
 
         checkAdminExistence();
         setLoading(false);
-    }, [user]);
+    }, [user, checkAdminExistence]);
 
     const loginWithPin = async (pin: string): Promise<{ success: boolean; error?: string }> => {
         if (!user) {

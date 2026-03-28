@@ -88,16 +88,15 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
             await initOfflineDB();
             setHardwareOnline(isOnline());
 
-            const savedMode = localStorage.getItem('storageMode') as StorageMode;
-            if (savedMode === 'local' || savedMode === 'cloud') {
-                setStorageModeState(savedMode);
+            if (typeof window !== 'undefined') {
+                const savedMode = localStorage.getItem('storageMode') as StorageMode;
+                if (savedMode === 'local' || savedMode === 'cloud') {
+                    setStorageModeState(savedMode);
+                }
+
+                await updatePendingCount();
+                setLastSync(localStorage.getItem('lastSync'));
             }
-
-            await updatePendingCount();
-            setLastSync(localStorage.getItem('lastSync'));
-
-            // Registra um event listener para mudanças no banco do dexie se outros tabs mudarem,
-            // mas de modo simples, criaremos um custom event se quisermos auto-refresh
         };
         init();
     }, [updatePendingCount]);

@@ -130,15 +130,18 @@ interface SubscriptionContextType {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
     const [subscription, setSubscription] = useState<Subscription | null>(null);
     const [loading, setLoading] = useState(true);
 
-
     const fetchSubscription = useCallback(async () => {
-        if (!user) return;
+        if (!user) {
+            setLoading(false);
+            return;
+        }
 
         try {
+            setLoading(true);
             const { data, error } = await supabase
                 .from('subscriptions')
                 .select('*')
@@ -153,7 +156,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                 setSubscription(data);
             } else {
                 // No subscription found - user needs to choose a plan via Stripe
-                // Don't create automatic trial, let RouteGuard redirect to /assinatura
                 setSubscription(null);
             }
         } catch (error) {
@@ -164,13 +166,16 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }, [user]);
 
     useEffect(() => {
+        // Don't do anything while auth is still loading
+        if (authLoading) return;
+
         if (user) {
             fetchSubscription();
         } else {
             setSubscription(null);
             setLoading(false);
         }
-    }, [user, fetchSubscription]);
+    }, [user, authLoading, fetchSubscription]);
 
     useEffect(() => {
         if (!user) return;

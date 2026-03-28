@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -76,8 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
     const [loading, setLoading] = useState(true);
+    const fetchingRef = useRef(false);
+    const initializedRef = useRef(false);
 
     const fetchUserSettings = useCallback(async (userId: string) => {
+        // Prevent duplicate concurrent calls (getSession + onAuthStateChange race)
+        if (fetchingRef.current) return;
+        fetchingRef.current = true;
+
         try {
             if (!isOnline()) {
                 const cachedSettings = await getAll<UserSettings>('userSettings');
@@ -90,7 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         userSetting.sidebar_color || userSetting.secondary_color
                     );
                 }
-                setLoading(false);
                 return;
             }
 
@@ -153,11 +158,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
             console.error('Error:', error);
         } finally {
+            fetchingRef.current = false;
             setLoading(false);
         }
-    }, [setUserSettings]);
+    }, []);
 
     useEffect(() => {
+        // Prevent double initialization in React StrictMode
+        if (initializedRef.current) return;
+        initializedRef.current = true;
+
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
@@ -167,6 +177,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else {
                 setLoading(false);
             }
+        }).catch(() => {
+            setLoading(false);
         });
 
         // Listen for auth changes
@@ -182,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         return () => subscription.unsubscribe();
-    }, [fetchUserSettings, setUser, setSession, setLoading, setUserSettings]);
+    }, [fetchUserSettings]);
 
 
 
