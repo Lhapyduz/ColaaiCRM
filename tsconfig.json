@@ -39,6 +39,7 @@
   "exclude": [
     "node_modules",
     "supabase/functions",
-    ".temp_ag_kit"
+    ".temp_ag_kit",
+    "skills"
   ]
 }

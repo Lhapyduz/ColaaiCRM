@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useEmployee } from '@/contexts/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,7 +49,7 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     const { user, loading: authLoading } = useAuth();
     const { activeEmployee, hasPermission, isLocked, loading: employeeLoading } = useEmployee();
     const { isBlocked, loading: subscriptionLoading } = useSubscription();
-    const isReady = !authLoading && !employeeLoading;
+    const isReady = !authLoading && !employeeLoading && !subscriptionLoading;
     const isPathAllowedWhenExpired = ALLOWED_WHEN_EXPIRED.some(route => pathname.startsWith(route));
 
     // Derive authorization state directly during render

@@ -241,13 +241,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     );
 
     // Check if access should be blocked (trial expired OR subscription expired OR status is expired/cancelled/pending_pix)
-    const isBlocked: boolean = isDevelopment ? false : (
+    // IMPORTANT: Never block while still loading — prevents flash of "expired" during auth/subscription race
+    const isBlocked: boolean = isDevelopment ? false : loading ? false : (
         isTrialExpired ||
         isSubscriptionExpired ||
         subscription?.status === 'expired' ||
         subscription?.status === 'cancelled' ||
         subscription?.status === 'pending_pix' ||  // Pix payment awaiting manual activation
-        (!subscription && !loading) // No subscription at all (after loading)
+        !subscription // No subscription at all (after loading completed)
     );
 
     // Check if user can access a feature

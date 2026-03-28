@@ -76,13 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [session, setSession] = useState<Session | null>(null);
     const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
     const [loading, setLoading] = useState(true);
-    const fetchingRef = useRef(false);
     const initializedRef = useRef(false);
+    const lastFetchedUserIdRef = useRef<string | null>(null);
+    const loadingRef = useRef(true);
 
     const fetchUserSettings = useCallback(async (userId: string) => {
-        // Prevent duplicate concurrent calls (getSession + onAuthStateChange race)
-        if (fetchingRef.current) return;
-        fetchingRef.current = true;
+        // Avoid re-fetching settings for the same user (handles concurrent events)
+        if (lastFetchedUserIdRef.current === userId && !loadingRef.current) return;
+        lastFetchedUserIdRef.current = userId;
 
         try {
             if (!isOnline()) {
@@ -158,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (error) {
             console.error('Error:', error);
         } finally {
-            fetchingRef.current = false;
+            loadingRef.current = false;
             setLoading(false);
         }
     }, []);
@@ -168,28 +169,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (initializedRef.current) return;
         initializedRef.current = true;
 
-        // Get initial session
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        // Listen for auth changes — onAuthStateChange fires INITIAL_SESSION
+        // synchronously, so we don't need a separate getSession() call
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             setSession(session);
             setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchUserSettings(session.user.id);
-            } else {
-                setLoading(false);
-            }
-        }).catch(() => {
-            setLoading(false);
-        });
 
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchUserSettings(session.user.id);
-            } else {
+            if (!session?.user) {
                 setUserSettings(null);
+                lastFetchedUserIdRef.current = null;
                 setLoading(false);
+            } else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                fetchUserSettings(session.user.id);
             }
         });
 
