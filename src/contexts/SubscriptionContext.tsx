@@ -134,14 +134,14 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     const [subscription, setSubscription] = useState<Subscription | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchSubscription = useCallback(async () => {
+    const fetchSubscription = useCallback(async (silent = false) => {
         if (!user) {
             setLoading(false);
             return;
         }
 
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const { data, error } = await supabase
                 .from('subscriptions')
                 .select('*')
@@ -161,7 +161,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         } catch (error) {
             console.error('Error:', error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [user]);
 
@@ -207,7 +207,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     }, [user]);
 
     const refreshSubscription = useCallback(async () => {
-        await fetchSubscription();
+        await fetchSubscription(true);
     }, [fetchSubscription]);
 
     // Get current plan (default to basic if no subscription)
