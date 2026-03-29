@@ -170,13 +170,13 @@ export default function MesasPage() {
             </div>
 
             {/* Grid Area */}
-            <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-bg-primary">
+            <main className="flex-1 overflow-y-auto p-3 md:p-8 custom-scrollbar bg-bg-primary">
                 {loading ? (
                     <div className="flex justify-center items-center h-full text-text-muted w-full">
                         <Loader2 className="w-8 h-8 animate-spin text-primary mr-2" /> Carregando mesas...
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-6">
                         {filteredMesas.map((mesa, i) => (
                             <MesaCard key={mesa.id} mesa={mesa} onClick={(m) => router.push(`/mesas/${m.id}`)} index={i} />
                         ))}

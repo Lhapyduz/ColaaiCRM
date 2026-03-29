@@ -132,11 +132,11 @@ export function MesaCard({ mesa, onClick, index }: MesaCardProps) {
             )}
 
             {/* Header do Card */}
-            <div className={cn("p-4 border-b border-border transition-colors", config.headerBg)}>
+            <div className={cn("p-3 md:p-4 border-b border-border transition-colors", config.headerBg)}>
                 <div className="flex justify-between items-start">
                     <div className="flex flex-col">
-                        <span className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1">Mesa</span>
-                        <span className="text-3xl font-black leading-none text-text-primary">
+                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-0.5">Mesa</span>
+                        <span className="text-xl md:text-3xl font-black leading-none text-text-primary">
                             {String(mesa.numero_mesa).padStart(2, '0')}
                         </span>
                     </div>
@@ -147,12 +147,12 @@ export function MesaCard({ mesa, onClick, index }: MesaCardProps) {
             </div>
 
             {/* Body do Card */}
-            <div className="p-4 flex-1 flex flex-col gap-4">
+            <div className="p-3 md:p-4 flex-1 flex flex-col gap-3 md:gap-4">
                 {status === 'livre' ? (
                     // Estado LIVRE
-                    <div className="flex-1 flex flex-col items-center justify-center py-6 text-text-muted opacity-60 group-hover:opacity-100 transition-opacity">
-                        <CheckCircle className="w-8 h-8 mb-2" />
-                        <span className="text-xs font-medium">Mesa pronta para uso</span>
+                    <div className="flex-1 flex flex-col items-center justify-center py-3 md:py-6 text-text-muted opacity-60 group-hover:opacity-100 transition-opacity">
+                        <CheckCircle className="w-6 h-6 md:w-8 md:h-8 mb-1 md:mb-2" />
+                        <span className="text-[10px] md:text-xs font-medium">Mesa livre</span>
                         <div className="flex items-center gap-1 mt-2 text-[10px] font-bold text-text-secondary bg-bg-tertiary px-2 py-1 rounded">
                             <Users size={12} /> Máx {mesa.capacidade}
                         </div>
@@ -190,11 +190,11 @@ export function MesaCard({ mesa, onClick, index }: MesaCardProps) {
                             </div>
                         )}
 
-                        <div className="mt-auto pt-4 flex items-end justify-between border-t border-border">
+                        <div className="mt-auto pt-2 md:pt-4 flex items-end justify-between border-t border-border">
                             <div className="flex flex-col">
-                                <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider mb-0.5">Parcial</span>
+                                <span className="text-[9px] md:text-[10px] text-text-muted font-bold uppercase tracking-wider mb-0.5">Total</span>
                                 <span className={cn(
-                                    "text-xl font-black transition-colors",
+                                    "text-base md:text-xl font-black transition-colors",
                                     status === 'fechando' ? 'text-amber-500' : 'text-primary'
                                 )}>
                                     {formatCurrency(session?.valor_parcial || 0)}

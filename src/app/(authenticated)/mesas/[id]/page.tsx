@@ -123,6 +123,7 @@ export default function MesaDetailsPage() {
     // Payment state
     const [splitCount, setSplitCount] = useState(1);
     const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
+    const [valorRecebido, setValorRecebido] = useState<number | ''>('');
 
     // Taxa de serviço configurável (agora vem do userSettings)
     const taxaServicoEnabled = userSettings?.taxa_servico_enabled ?? false;
@@ -752,6 +753,25 @@ export default function MesaDetailsPage() {
                                     <span className="text-xs font-bold">Dinheiro</span>
                                 </button>
                             </div>
+                            
+                            {selectedPayment === 'dinheiro' && (
+                                <div className="mt-4 p-4 border border-border rounded-xl bg-bg-tertiary animate-fadeIn">
+                                    <label className="text-xs font-bold uppercase text-text-muted mb-2 block">
+                                        Valor Recebido do Cliente (R$)
+                                    </label>
+                                    <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold">R$</span>
+                                        <input
+                                            type="number"
+                                            value={valorRecebido}
+                                            onChange={(e) => setValorRecebido(e.target.value ? Number(e.target.value) : '')}
+                                            placeholder="Ex: 50.00"
+                                            step="0.01"
+                                            className="w-full bg-bg-primary border border-border rounded-lg pl-10 pr-4 py-2 focus:ring-primary focus:border-primary text-text-primary outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </Card>
 
                         {/* Ticket / Discount */}
@@ -790,6 +810,12 @@ export default function MesaDetailsPage() {
                                     <span className="text-lg font-medium text-text-primary">Total Final</span>
                                     <span className="text-3xl font-black text-primary">{formatCurrency(totalFinal)}</span>
                                 </div>
+                                {selectedPayment === 'dinheiro' && typeof valorRecebido === 'number' && valorRecebido >= totalFinal && (
+                                    <div className="flex justify-between items-end mt-2 pt-3 border-t border-border/50 animate-fadeIn">
+                                        <span className="text-lg font-bold text-text-secondary">Troco</span>
+                                        <span className="text-2xl font-black text-emerald-500">{formatCurrency(valorRecebido - totalFinal)}</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex flex-col gap-3">
