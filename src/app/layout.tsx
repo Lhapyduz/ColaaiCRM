@@ -63,7 +63,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${manrope.variable}`} suppressHydrationWarning>
+    <html lang="pt-BR" className={`${inter.variable} ${manrope.variable}`} suppressHydrationWarning={true}>
       <head>
         <link rel="preconnect" href="https://koxmxvutlxlikeszwyir.supabase.co" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://koxmxvutlxlikeszwyir.supabase.co" />
@@ -82,7 +82,7 @@ export default function RootLayout({
         <meta name="msapplication-navbutton-color" content="#0f0f0f" />
         <meta name="msapplication-starturl" content="/" />
       </head>
-      <body>
+      <body suppressHydrationWarning={true}>
         <ErrorBoundary>
           <QueryProvider>
             <PWARegistry />
