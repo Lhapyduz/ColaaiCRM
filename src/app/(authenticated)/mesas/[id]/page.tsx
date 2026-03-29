@@ -5,12 +5,12 @@ import { useRouter, useParams } from 'next/navigation';
 import {
     ArrowLeft, Printer, ReceiptText, Clock, Users, History,
     PlusCircle, Minus, Plus, CreditCard, Banknote, QrCode,
-    CheckCircle, Share, Info, Ticket, UtensilsCrossed, Loader2, Search
+    CheckCircle, Share, Info, Ticket, UtensilsCrossed, Loader2, Search, Combine
 } from 'lucide-react';
 import { useFormatters } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import Card from '@/components/ui/Card';
-import { MesaWithActiveSession, getMesaById, abrirMesa, addSessionItem, fecharMesaSessao, confirmarItensMesa } from '@/lib/services/mesas';
+import { MesaWithActiveSession, getMesaById, abrirMesa, addSessionItem, fecharMesaSessao, confirmarItensMesa, separarMesa, desagruparTodas } from '@/lib/services/mesas';
 import { printOrder } from '@/lib/print';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -43,6 +43,7 @@ export default function MesaDetailsPage() {
     const [isConfirming, setIsConfirming] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
+    const [groupedCount, setGroupedCount] = useState(0);
 
     // Abrir sessão state
     const [nomeGarcom, setNomeGarcom] = useState('');
@@ -58,6 +59,17 @@ export default function MesaDetailsPage() {
             setMesa(data);
             if (data?.active_session?.status === 'fechando') {
                 setView('pagamento');
+            }
+            if (data?.active_session) {
+                const tableNumStr = String(data.numero_mesa).padStart(2, '0');
+                const groupedStr = `[Unida c/ Mesa ${tableNumStr}]`;
+                const { count } = await supabase
+                    .from('mesa_sessions')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('garcom', groupedStr)
+                    .is('closed_at', null);
+                
+                setGroupedCount(count || 0);
             }
         } catch (error) {
             console.error("Erro ao carregar mesa", error);
@@ -155,6 +167,44 @@ export default function MesaDetailsPage() {
 
     const activeSession = mesa.active_session;
     const status = activeSession?.status || 'livre';
+
+    const isMerged = activeSession && activeSession.garcom?.startsWith('[Unida c/');
+
+    if (isMerged && activeSession) {
+        return (
+            <div className="max-w-[800px] mx-auto p-4 md:p-6 animate-fadeIn">
+                <div className="flex items-center gap-4 mb-6">
+                    <button
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-tertiary text-text-secondary hover:bg-primary hover:text-white transition-all cursor-pointer"
+                        onClick={() => router.push('/mesas')}
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                    <h1 className="text-2xl font-bold">Mesa {String(mesa.numero_mesa).padStart(2, '0')}</h1>
+                </div>
+                <div className="bg-bg-secondary p-8 rounded-2xl border border-border text-center flex flex-col items-center shadow-lg">
+                    <div className="size-16 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center mb-4">
+                        <Combine size={32} />
+                    </div>
+                    <h2 className="text-xl font-bold text-text-primary mb-2">Mesa Agrupada</h2>
+                    <p className="text-text-secondary mb-8 max-w-sm">Esta mesa encontra-se agrupada. Os pedidos devem ser lançados na <strong>mesa principal {activeSession.garcom?.replace('[Unida c/ Mesa ', '').replace(']', '')}</strong>.</p>
+                    <button 
+                        onClick={async () => {
+                            try {
+                                await separarMesa(activeSession.id);
+                                router.push('/mesas');
+                            } catch (e) {
+                                console.error('Erro ao separar mesa', e);
+                            }
+                        }}
+                        className="bg-bg-tertiary text-text-primary px-6 py-3 rounded-xl font-bold hover:bg-bg-card transition-colors shadow-sm"
+                    >
+                        Separar / Liberar Mesa
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const allItems = activeSession?.items || [];
     const unconfirmedItems = allItems.filter(item => !item.enviado_cozinha);
@@ -338,6 +388,25 @@ export default function MesaDetailsPage() {
                         <span className={cn("px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border", s.bg, s.text, s.border)}>
                             {s.label}
                         </span>
+                        {groupedCount > 0 && (
+                            <button 
+                                onClick={async () => {
+                                    if (confirm(`Deseja desagrupar as ${groupedCount} mesa(s) vinculada(s)?`)) {
+                                        try {
+                                            await desagruparTodas(mesa.numero_mesa);
+                                            setGroupedCount(0);
+                                            alert('Mesas desagrupadas!');
+                                        } catch (_) {
+                                            alert('Erro ao desagrupar mesas.');
+                                        }
+                                    }
+                                }}
+                                className="bg-blue-500/10 text-blue-500 text-xs px-3 py-1 rounded-full font-semibold border border-blue-500/20 hover:bg-blue-500/20 transition-colors flex items-center gap-1"
+                            >
+                                <Combine size={12} />
+                                Desagrupar ({groupedCount})
+                            </button>
+                        )}
                     </div>
                     <p className="text-text-secondary flex items-center gap-1 mt-1">
                         <Clock size={14} />

@@ -2,9 +2,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, PlusCircle, Combine, Map, Filter, Clock, Loader2 } from 'lucide-react';
-import { MesaWithActiveSession, getMesas, createMesaSeed } from '@/lib/services/mesas';
+import { Search, PlusCircle, Combine, Map, Filter, Clock, Loader2, X } from 'lucide-react';
+import { MesaWithActiveSession, getMesas, updateMesa, deleteMesa, createMesa, unirMesas, separarMesa } from '@/lib/services/mesas';
 import { MesaCard } from '@/components/mesas/MesaCard';
+import { MesaEditModal, AddMesaModal, MergeConfirmModal } from '@/components/mesas/MesaModals';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 export default function MesasPage() {
@@ -14,6 +16,14 @@ export default function MesasPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'todas' | 'livre' | 'ocupada' | 'fechando' | 'suja'>('todas');
+
+    // New states for Map Configuration and Merging
+    const [isConfiguring, setIsConfiguring] = useState(false);
+    const [isMerging, setIsMerging] = useState(false);
+    const [sourceMesaId, setSourceMesaId] = useState<string | null>(null);
+    const [targetMesaId, setTargetMesaId] = useState<string | null>(null);
+    const [mesaToEdit, setMesaToEdit] = useState<MesaWithActiveSession | null>(null);
+    const [showAddModal, setShowAddModal] = useState(false);
 
     useEffect(() => {
         carregarMesas();
@@ -31,12 +41,76 @@ export default function MesasPage() {
         }
     };
 
-    const handleCreateMesaSeed = async () => {
-        try {
-            await createMesaSeed(1);
+    const toggleConfiguring = () => {
+        setIsConfiguring(!isConfiguring);
+        setIsMerging(false);
+        setSourceMesaId(null);
+    };
+
+    const toggleMerging = () => {
+        setIsMerging(!isMerging);
+        setIsConfiguring(false);
+        if (!isMerging) {
+            toast.info("Selecione a primeira mesa (Origem)");
+        } else {
+            setSourceMesaId(null);
+        }
+    };
+
+    const handleMesaClick = (mesa: MesaWithActiveSession) => {
+        if (isConfiguring) {
+            setMesaToEdit(mesa);
+            return;
+        }
+        if (isMerging) {
+            if (!sourceMesaId) {
+                setSourceMesaId(mesa.id);
+                toast.info("Agora selecione a mesa destino");
+            } else {
+                if (mesa.id === sourceMesaId) {
+                    setSourceMesaId(null); // deselect
+                    toast.info("Mesa origem desmarcada.");
+                    return;
+                }
+                setTargetMesaId(mesa.id);
+            }
+            return;
+        }
+
+        router.push(`/mesas/${mesa.id}`);
+    };
+
+    const handleSaveMesa = async (numero: number, capacidade: number) => {
+        if (mesaToEdit) {
+            await updateMesa(mesaToEdit.id, numero, capacidade);
             carregarMesas();
-        } catch (error) {
-            console.error("Erro ao dar seed em mesa:", error);
+            toast.success("Mesa atualizada!");
+        }
+    };
+
+    const handleDeleteMesa = async (id: string) => {
+        await deleteMesa(id);
+        carregarMesas();
+        toast.success("Mesa excluída com sucesso.");
+    };
+
+    const handleCreateMesaExt = async (numero: number, capacidade: number) => {
+        await createMesa(numero, capacidade);
+        carregarMesas();
+        toast.success("Mesa adicionada!");
+    };
+
+    const handleMergeConfirm = async (source: MesaWithActiveSession, target: MesaWithActiveSession, garcom: string) => {
+        try {
+            await unirMesas(source.id, target.id, garcom);
+            toast.success("Mesas unidas com sucesso!");
+            setSourceMesaId(null);
+            setTargetMesaId(null);
+            setIsMerging(false);
+            carregarMesas();
+        } catch (err) {
+            console.error(err);
+            toast.error("Erro ao unir mesas");
         }
     };
 
@@ -76,7 +150,13 @@ export default function MesasPage() {
             {/* Header */}
             <header className="min-h-16 py-3 md:py-0 border-b border-border flex flex-col md:flex-row items-start md:items-center justify-between px-4 md:px-8 bg-bg-secondary backdrop-blur-md shrink-0 gap-3 md:gap-0">
                 <div className="flex items-center gap-2 md:gap-4">
-                    <h2 className="text-lg md:text-xl font-bold tracking-tight truncate max-w-full">Gestão de Mesas <span className="text-text-muted mx-1 md:mx-2">—</span> <span className="text-text-secondary font-normal hidden sm:inline">Salão Principal</span></h2>
+                    <h2 className="text-lg md:text-xl font-bold tracking-tight truncate max-w-full">
+                        Gestão de Mesas 
+                        <span className="text-text-muted mx-1 md:mx-2">—</span> 
+                        <span className="text-text-secondary font-normal hidden sm:inline">Salão Principal</span>
+                        {isConfiguring && <span className="ml-3 px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-bold uppercase animate-pulse">Editando Mapa</span>}
+                        {isMerging && <span className="ml-3 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-500 text-xs font-bold uppercase animate-pulse">Modo União</span>}
+                    </h2>
                 </div>
                 <div className="flex items-center gap-3 w-full justify-between md:justify-end md:w-auto">
                     <div className="relative hidden md:block">
@@ -156,11 +236,24 @@ export default function MesasPage() {
                     </button>
                 </div>
                 <div className="flex items-center justify-end gap-2 w-full md:w-auto">
-                    <button className="p-2 rounded-lg hover:bg-bg-tertiary text-text-muted transition-colors" title="Unir Mesas">
+                    {isMerging && (
+                        <button onClick={() => setSourceMesaId(null)} disabled={!sourceMesaId} className="mr-2 text-xs font-bold text-text-muted hover:text-text-primary px-2 transition-colors disabled:opacity-30">
+                            Limpar Seleção
+                        </button>
+                    )}
+                    <button 
+                        onClick={toggleMerging}
+                        className={cn("p-2 rounded-lg transition-colors border border-transparent", isMerging ? "bg-blue-500/20 text-blue-500 border-blue-500/50 shadow-md" : "hover:bg-bg-tertiary text-text-muted")} 
+                        title="Unir Mesas"
+                    >
                         <Combine className="w-5 h-5" />
                     </button>
-                    <button className="p-2 rounded-lg hover:bg-bg-tertiary text-text-muted transition-colors" title="Configurar Mapa">
-                        <Map className="w-5 h-5" />
+                    <button 
+                        onClick={toggleConfiguring}
+                        className={cn("p-2 rounded-lg transition-colors border border-transparent", isConfiguring ? "bg-primary/20 text-primary border-primary/50 shadow-md" : "hover:bg-bg-tertiary text-text-muted")} 
+                        title="Configurar Mapa"
+                    >
+                        {isConfiguring ? <X className="w-5 h-5" /> : <Map className="w-5 h-5" />}
                     </button>
                     <div className="h-6 w-px bg-border mx-2"></div>
                     <button className="p-2 rounded-lg hover:bg-bg-tertiary text-text-muted transition-colors">
@@ -176,20 +269,66 @@ export default function MesasPage() {
                         <Loader2 className="w-8 h-8 animate-spin text-primary mr-2" /> Carregando mesas...
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 md:gap-6 pb-20">
                         {filteredMesas.map((mesa, i) => (
-                            <MesaCard key={mesa.id} mesa={mesa} onClick={(m) => router.push(`/mesas/${m.id}`)} index={i} />
+                            <MesaCard 
+                                key={mesa.id} 
+                                mesa={mesa} 
+                                onClick={handleMesaClick} 
+                                index={i} 
+                                isSelected={sourceMesaId === mesa.id}
+                                isConfiguring={isConfiguring}
+                            />
                         ))}
-                        {/* Add Table Button - para dev (Seed) */}
-                        <div onClick={handleCreateMesaSeed} className="bg-bg-card rounded-xl border-2 border-dashed border-border p-5 flex flex-col gap-4 relative group hover:border-primary/50 transition-all cursor-pointer opacity-60">
-                            <div className="flex flex-col items-center justify-center h-full py-6">
-                                <PlusCircle className="w-8 h-8 text-text-muted mb-2 group-hover:text-primary transition-colors" />
-                                <span className="text-xs font-bold text-text-muted uppercase tracking-widest group-hover:text-primary transition-colors">Adicionar Mesa</span>
+                        {/* Botão de Adicionar Mesa (visível no modo Configurar Mapa) */}
+                        {isConfiguring && (
+                            <div onClick={() => setShowAddModal(true)} className="bg-bg-card rounded-xl border-2 border-dashed border-border p-5 flex flex-col gap-4 relative group hover:border-primary/50 transition-all cursor-pointer opacity-60">
+                                <div className="flex flex-col items-center justify-center h-full py-6">
+                                    <PlusCircle className="w-8 h-8 text-text-muted mb-2 group-hover:text-primary transition-colors" />
+                                    <span className="text-xs font-bold text-text-muted uppercase tracking-widest group-hover:text-primary transition-colors">Adicionar Mesa</span>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
             </main>
+
+            {/* Modals */}
+            <MesaEditModal 
+                key={`edit-${mesaToEdit?.id || 'none'}`}
+                isOpen={!!mesaToEdit} 
+                onClose={() => setMesaToEdit(null)} 
+                mesa={mesaToEdit} 
+                onSave={handleSaveMesa}
+                onDelete={handleDeleteMesa}
+                onFree={async (sessionId) => {
+                    try {
+                        await separarMesa(sessionId);
+                        toast.success("Mesa liberada com sucesso!");
+                        setMesaToEdit(null);
+                        carregarMesas();
+                    } catch (e) {
+                        const err = e as Error;
+                        toast.error(err.message || "Erro ao liberar mesa");
+                    }
+                }}
+            />
+            
+            <AddMesaModal
+                key={`add-${showAddModal ? 'open' : 'closed'}`}
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onSave={handleCreateMesaExt}
+                suggestedNumber={mesas.length > 0 ? Math.max(...mesas.map(m => m.numero_mesa)) + 1 : 1}
+            />
+
+            <MergeConfirmModal
+                isOpen={!!targetMesaId && !!sourceMesaId}
+                onClose={() => setTargetMesaId(null)}
+                sourceMesa={mesas.find(m => m.id === sourceMesaId) || null}
+                targetMesa={mesas.find(m => m.id === targetMesaId) || null}
+                onConfirm={handleMergeConfirm}
+            />
 
             {/* Footer de Status */}
             <footer className="h-12 border-t border-border px-4 md:px-8 flex items-center justify-between text-[11px] text-text-muted font-medium bg-bg-secondary shrink-0">

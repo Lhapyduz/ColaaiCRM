@@ -8,9 +8,11 @@ interface MesaCardProps {
     mesa: MesaWithActiveSession;
     onClick: (mesa: MesaWithActiveSession) => void;
     index: number;
+    isSelected?: boolean;
+    isConfiguring?: boolean;
 }
 
-export function MesaCard({ mesa, onClick, index }: MesaCardProps) {
+export function MesaCard({ mesa, onClick, index, isSelected, isConfiguring }: MesaCardProps) {
     const { formatCurrency } = useFormatters();
 
     const session = mesa.active_session;
@@ -117,8 +119,8 @@ export function MesaCard({ mesa, onClick, index }: MesaCardProps) {
             className={cn(
                 "group relative flex flex-col rounded-xl overflow-hidden cursor-pointer transition-all duration-300 border-2 shadow-sm hover:shadow-xl",
                 config.bg,
-                config.border,
-                config.borderHover,
+                isSelected ? "border-primary bg-primary/5 ring-2 ring-primary ring-offset-2 ring-offset-bg-primary" : config.border,
+                !isSelected && config.borderHover,
                 "animate-slideUpAndFade"
             )}
             style={{ animationDelay: `${index * 50}ms` }}
@@ -136,9 +138,14 @@ export function MesaCard({ mesa, onClick, index }: MesaCardProps) {
                 <div className="flex justify-between items-start">
                     <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-0.5">Mesa</span>
-                        <span className="text-xl md:text-3xl font-black leading-none text-text-primary">
-                            {String(mesa.numero_mesa).padStart(2, '0')}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xl md:text-3xl font-black leading-none text-text-primary">
+                                {String(mesa.numero_mesa).padStart(2, '0')}
+                            </span>
+                            {isConfiguring && (
+                                <span className="opacity-0 group-hover:opacity-100 transition-opacity text-primary text-xs font-bold bg-primary/20 px-2 py-0.5 rounded ml-1">EDITAR</span>
+                            )}
+                        </div>
                     </div>
                     <span className={cn("px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-transparent group-hover:border-current/20 transition-colors", config.badgeBg, config.badgeText)}>
                         {config.label}

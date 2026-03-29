@@ -332,7 +332,43 @@ export async function fecharMesaSessao(
         console.error("Erro ao fechar sessão da mesa:", error);
         throw error;
     }
+
+    // 6. Liberar qualquer mesa que tenha sido agrupada a esta
+    if (session.mesas?.numero_mesa) {
+        const tableNumberStr = String(session.mesas.numero_mesa).padStart(2, '0');
+        const groupedString = `[Unida c/ Mesa ${tableNumberStr}]`;
+        
+        await supabase
+            .from('mesa_sessions')
+            .update({
+                status: 'livre',
+                closed_at: new Date().toISOString()
+            })
+            .eq('garcom', groupedString)
+            .is('closed_at', null);
+    }
+
     return data;
+}
+
+/**
+ * Separa a força todas as mesas que estão agrupadas a uma mesa destino.
+ */
+export async function desagruparTodas(numeroMesa: number) {
+    const tableNumberStr = String(numeroMesa).padStart(2, '0');
+    const groupedString = `[Unida c/ Mesa ${tableNumberStr}]`;
+    
+    const { error } = await supabase
+        .from('mesa_sessions')
+        .update({
+            status: 'livre',
+            closed_at: new Date().toISOString()
+        })
+        .eq('garcom', groupedString)
+        .is('closed_at', null);
+        
+    if (error) throw new Error("Erro ao desagrupar contas: " + error.message);
+    return true;
 }
 
 /**
@@ -461,4 +497,172 @@ export async function confirmarItensMesa(
     }
 
     return newOrder;
+}
+
+/**
+ * Une duas mesas (sessões) fisicamente.
+ * A mesa origem será bloqueada com um status 'ocupada' e um aviso, 
+ * enquanto a mesa destino reterá os itens e o valor total.
+ */
+export async function unirMesas(sourceMesaId: string, targetMesaId: string, garcomNome?: string) {
+    if (!sourceMesaId || !targetMesaId) {
+        throw new Error("IDs de mesa inválidos para união.");
+    }
+
+    const { data: sourceMesa } = await supabase.from('mesas').select('numero_mesa').eq('id', sourceMesaId).single();
+    const { data: targetMesa } = await supabase.from('mesas').select('numero_mesa').eq('id', targetMesaId).single();
+
+    if (!sourceMesa || !targetMesa) throw new Error("Mesa não encontrada");
+
+    // Determina a sessão ativa de cada mesa (null se estiver livre)
+    const { data: sourceSession } = await supabase.from('mesa_sessions').select('*').eq('mesa_id', sourceMesaId).is('closed_at', null).maybeSingle();
+    const { data: targetSession } = await supabase.from('mesa_sessions').select('*').eq('mesa_id', targetMesaId).is('closed_at', null).maybeSingle();
+
+    let finalTargetSessionId = targetSession?.id;
+
+    // 1. Garante que Target possui uma sessão ativa para receber itens
+    if (!finalTargetSessionId) {
+        const principalName = garcomNome && garcomNome.trim() !== '' ? garcomNome : 'Mesa Principal';
+        const newTargetSession = await abrirMesa(targetMesaId, principalName);
+        finalTargetSessionId = newTargetSession.id;
+    } else if (garcomNome && garcomNome.trim() !== '') {
+        // Atualiza o garçom da mesa principal se um novo for fornecido
+        await supabase.from('mesa_sessions').update({ garcom: garcomNome }).eq('id', finalTargetSessionId);
+    }
+
+    // 2. Se Origin tiver sessão, transferir itens e valores. Em seguida bloqueá-la.
+    if (sourceSession && sourceSession.id) {
+        if (sourceSession.valor_parcial > 0) {
+            // Transferir os itens
+            await supabase.from('mesa_session_items').update({ session_id: finalTargetSessionId }).eq('session_id', sourceSession.id);
+
+            // Atualizar o valor parcial da sessão destino
+            const { data: currentTargetSession } = await supabase.from('mesa_sessions').select('valor_parcial').eq('id', finalTargetSessionId).single();
+            if (currentTargetSession) {
+                await supabase.from('mesa_sessions').update({ 
+                    valor_parcial: currentTargetSession.valor_parcial + sourceSession.valor_parcial 
+                }).eq('id', finalTargetSessionId);
+            }
+        }
+        
+        // Bloquear a sessão Origem (não liberar, pois agora estão juntas fisicamente)
+        await supabase.from('mesa_sessions').update({
+            status: 'ocupada',
+            garcom: `[Unida c/ Mesa ${String(targetMesa.numero_mesa).padStart(2, '0')}]`,
+            valor_parcial: 0
+        }).eq('id', sourceSession.id);
+    } else {
+        // Se a Origem estava livre, apenas criamos uma nova sessão bloqueada nela
+        await abrirMesa(sourceMesaId, `[Unida c/ Mesa ${String(targetMesa.numero_mesa).padStart(2, '0')}]`);
+    }
+
+    return true;
+}
+
+/**
+ * Libera/Separa uma mesa que estava bloqueada por causa de uma junção.
+ */
+export async function separarMesa(sessionId: string) {
+    const { error } = await supabase.from('mesa_sessions').update({
+        status: 'livre',
+        closed_at: new Date().toISOString()
+    }).eq('id', sessionId);
+    
+    if (error) throw new Error("Erro ao separar mesa: " + error.message);
+    return true;
+}
+
+/**
+ * Cria uma nova mesa no mapa, ou reativa caso já exista número inativo.
+ */
+export async function createMesa(numero_mesa: number, capacidade: number) {
+    const userRes = await supabase.auth.getUser();
+    if (!userRes.data.user) throw new Error("Usuário não autenticado");
+    
+    // Verifica se já existe uma mesa (ativa ou inativa) com este número
+    const { data: existing } = await supabase
+        .from('mesas')
+        .select('*')
+        .eq('user_id', userRes.data.user.id)
+        .eq('numero_mesa', numero_mesa)
+        .maybeSingle();
+
+    if (existing) {
+        if (existing.ativa) {
+            throw new Error(`A Mesa ${numero_mesa} já existe no mapa.`);
+        }
+        // Reativa a mesa apagada anteriormente
+        const { data, error } = await supabase
+            .from('mesas')
+            .update({ ativa: true, capacidade })
+            .eq('id', existing.id)
+            .select()
+            .single();
+
+        if (error) throw new Error("Erro ao reativar mesa: " + error.message);
+        return data;
+    }
+
+    const { data, error } = await supabase
+        .from('mesas')
+        .insert({
+            user_id: userRes.data.user.id,
+            numero_mesa,
+            capacidade,
+            ativa: true
+        })
+        .select()
+        .single();
+
+    if (error) {
+        if (error.code === '23505') throw new Error(`O número da mesa ${numero_mesa} já está em uso.`);
+        throw new Error("Erro ao criar mesa: " + error.message);
+    }
+    return data;
+}
+
+/**
+ * Atualiza os dados de uma mesa existente.
+ */
+export async function updateMesa(id: string, numero_mesa: number, capacidade: number) {
+    const userRes = await supabase.auth.getUser();
+    if (!userRes.data.user) throw new Error("Usuário não autenticado");
+
+    // Verifica se já existe OUTRA mesa com este número
+    const { data: existing } = await supabase
+        .from('mesas')
+        .select('id, ativa')
+        .eq('user_id', userRes.data.user.id)
+        .eq('numero_mesa', numero_mesa)
+        .neq('id', id)
+        .maybeSingle();
+
+    if (existing) {
+        throw new Error(`A Mesa ${numero_mesa} já está em uso${!existing.ativa ? ' (mesa oculta/em lixeira)' : ''}.`);
+    }
+
+    const { data, error } = await supabase
+        .from('mesas')
+        .update({ numero_mesa, capacidade })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw new Error("Erro ao atualizar mesa: " + error.message);
+    return data;
+}
+
+/**
+ * Deleta (ou desativa) uma mesa do mapa.
+ */
+export async function deleteMesa(id: string) {
+    // Definimos como inativa no lugar de deletar para não quebrar orders atreladas, 
+    // ou tentamos deletar se preferir. 'ativa: false' é mais seguro.
+    const { error } = await supabase
+        .from('mesas')
+        .update({ ativa: false })
+        .eq('id', id);
+
+    if (error) throw new Error("Erro ao excluir mesa: " + error.message);
+    return true;
 }
