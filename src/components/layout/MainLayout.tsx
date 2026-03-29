@@ -20,7 +20,7 @@ function MainLayoutContent({ children }: MainLayoutProps) {
         <div className="flex min-h-screen">
             <Sidebar />
             <main className={cn(
-                "relative flex-1 p-6 bg-bg-primary will-change-[margin-left]",
+                "relative flex-1 min-w-0 p-6 bg-bg-primary will-change-[margin-left]",
                 // Only enable transitions after hydration to prevent FOUC
                 isHydrated ? "transition-[margin-left] duration-normal" : "",
                 "max-md:ml-0 max-md:pt-20 max-md:px-4 max-md:pb-4",

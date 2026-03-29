@@ -96,14 +96,14 @@ export default function EmployeeProfile({ params }: { params: Promise<{ id: stri
                         <p className="text-text-muted text-xs">Visualizando detalhes de {employee.name}</p>
                     </div>
                 </div>
-                <div className="flex gap-3">
-                    <Button variant="ghost" className="border border-border text-text-secondary hover:text-text-primary h-10 px-4 flex items-center gap-2">
+                <div className="flex w-full md:w-auto gap-3 flex-wrap">
+                    <Button variant="ghost" className="flex-1 md:flex-none border border-border text-text-secondary hover:text-text-primary h-10 px-4 flex items-center justify-center gap-2 min-w-max">
                         <FiPrinter size={16} /> Imprimir Ficha
                     </Button>
                     <Button
                         variant="primary"
                         onClick={() => setIsEditOpen(true)}
-                        className="bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 h-10 px-5 font-semibold"
+                        className="flex-1 md:flex-none bg-linear-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 h-10 px-5 font-semibold min-w-max"
                     >
                         Editar Perfil
                     </Button>
@@ -113,7 +113,7 @@ export default function EmployeeProfile({ params }: { params: Promise<{ id: stri
             {/* Top Card (Avatar + Stats) */}
             <Card className="bg-[#1e1e24] border-0 p-6 md:p-8 flex flex-col lg:flex-row gap-8 lg:items-center justify-between shadow-lg">
                 {/* Avatar Info */}
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4 sm:gap-6 flex-wrap sm:flex-nowrap">
                     <div className="w-24 h-24 rounded-2xl bg-bg-secondary border-2 border-purple-500 flex items-center justify-center text-4xl text-text-primary shadow-lg overflow-hidden shrink-0">
                         {employee.name.charAt(0).toUpperCase()}
                     </div>
@@ -170,25 +170,25 @@ export default function EmployeeProfile({ params }: { params: Promise<{ id: stri
                         <FiUser size={18} /> Informações Pessoais
                     </h3>
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center text-sm border-b border-border/20 pb-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Nome Completo</span>
-                            <span className="font-medium text-white text-right">{employee.name}</span>
+                            <span className="font-medium text-white sm:text-right break-all">{employee.name}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm border-b border-border/20 pb-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">CPF</span>
-                            <span className="font-medium text-white text-right">{employee.cpf || 'Não informado'}</span>
+                            <span className="font-medium text-white sm:text-right break-all">{employee.cpf || 'Não informado'}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm border-b border-border/20 pb-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Data de Nascimento</span>
-                            <span className="font-medium text-white text-right">{employee.data_nascimento || 'Não informado'}</span>
+                            <span className="font-medium text-white sm:text-right break-all">{employee.data_nascimento || 'Não informado'}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm border-b border-border/20 pb-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Email</span>
-                            <span className="font-medium text-white text-right">{employee.email || 'Não informado'}</span>
+                            <span className="font-medium text-white sm:text-right break-all">{employee.email || 'Não informado'}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm border-b border-border/20 pb-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Telefone</span>
-                            <span className="font-medium text-white text-right">{employee.phone || 'Não informado'}</span>
+                            <span className="font-medium text-white sm:text-right break-all">{employee.phone || 'Não informado'}</span>
                         </div>
                     </div>
                 </Card>
@@ -199,25 +199,25 @@ export default function EmployeeProfile({ params }: { params: Promise<{ id: stri
                         <FiBriefcase size={18} /> Dados Profissionais
                     </h3>
                     <div className="space-y-4">
-                        <div className="flex justify-between items-center text-sm border-b border-border/20 pb-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Data de Admissão</span>
-                            <span className="font-medium text-white text-right">{format(new Date(employee.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
+                            <span className="font-medium text-white sm:text-right break-all">{format(new Date(employee.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm border-b border-border/20 pb-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Salário Base</span>
-                            <span className="font-medium text-white text-right">R$ {(employee.salario_fixo || 0).toFixed(2).replace('.', ',')}</span>
+                            <span className="font-medium text-white sm:text-right break-all">R$ {(employee.salario_fixo || 0).toFixed(2).replace('.', ',')}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm border-b border-border/20 pb-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Turno</span>
-                            <span className="font-medium text-white text-right">{employee.turno || 'Não informado'}</span>
+                            <span className="font-medium text-white sm:text-right break-all">{employee.turno || 'Não informado'}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm border-b border-border/20 pb-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Departamento</span>
-                            <span className="font-medium text-white text-right">{employee.departamento || 'Não atribuído'}</span>
+                            <span className="font-medium text-white sm:text-right break-all">{employee.departamento || 'Não atribuído'}</span>
                         </div>
-                        <div className="flex justify-between items-center text-sm border-b border-border/20 pb-3">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Contrato</span>
-                            <span className="font-medium text-white text-right">{employee.contrato || (employee.is_fixed ? 'CLT' : 'Freelancer')}</span>
+                            <span className="font-medium text-white sm:text-right break-all">{employee.contrato || (employee.is_fixed ? 'CLT' : 'Freelancer')}</span>
                         </div>
                     </div>
                 </Card>

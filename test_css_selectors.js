@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require('fs');
 const css = fs.readFileSync('src/app/(authenticated)/relatorios/page.module.css', 'utf8');
 

@@ -135,13 +135,13 @@ export function CustomerListTab() {
     return (
         <div className="flex flex-col gap-6">
             <Card className="flex items-center justify-between gap-4 flex-wrap p-4!">
-                <div className="flex items-center gap-3 flex-1 min-w-sidebar">
+                <div className="flex items-start sm:items-center flex-col sm:flex-row gap-3 w-full lg:w-auto flex-1">
                     <Input
                         placeholder="Buscar por nome ou telefone..."
                         leftIcon={<FiSearch />}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="flex-1"
+                        className="flex-1 w-full sm:w-auto"
                     />
                     <button
                         className={cn(
@@ -153,8 +153,8 @@ export function CustomerListTab() {
                         <FiFilter /> Inativos (+30 dias)
                     </button>
                 </div>
-                <div className="flex items-center gap-3 min-w-max">
-                    <span className="text-sm text-text-muted">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between sm:justify-start gap-3 w-full lg:w-auto">
+                    <span className="text-sm text-text-muted text-center sm:text-left">
                         {selectedCustomerIds.size} selecionado(s)
                     </span>
                     <Button
@@ -162,6 +162,7 @@ export function CustomerListTab() {
                         variant={selectedCustomerIds.size > 0 ? "primary" : "outline"}
                         disabled={selectedCustomerIds.size === 0}
                         onClick={() => setShowWhatsappModal(true)}
+                        className="w-full sm:w-auto"
                     >
                         Disparar WhatsApp
                     </Button>
@@ -173,7 +174,7 @@ export function CustomerListTab() {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-bg-tertiary border-b border-border">
-                                <th className="p-4 w-[50px]">
+                                <th className="p-4 w-[50px] whitespace-nowrap">
                                     <input
                                         type="checkbox"
                                         className="w-[18px] h-[18px] cursor-pointer accent-primary"
@@ -181,12 +182,12 @@ export function CustomerListTab() {
                                         onChange={toggleSelectAll}
                                     />
                                 </th>
-                                <th className="p-4 text-sm font-semibold text-text-secondary">Cliente</th>
-                                <th className="p-4 text-sm font-semibold text-text-secondary">Telefone</th>
-                                <th className="p-4 text-sm font-semibold text-text-secondary">Última Compra</th>
-                                <th className="p-4 text-sm font-semibold text-text-secondary">Total Pedidos</th>
-                                <th className="p-4 text-sm font-semibold text-text-secondary">Gastos</th>
-                                <th className="p-4 text-center text-sm font-semibold text-text-secondary">Status</th>
+                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap">Cliente</th>
+                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap">Telefone</th>
+                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden sm:table-cell">Última Compra</th>
+                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden md:table-cell">Total Pedidos</th>
+                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden sm:table-cell">Gastos</th>
+                                <th className="p-4 text-center text-sm font-semibold text-text-secondary whitespace-nowrap">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -206,7 +207,7 @@ export function CustomerListTab() {
                                             "border-b border-border hover:bg-bg-tertiary/50 transition-colors",
                                             selectedCustomerIds.has(customer.id) && "bg-primary/5"
                                         )}>
-                                            <td className="p-4">
+                                            <td className="p-4 whitespace-nowrap">
                                                 <input
                                                     type="checkbox"
                                                     className="w-[18px] h-[18px] cursor-pointer accent-primary"
@@ -214,28 +215,30 @@ export function CustomerListTab() {
                                                     onChange={() => toggleSelectCustomer(customer.id)}
                                                 />
                                             </td>
-                                            <td className="p-4">
+                                            <td className="p-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-border flex items-center justify-center text-text-secondary">
+                                                    <div className="w-8 h-8 rounded-full bg-border flex items-center justify-center text-text-secondary shrink-0">
                                                         <FiUser />
                                                     </div>
                                                     <span className="font-medium text-text-primary">{customer.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="p-4 text-text-secondary">{customer.phone}</td>
-                                            <td className="p-4 text-text-secondary flex items-center gap-2">
-                                                <FiClock className={inactive ? "text-error" : "text-text-muted"} />
-                                                <span className={inactive ? "text-error" : ""}>{formatDate(customer.last_order_date)}</span>
+                                            <td className="p-4 text-text-secondary whitespace-nowrap">{customer.phone}</td>
+                                            <td className="p-4 text-text-secondary whitespace-nowrap hidden sm:table-cell">
+                                                <div className="flex items-center gap-2">
+                                                    <FiClock className={inactive ? "text-error" : "text-text-muted"} />
+                                                    <span className={inactive ? "text-error" : ""}>{formatDate(customer.last_order_date)}</span>
+                                                </div>
                                             </td>
-                                            <td className="p-4 text-text-secondary">
+                                            <td className="p-4 text-text-secondary whitespace-nowrap hidden md:table-cell">
                                                 <div className="flex items-center gap-2">
                                                     <FiShoppingBag className="text-primary hidden md:block" /> {customer.total_orders || 0}
                                                 </div>
                                             </td>
-                                            <td className="p-4 font-semibold text-[#27ae60]">
+                                            <td className="p-4 font-semibold text-[#27ae60] whitespace-nowrap hidden sm:table-cell">
                                                 {formatCurrency(customer.total_spent || 0)}
                                             </td>
-                                            <td className="p-4 text-center">
+                                            <td className="p-4 text-center whitespace-nowrap">
                                                 {inactive ? (
                                                     <span className="px-2 py-1 bg-error/10 text-error rounded-full text-xs font-medium">Inativo</span>
                                                 ) : (

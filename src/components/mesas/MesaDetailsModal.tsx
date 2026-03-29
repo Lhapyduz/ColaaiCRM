@@ -166,29 +166,29 @@ export const MesaDetailsModal: React.FC<MesaDetailsModalProps> = ({ mesa, onClos
                                     <History className="w-4 h-4" /> Histórico completo
                                 </button>
                             </div>
-                            <div className="overflow-hidden rounded-xl border border-border bg-bg-card shadow-sm">
+                            <div className="overflow-x-auto rounded-xl border border-border bg-bg-card shadow-sm">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-bg-primary/50 border-b border-border">
-                                            <th className="px-6 py-4 text-text-muted font-bold text-[10px] uppercase tracking-wider">Item</th>
-                                            <th className="px-6 py-4 text-text-muted font-bold text-[10px] uppercase tracking-wider">Qtd</th>
-                                            <th className="px-6 py-4 text-text-muted font-bold text-[10px] uppercase tracking-wider">Valor Unit.</th>
-                                            <th className="px-6 py-4 text-text-muted font-bold text-[10px] uppercase tracking-wider">Status</th>
-                                            <th className="px-6 py-4 text-text-muted font-bold text-[10px] uppercase tracking-wider">Total</th>
+                                            <th className="px-6 py-4 text-text-muted font-bold text-[10px] uppercase tracking-wider whitespace-nowrap">Item</th>
+                                            <th className="px-6 py-4 text-text-muted font-bold text-[10px] uppercase tracking-wider whitespace-nowrap">Qtd</th>
+                                            <th className="px-6 py-4 text-text-muted font-bold text-[10px] uppercase tracking-wider whitespace-nowrap">Valor Unit.</th>
+                                            <th className="px-6 py-4 text-text-muted font-bold text-[10px] uppercase tracking-wider whitespace-nowrap">Status</th>
+                                            <th className="px-6 py-4 text-text-muted font-bold text-[10px] uppercase tracking-wider whitespace-nowrap">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
                                         {allItems.map(item => (
                                             <tr key={item.id} className="hover:bg-bg-card-hover transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex flex-col min-w-[120px]">
                                                         <span className="text-white font-bold">{item.nome}</span>
-                                                        <span className="text-text-muted text-xs">{item.observacao || ''}</span>
+                                                        <span className="text-text-muted text-xs truncate max-w-[200px]">{item.observacao || ''}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-white font-medium">{String(item.quantidade).padStart(2, '0')}</td>
-                                                <td className="px-6 py-4 text-white">{formatCurrency(item.preco_total / item.quantidade)}</td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-6 py-4 text-white font-medium whitespace-nowrap">{String(item.quantidade).padStart(2, '0')}</td>
+                                                <td className="px-6 py-4 text-white whitespace-nowrap">{formatCurrency(item.preco_total / item.quantidade)}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
                                                     {item.enviado_cozinha ? (
                                                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-500/10 text-green-500 border border-green-500/20">
                                                             <span className="size-1.5 rounded-full bg-green-500"></span> Entregue
@@ -199,7 +199,7 @@ export const MesaDetailsModal: React.FC<MesaDetailsModalProps> = ({ mesa, onClos
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="px-6 py-4 text-white font-bold">{formatCurrency(item.preco_total)}</td>
+                                                <td className="px-6 py-4 text-white font-bold whitespace-nowrap">{formatCurrency(item.preco_total)}</td>
                                             </tr>
                                         ))}
                                     </tbody>

@@ -71,8 +71,8 @@ export default function EditEmployeeSheet({ isOpen, onClose, employee, onSave }:
                 onClick={onClose}
             ></div>
 
-            <div className="relative w-full max-w-md bg-[#1e1e24] h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-                <div className="flex items-center justify-between p-6 border-b border-border">
+            <div className="relative w-full sm:max-w-md bg-[#1e1e24] h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+                <div className="flex items-center justify-between p-4 sm:p-6 border-b border-border">
                     <h2 className="text-xl font-bold text-white">Editar Perfil</h2>
                     <button
                         onClick={onClose}
@@ -82,7 +82,7 @@ export default function EditEmployeeSheet({ isOpen, onClose, employee, onSave }:
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
                     <form id="edit-employee-form" onSubmit={handleSubmit} className="space-y-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-text-secondary">Nome Completo</label>
@@ -96,7 +96,7 @@ export default function EditEmployeeSheet({ isOpen, onClose, employee, onSave }:
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-text-secondary">CPF</label>
                                 <input
@@ -201,7 +201,7 @@ export default function EditEmployeeSheet({ isOpen, onClose, employee, onSave }:
                     </form>
                 </div>
 
-                <div className="p-6 border-t border-border bg-[#1e1e24]">
+                <div className="p-4 sm:p-6 border-t border-border bg-[#1e1e24]">
                     <div className="flex gap-3">
                         <Button
                             variant="ghost"

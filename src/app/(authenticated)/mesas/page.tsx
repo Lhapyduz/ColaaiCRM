@@ -74,11 +74,11 @@ export default function MesasPage() {
     return (
         <div className="relative flex flex-col h-full w-full bg-bg-primary overflow-hidden animate-fadeIn">
             {/* Header */}
-            <header className="h-16 border-b border-border flex items-center justify-between px-8 bg-bg-secondary backdrop-blur-md shrink-0">
-                <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-bold tracking-tight">Gestão de Mesas <span className="text-text-muted mx-2">—</span> <span className="text-text-secondary font-normal">Salão Principal</span></h2>
+            <header className="min-h-16 py-3 md:py-0 border-b border-border flex flex-col md:flex-row items-start md:items-center justify-between px-4 md:px-8 bg-bg-secondary backdrop-blur-md shrink-0 gap-3 md:gap-0">
+                <div className="flex items-center gap-2 md:gap-4">
+                    <h2 className="text-lg md:text-xl font-bold tracking-tight truncate max-w-full">Gestão de Mesas <span className="text-text-muted mx-1 md:mx-2">—</span> <span className="text-text-secondary font-normal hidden sm:inline">Salão Principal</span></h2>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 w-full justify-between md:justify-end md:w-auto">
                     <div className="relative hidden md:block">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted w-4 h-4" />
                         <input
@@ -97,12 +97,12 @@ export default function MesasPage() {
             </header>
 
             {/* Sub-Header / Filtros */}
-            <div className="px-8 py-4 border-b border-border flex flex-wrap items-center justify-between bg-bg-card/20 shrink-0 gap-4">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+            <div className="px-4 md:px-8 py-4 border-b border-border flex flex-col md:flex-row items-stretch md:items-center justify-between bg-bg-card/20 shrink-0 gap-4">
+                <div className="flex items-center gap-2 flex-wrap pb-2 md:pb-0">
                     <button
                         onClick={() => setStatusFilter('todas')}
                         className={cn(
-                            "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
+                            "px-3 md:px-4 py-1.5 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap transition-colors",
                             statusFilter === 'todas'
                                 ? "bg-primary text-white"
                                 : "bg-bg-tertiary border border-border text-text-secondary hover:border-primary/50"
@@ -113,7 +113,7 @@ export default function MesasPage() {
                     <button
                         onClick={() => setStatusFilter('livre')}
                         className={cn(
-                            "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
+                            "px-3 md:px-4 py-1.5 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap transition-colors",
                             statusFilter === 'livre'
                                 ? "bg-emerald-500 text-white"
                                 : "bg-bg-tertiary border border-border text-text-secondary hover:border-emerald-500/50"
@@ -124,7 +124,7 @@ export default function MesasPage() {
                     <button
                         onClick={() => setStatusFilter('ocupada')}
                         className={cn(
-                            "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
+                            "px-3 md:px-4 py-1.5 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap transition-colors",
                             statusFilter === 'ocupada'
                                 ? "bg-red-500 text-white"
                                 : "bg-bg-tertiary border border-border text-text-secondary hover:border-red-500/50"
@@ -135,7 +135,7 @@ export default function MesasPage() {
                     <button
                         onClick={() => setStatusFilter('fechando')}
                         className={cn(
-                            "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
+                            "px-3 md:px-4 py-1.5 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap transition-colors",
                             statusFilter === 'fechando'
                                 ? "bg-amber-500 text-white"
                                 : "bg-bg-tertiary border border-border text-text-secondary hover:border-amber-500/50"
@@ -146,7 +146,7 @@ export default function MesasPage() {
                     <button
                         onClick={() => setStatusFilter('suja')}
                         className={cn(
-                            "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors",
+                            "px-3 md:px-4 py-1.5 rounded-full text-[11px] md:text-xs font-semibold whitespace-nowrap transition-colors",
                             statusFilter === 'suja'
                                 ? "bg-blue-500 text-white"
                                 : "bg-bg-tertiary border border-border text-text-secondary hover:border-blue-500/50"
@@ -155,7 +155,7 @@ export default function MesasPage() {
                         Em Limpeza ({kpiCounts['suja'] || 0})
                     </button>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-end gap-2 w-full md:w-auto">
                     <button className="p-2 rounded-lg hover:bg-bg-tertiary text-text-muted transition-colors" title="Unir Mesas">
                         <Combine className="w-5 h-5" />
                     </button>
@@ -192,9 +192,9 @@ export default function MesasPage() {
             </main>
 
             {/* Footer de Status */}
-            <footer className="h-12 border-t border-border px-8 flex items-center justify-between text-[11px] text-text-muted font-medium bg-bg-secondary shrink-0">
-                <div className="flex gap-6 overflow-x-auto scrollbar-hide">
-                    <div className="flex items-center gap-2 whitespace-nowrap">
+            <footer className="h-12 border-t border-border px-4 md:px-8 flex items-center justify-between text-[11px] text-text-muted font-medium bg-bg-secondary shrink-0">
+                <div className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide">
+                    <div className="flex items-center gap-1.5 md:gap-2 whitespace-nowrap">
                         <span className="size-2 rounded-full bg-emerald-500"></span> Livre: {kpiCounts['livre'] || 0}
                     </div>
                     <div className="flex items-center gap-2 whitespace-nowrap">
