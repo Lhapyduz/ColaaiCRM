@@ -2,7 +2,11 @@
 
 import React from 'react';
 import MainLayout from '@/components/layout/MainLayout';
-import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { KeyboardShortcutsProvider } from "@/contexts/KeyboardShortcutsContext";
+import { OfflineProvider } from "@/contexts/OfflineContext";
+import { EmployeeProvider } from "@/contexts/EmployeeContext";
+import { StorageIndicator } from "@/components/ui/StorageIndicator";
 
 export default function AuthenticatedLayout({
     children,
@@ -10,9 +14,17 @@ export default function AuthenticatedLayout({
     children: React.ReactNode;
 }) {
     return (
-        <MainLayout>
-            <PWAInstallPrompt appName="Cola Aí" logoUrl="https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp" />
-            {children}
-        </MainLayout>
+        <SubscriptionProvider>
+            <OfflineProvider>
+                <EmployeeProvider>
+                    <KeyboardShortcutsProvider>
+                        <MainLayout>
+                            {children}
+                            <StorageIndicator />
+                        </MainLayout>
+                    </KeyboardShortcutsProvider>
+                </EmployeeProvider>
+            </OfflineProvider>
+        </SubscriptionProvider>
     );
 }

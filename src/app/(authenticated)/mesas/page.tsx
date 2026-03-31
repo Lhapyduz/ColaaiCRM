@@ -6,11 +6,12 @@ import { Search, PlusCircle, Combine, Map, Filter, Clock, Loader2, X } from 'luc
 import { MesaWithActiveSession, getMesas, updateMesa, deleteMesa, createMesa, unirMesas, separarMesa } from '@/lib/services/mesas';
 import { MesaCard } from '@/components/mesas/MesaCard';
 import { MesaEditModal, AddMesaModal, MergeConfirmModal } from '@/components/mesas/MesaModals';
-import { toast } from 'sonner';
+import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
 
 export default function MesasPage() {
     const router = useRouter();
+    const toast = useToast();
 
     const [mesas, setMesas] = useState<MesaWithActiveSession[]>([]);
     const [loading, setLoading] = useState(true);

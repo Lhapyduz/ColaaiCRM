@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, Manrope } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
-import { KeyboardShortcutsProvider } from "@/contexts/KeyboardShortcutsContext";
-import { OfflineProvider } from "@/contexts/OfflineContext";
-import { EmployeeProvider } from "@/contexts/EmployeeContext";
-import { ToastProvider } from "@/components/ui/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import QueryProvider from "@/components/providers/QueryProvider";
 import PWARegistry from "@/components/providers/PWARegistry";
 import { Toaster } from 'react-hot-toast';
-import { StorageIndicator } from "@/components/ui/StorageIndicator";
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
 import "./globals.css";
 
@@ -88,19 +82,8 @@ export default function RootLayout({
             <PWARegistry />
             <Toaster position="top-center" reverseOrder={false} />
             <AuthProvider>
-              <SubscriptionProvider>
-                <OfflineProvider>
-                  <EmployeeProvider>
-                    <ToastProvider>
-                      <KeyboardShortcutsProvider>
-                        {children}
-                        <StorageIndicator />
-                        <PWAInstallPrompt appName="Cola Aí" />
-                      </KeyboardShortcutsProvider>
-                    </ToastProvider>
-                  </EmployeeProvider>
-                </OfflineProvider>
-              </SubscriptionProvider>
+              {children}
+              <PWAInstallPrompt appName="Cola Aí" />
             </AuthProvider>
           </QueryProvider>
         </ErrorBoundary>
