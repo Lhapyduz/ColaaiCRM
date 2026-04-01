@@ -6,6 +6,7 @@ import QueryProvider from "@/components/providers/QueryProvider";
 import PWARegistry from "@/components/providers/PWARegistry";
 import { Toaster } from 'react-hot-toast';
 import PWAInstallPrompt from "@/components/pwa/PWAInstallPrompt";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import "./globals.css";
 
 const inter = Inter({
@@ -87,6 +88,7 @@ export default function RootLayout({
             </AuthProvider>
           </QueryProvider>
         </ErrorBoundary>
+        <SpeedInsights />
       </body>
     </html>
   );
