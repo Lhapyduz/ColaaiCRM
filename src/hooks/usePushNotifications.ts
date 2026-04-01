@@ -56,7 +56,21 @@ export function usePushNotifications() {
             }
 
             // Pega a chave pública do VAPID
-            const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+            let vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+            // Se não estiver no process.env (comum em dev/build se não reiniciado), tenta buscar do servidor
+            if (!vapidPublicKey) {
+                console.log('[Push] VAPID key missing in env, fetching from API...');
+                try {
+                    const response = await fetch('/api/push/vapid-key');
+                    if (response.ok) {
+                        const data = await response.json();
+                        vapidPublicKey = data.publicKey;
+                    }
+                } catch (e) {
+                    console.error('[Push] Erro ao buscar VAPID key da API:', e);
+                }
+            }
 
             if (!vapidPublicKey) {
                 throw new Error('VAPID public key not configured');
