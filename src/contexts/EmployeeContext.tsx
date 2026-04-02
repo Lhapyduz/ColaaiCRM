@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from 'react';
+import { PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
 import { verifyPin, isLegacyPin, hashPin } from '@/lib/pinSecurity';
@@ -48,18 +49,37 @@ export function EmployeeProvider({ children }: { children: ReactNode }) {
     const checkAdminExistence = useCallback(async () => {
         if (!user) return;
 
-        const { data } = await supabase
-            .from('employees')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('role', 'admin')
-            .eq('is_active', true)
-            .limit(1);
+        try {
+            // Supabase fetch with timeout (5 seconds)
+            const fetchPromise = supabase
+                .from('employees')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('role', 'admin')
+                .eq('is_active', true)
+                .limit(1);
 
-        if (data && data.length > 0) {
-            setHasAdmin(true);
-        } else {
-            setHasAdmin(false);
+            const timeoutPromise = new Promise<{ data: unknown[] | null, error: PostgrestError | null }>((_, reject) =>
+                setTimeout(() => reject(new Error('TIMEOUT')), 5000)
+            );
+
+            let response;
+            try {
+                response = await Promise.race([fetchPromise, timeoutPromise]);
+            } catch (err) {
+                console.warn('[EmployeeContext] Admin check stalled or failed:', err);
+                return;
+            }
+
+            const { data } = response as { data: unknown[] | null };
+
+            if (data && data.length > 0) {
+                setHasAdmin(true);
+            } else {
+                setHasAdmin(false);
+            }
+        } catch (error) {
+            console.error('Error in checkAdminExistence:', error);
         }
     }, [user]);
 

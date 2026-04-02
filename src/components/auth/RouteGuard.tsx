@@ -49,8 +49,22 @@ export default function RouteGuard({ children, requiredPermission, pathname }: R
     const { user, loading: authLoading } = useAuth();
     const { activeEmployee, hasPermission, isLocked, loading: employeeLoading } = useEmployee();
     const { isBlocked, loading: subscriptionLoading } = useSubscription();
-    const isReady = !authLoading && !employeeLoading && !subscriptionLoading;
+    
+    const [timedOut, setTimedOut] = React.useState(false);
+    
+    const isReady = (!authLoading && !employeeLoading && !subscriptionLoading) || timedOut;
     const isPathAllowedWhenExpired = ALLOWED_WHEN_EXPIRED.some(route => pathname.startsWith(route));
+
+    // Safety timeout: if checking permissions takes too long (e.g. Supabase down), force continue
+    useEffect(() => {
+        if (!isReady) {
+            const timer = setTimeout(() => {
+                console.warn('[RouteGuard] Permissions check timed out. Proceeding with safety fallback.');
+                setTimedOut(true);
+            }, 6000);
+            return () => clearTimeout(timer);
+        }
+    }, [isReady]);
 
     // Derive authorization state directly during render
     const checkAuthorization = () => {

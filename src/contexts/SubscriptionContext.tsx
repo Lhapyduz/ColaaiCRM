@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './AuthContext';
+import { PostgrestError } from '@supabase/supabase-js';
 
 export type PlanType = 'Basico' | 'Avançado' | 'Profissional';
 export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'trial' | 'pending_pix';
@@ -142,13 +143,30 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
         try {
             if (!silent) setLoading(true);
-            const { data, error } = await supabase
+
+            // Fetch with timeout (8 seconds)
+            const fetchPromise = supabase
                 .from('subscriptions')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('updated_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
+
+            const timeoutPromise = new Promise<{ data: null, error: PostgrestError | null }>((_, reject) =>
+                setTimeout(() => reject(new Error('TIMEOUT')), 8000)
+            );
+
+            let response;
+            try {
+                response = await Promise.race([fetchPromise, timeoutPromise]);
+            } catch (err) {
+                console.warn('[SubscriptionContext] Fetch subscription stalled or failed:', err);
+                // On timeout or race error, we stay with current (possibly null) state
+                return;
+            }
+
+            const { data, error } = response;
 
             if (error) {
                 console.error('Error fetching subscription:', error);
@@ -159,7 +177,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
                 setSubscription(null);
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error in fetchSubscription:', error);
         } finally {
             if (!silent) setLoading(false);
         }

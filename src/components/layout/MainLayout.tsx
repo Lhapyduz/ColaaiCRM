@@ -15,21 +15,50 @@ interface MainLayoutProps {
 function MainLayoutContent({ children }: MainLayoutProps) {
     const { collapsed, isHydrated } = useSidebar();
     const pathname = usePathname();
+    const { loading: authLoading } = useAuth();
+    const [showSafetyBanner, setShowSafetyBanner] = useState(false);
+
+    // Show banner if auth took too long (safety fallback active)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (authLoading) setShowSafetyBanner(true);
+        }, 10000); // Only show if still loading after 10s
+        return () => clearTimeout(timer);
+    }, [authLoading]);
 
     return (
         <div className="flex min-h-screen">
             <Sidebar />
-            <main className={cn(
-                "relative flex-1 min-w-0 p-6 bg-bg-primary will-change-[margin-left]",
-                // Only enable transitions after hydration to prevent FOUC
-                isHydrated ? "transition-[margin-left] duration-normal" : "",
-                "max-md:ml-0 max-md:pt-20 max-md:px-4 max-md:pb-4",
-                collapsed ? "ml-sidebar-collapsed" : "ml-sidebar"
-            )}>
-                <RouteGuard pathname={pathname}>
-                    {children}
-                </RouteGuard>
-            </main>
+            <div className="flex-1 flex flex-col min-w-0">
+                {showSafetyBanner && (
+                    <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between animate-in fade-in slide-in-from-top duration-500 z-50">
+                        <div className="flex items-center gap-3">
+                            <span className="text-xl">⚠️</span>
+                            <div className="flex flex-col">
+                                <span className="text-amber-500 font-medium text-sm">Serviço de Nuvem Instável</span>
+                                <span className="text-text-secondary text-xs">Exibindo dados locais. Algumas ações podem ser limitadas.</span>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setShowSafetyBanner(false)}
+                            className="text-text-muted hover:text-text-primary transition-colors p-1"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                )}
+                <main className={cn(
+                    "relative flex-1 p-6 bg-bg-primary will-change-[margin-left]",
+                    // Only enable transitions after hydration to prevent FOUC
+                    isHydrated ? "transition-[margin-left] duration-normal" : "",
+                    "max-md:ml-0 max-md:pt-20 max-md:px-4 max-md:pb-4",
+                    collapsed ? "ml-sidebar-collapsed" : "ml-sidebar"
+                )}>
+                    <RouteGuard pathname={pathname}>
+                        {children}
+                    </RouteGuard>
+                </main>
+            </div>
         </div>
     );
 }

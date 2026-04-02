@@ -2,11 +2,12 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { isOnline, getAll, saveItem } from '@/lib/offlineStorage';
 
 interface UserSettings {
+// ...
     id: string;
     user_id: string;
     app_name: string;
@@ -86,28 +87,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastFetchedUserIdRef.current = userId;
 
         try {
-            if (!isOnline()) {
-                const cachedSettings = await getAll<UserSettings>('userSettings');
-                const userSetting = cachedSettings.find((s) => s.user_id === userId);
-                if (userSetting) {
-                    setUserSettings(userSetting);
-                    applyThemeColors(
-                        userSetting.primary_color,
-                        userSetting.secondary_color,
-                        userSetting.sidebar_color || userSetting.secondary_color
-                    );
-                }
-                return;
+            // Check cache first for immediate UI update (optimistic)
+            const cachedSettings = await getAll<UserSettings>('userSettings');
+            const userSetting = cachedSettings.find((s) => s.user_id === userId);
+
+            if (userSetting) {
+                setUserSettings(userSetting);
+                applyThemeColors(
+                    userSetting.primary_color,
+                    userSetting.secondary_color,
+                    userSetting.sidebar_color || userSetting.secondary_color
+                );
             }
 
-            const { data, error } = await supabase
+            if (!isOnline()) return;
+
+            // Supabase fetch with local timeout (8 seconds)
+            const fetchPromise = supabase
                 .from('user_settings')
                 .select('*')
                 .eq('user_id', userId)
                 .single();
 
+            const timeoutPromise = new Promise<{ data: null, error: PostgrestError | null }>((_, reject) =>
+                setTimeout(() => reject(new Error('TIMEOUT')), 8000)
+            );
+
+            // Using Promise.race for the fetch
+            let response;
+            try {
+                response = await Promise.race([fetchPromise, timeoutPromise]);
+            } catch (err) {
+                console.warn('[AuthContext] Fetch settings stalled or failed:', err);
+                // If we already have cached data, we just stay with it
+                return;
+            }
+
+            const { data, error } = response;
+
             if (error) {
-                if (error.code === 'PGRST116') {
+                if ((error as PostgrestError).code === 'PGRST116') {
                     // Settings not found, create defaults
                     console.log('Creates default settings for existing user');
                     const { data: newSettings, error: insertError } = await supabase
@@ -157,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 );
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error in fetchUserSettings:', error);
         } finally {
             loadingRef.current = false;
             setLoading(false);
