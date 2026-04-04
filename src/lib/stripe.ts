@@ -1,7 +1,11 @@
 import Stripe from 'stripe';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2026-01-28.clover', // Verified stable version
+// O segredo é este '||' com uma string qualquer. 
+// Isso engana o Stripe durante o build e evita o erro.
+const stripeKey = process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder';
+
+export const stripe = new Stripe(stripeKey, {
+  apiVersion: '2026-01-28.clover',
   typescript: true,
 });
 
@@ -18,7 +22,7 @@ export const getStripeCustomer = async (userId: string, email: string, name?: st
       if (customer && !customer.deleted) {
         return customer;
       }
-    } catch (error) {
+    } catch {
       console.log('[STRIPE] Customer not found in Stripe, creating new one');
     }
   }
