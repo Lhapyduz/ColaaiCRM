@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import * as dataAccess from '@/lib/dataAccess';
 
 interface Product {
     id: string;
@@ -90,18 +91,19 @@ export function useProductsCache() {
 
         try {
             setLoading(true);
-            const { data, error: fetchError } = await supabase
-                .from('products')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('display_order', { ascending: true, nullsFirst: false })
-                .order('name', { ascending: true });
-
-            if (fetchError) throw fetchError;
+            const data = await dataAccess.fetchProducts(user.id);
 
             const productData = data || [];
-            setProducts(productData);
-            setCachedData(PRODUCTS_CACHE_KEY, productData, user.id);
+            // Sort manually if needed, or rely on fetchProducts implementation
+            const sortedData = [...productData].sort((a, b) => {
+                if (a.display_order !== b.display_order) {
+                    return (a.display_order ?? 0) - (b.display_order ?? 0);
+                }
+                return a.name.localeCompare(b.name);
+            });
+
+            setProducts(sortedData as any);
+            setCachedData(PRODUCTS_CACHE_KEY, sortedData, user.id);
             setError(null);
         } catch (err) {
             console.error('Error fetching products:', err);
@@ -151,18 +153,19 @@ export function useCategoriesCache() {
 
         try {
             setLoading(true);
-            const { data, error: fetchError } = await supabase
-                .from('categories')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('display_order', { ascending: true, nullsFirst: false })
-                .order('name', { ascending: true });
-
-            if (fetchError) throw fetchError;
+            const data = await dataAccess.fetchCategories(user.id);
 
             const categoryData = data || [];
-            setCategories(categoryData);
-            setCachedData(CATEGORIES_CACHE_KEY, categoryData, user.id);
+            // Sort manually
+            const sortedData = [...categoryData].sort((a, b) => {
+                if (a.display_order !== b.display_order) {
+                    return (a.display_order ?? 0) - (b.display_order ?? 0);
+                }
+                return a.name.localeCompare(b.name);
+            });
+
+            setCategories(sortedData as any);
+            setCachedData(CATEGORIES_CACHE_KEY, sortedData, user.id);
             setError(null);
         } catch (err) {
             console.error('Error fetching categories:', err);

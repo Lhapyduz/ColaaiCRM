@@ -1,12 +1,13 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useCallback, ReactNode } from 'react';
 import { initOfflineDB, onNetworkChange, isOnline, getPendingActions } from '@/lib/offlineStorage';
 import { syncPendingActions, cacheDataForOffline, updateLastSync } from '@/lib/offlineSync';
+import { useStorageStore, type StorageMode } from '@/stores/useStorageStore';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 
-export type StorageMode = 'cloud' | 'local';
+export type { StorageMode };
 
 interface OfflineContextType {
     hardwareOnline: boolean;     // Se o dispositivo tem internet física
@@ -26,30 +27,30 @@ const OfflineContext = createContext<OfflineContextType | undefined>(undefined);
 export function OfflineProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth();
 
-    // Estados base
-    const [hardwareOnline, setHardwareOnline] = useState(true);
-    const [storageMode, setStorageModeState] = useState<StorageMode>('cloud');
+    // ─── Estado vindo do Zustand ─────────────────────
+    const hardwareOnline = useStorageStore((s) => s.hardwareOnline);
+    const storageMode = useStorageStore((s) => s.storageMode);
+    const pendingCount = useStorageStore((s) => s.pendingChangesCount);
+    const syncing = useStorageStore((s) => s.syncing);
+    const lastSync = useStorageStore((s) => s.lastSyncedAt);
 
-    const [pendingCount, setPendingCount] = useState(0);
-    const [syncing, setSyncing] = useState(false);
-    const [lastSync, setLastSync] = useState<string | null>(null);
+    const setStorageMode = useStorageStore((s) => s.setStorageMode);
+    const setHardwareOnline = useStorageStore((s) => s.setHardwareOnline);
+    const setSyncing = useStorageStore((s) => s.setSyncing);
 
     const isEffectivelyOnline = hardwareOnline && storageMode === 'cloud';
 
-    const setStorageMode = useCallback((mode: StorageMode) => {
-        setStorageModeState(mode);
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('storageMode', mode);
+    const updatePendingCount = useCallback(async () => {
+        try {
+            const actions = await getPendingActions();
+            useStorageStore.setState({ pendingChangesCount: actions.length });
+        } catch {
+            // Silently fail if DB not ready
         }
     }, []);
 
-    const updatePendingCount = useCallback(async () => {
-        const actions = await getPendingActions();
-        setPendingCount(actions.length);
-    }, []);
-
     const syncNow = useCallback(async () => {
-        // Só sync se houver internet de fato The hardware must be online 
+        // Só sync se houver internet de fato
         if (!hardwareOnline || syncing) return;
 
         setSyncing(true);
@@ -57,7 +58,6 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
             const result = await syncPendingActions();
             if (result.synced > 0) {
                 updateLastSync();
-                setLastSync(new Date().toISOString());
                 toast.success(`${result.synced} itens sincronizados com a nuvem!`);
             }
             if (result.failed > 0) {
@@ -75,7 +75,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
             toast.error('Erro ao sincronizar com servidor.');
         }
         setSyncing(false);
-    }, [hardwareOnline, syncing, user, isEffectivelyOnline, updatePendingCount]);
+    }, [hardwareOnline, syncing, user, isEffectivelyOnline, updatePendingCount, setSyncing]);
 
     const refreshCache = useCallback(async () => {
         if (!isEffectivelyOnline || !user) return;
@@ -85,33 +85,36 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     // Initialize IndexedDB and check status
     useEffect(() => {
         const init = async () => {
-            await initOfflineDB();
+            try {
+                await initOfflineDB();
+            } catch {
+                // DB init may fail on very first SSR render attempt
+            }
             setHardwareOnline(isOnline());
+            await updatePendingCount();
 
+            // Restore lastSync from localStorage for backward compat
             if (typeof window !== 'undefined') {
-                const savedMode = localStorage.getItem('storageMode') as StorageMode;
-                if (savedMode === 'local' || savedMode === 'cloud') {
-                    setStorageModeState(savedMode);
+                const saved = localStorage.getItem('lastSync');
+                if (saved && !lastSync) {
+                    useStorageStore.getState().setLastSyncedAt(saved);
                 }
-
-                await updatePendingCount();
-                setLastSync(localStorage.getItem('lastSync'));
             }
         };
         init();
-    }, [updatePendingCount]);
+    }, [updatePendingCount, setHardwareOnline, lastSync]);
 
     // Listen for online/offline events
     useEffect(() => {
         const unsubscribe = onNetworkChange(async (isOnlineNow) => {
             setHardwareOnline(isOnlineNow);
             if (isOnlineNow && storageMode === 'cloud' && user) {
-                // Auto-sync when coming back online locally in cloud mode
+                // Auto-sync when coming back online in cloud mode
                 await syncNow();
             }
         });
         return unsubscribe;
-    }, [user, syncNow, storageMode]);
+    }, [user, syncNow, storageMode, setHardwareOnline]);
 
     // Cache data when user logs in and is online
     useEffect(() => {

@@ -134,7 +134,7 @@ export default function EmployeeProfile({ params }: { params: Promise<{ id: stri
                             </span>
                         </div>
                         <p className="text-text-muted text-sm">
-                            Membro da equipe desde {format(new Date(employee.created_at), "MMMM 'de' yyyy", { locale: ptBR })} • ID: #{employee.id.slice(0, 4).toUpperCase()}
+                            Membro da equipe desde {format(new Date(employee.created_at || new Date()), "MMMM 'de' yyyy", { locale: ptBR })} • ID: #{(employee.id || '').slice(0, 4).toUpperCase()}
                         </p>
                     </div>
                 </div>
@@ -201,7 +201,7 @@ export default function EmployeeProfile({ params }: { params: Promise<{ id: stri
                     <div className="space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Data de Admissão</span>
-                            <span className="font-medium text-white sm:text-right break-all">{format(new Date(employee.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
+                            <span className="font-medium text-white sm:text-right break-all">{format(new Date(employee.created_at || new Date()), "dd/MM/yyyy", { locale: ptBR })}</span>
                         </div>
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm border-b border-border/20 pb-3 gap-1 sm:gap-0">
                             <span className="text-text-muted">Salário Base</span>

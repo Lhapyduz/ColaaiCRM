@@ -22,6 +22,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { logOrderCreated } from '@/lib/actionLogger';
 import { formatCurrency } from '@/hooks/useFormatters';
+import { createFullOrder } from '@/lib/dataAccess';
+import { getDb } from '@/lib/db';
 import styles from './page.module.css';
 
 // Função para disparar notificação local
@@ -123,7 +125,7 @@ export default function NovoPedidoPage() {
     const [validatingCoupon, setValidatingCoupon] = useState(false);
 
     // Loyalty state
-    const [loyaltyCustomer, setLoyaltyCustomer] = useState<{ id: string; name: string; total_points: number } | null>(null);
+    const [loyaltyCustomer, setLoyaltyCustomer] = useState<{ id: string; name: string; total_points: number; total_orders?: number; total_spent?: number; coupons_used?: number; total_discount_savings?: number; } | null>(null);
 
     // App settings (for feature toggles)
     const [appSettings, setAppSettings] = useState<{ coupons_enabled: boolean; loyalty_enabled: boolean } | null>(null);
@@ -421,19 +423,26 @@ export default function NovoPedidoPage() {
         setSubmitting(true);
 
         try {
-            // Get next order number
-            const { data: lastOrder } = await supabase
-                .from('orders')
-                .select('order_number')
-                .eq('user_id', user.id)
-                .order('order_number', { ascending: false })
-                .limit(1)
-                .single();
+            let orderNumber = 1;
+            try {
+                const { data: lastOrder } = await supabase
+                    .from('orders')
+                    .select('order_number')
+                    .eq('user_id', user.id)
+                    .order('order_number', { ascending: false })
+                    .limit(1)
+                    .single();
+                orderNumber = lastOrder ? lastOrder.order_number + 1 : 1;
+            } catch (err) {
+                try {
+                    const cachedOrders = await getDb().orders.orderBy('order_number').reverse().limit(1).toArray();
+                    orderNumber = cachedOrders.length > 0 ? cachedOrders[0].order_number + 1 : 1;
+                } catch {
+                    orderNumber = Math.floor(Math.random() * 10000);
+                }
+            }
 
-            const orderNumber = (lastOrder?.order_number || 0) + 1;
-
-            // Create order
-            const orderData: Record<string, unknown> = {
+            const orderData = {
                 user_id: user.id,
                 order_number: orderNumber,
                 customer_name: customerName,
@@ -446,31 +455,13 @@ export default function NovoPedidoPage() {
                 delivery_fee: isDelivery ? deliveryFee : 0,
                 total,
                 notes: notes || null,
-                is_delivery: isDelivery
+                is_delivery: isDelivery,
+                ...(appliedCoupon ? { discount_amount: discount, coupon_code: appliedCoupon.code } : {})
             };
 
-            // Add coupon fields if coupon is applied (fields may not exist in older schemas)
-            if (appliedCoupon) {
-                orderData.discount_amount = discount;
-                orderData.coupon_code = appliedCoupon.code;
-            }
-
-            const { data: order, error: orderError } = await supabase
-                .from('orders')
-                .insert(orderData)
-                .select()
-                .single();
-
-            if (orderError) {
-                console.error('Order creation error:', orderError);
-                throw new Error(orderError.message || 'Failed to create order');
-            }
-
-            // Create order items with addons
             const orderItems = cart.map(item => {
                 const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
                 return {
-                    order_id: order.id,
                     product_id: item.product.id,
                     product_name: item.product.name,
                     quantity: item.quantity,
@@ -480,182 +471,68 @@ export default function NovoPedidoPage() {
                 };
             });
 
-            const { data: insertedItems, error: itemsError } = await supabase
-                .from('order_items')
-                .insert(orderItems)
-                .select('id');
-
-            if (itemsError) {
-                console.error('Order items error:', itemsError);
-                throw new Error(itemsError.message || 'Failed to create order items');
-            }
-
-            // Save addons for each order item
-            if (insertedItems) {
-                const addonInserts: { order_item_id: string; addon_id: string; addon_name: string; addon_price: number; quantity: number }[] = [];
-
-                cart.forEach((item, index) => {
-                    if (item.addons.length > 0 && insertedItems[index]) {
-                        item.addons.forEach(addon => {
-                            addonInserts.push({
-                                order_item_id: insertedItems[index].id,
-                                addon_id: addon.id,
-                                addon_name: addon.name,
-                                addon_price: addon.price,
-                                quantity: 1
-                            });
-                        });
-                    }
-                });
-
-                if (addonInserts.length > 0) {
-                    await supabase.from('order_item_addons').insert(addonInserts);
-                }
-            }
-
-            // Log order creation
-            logOrderCreated(order.id, orderNumber, total);
-
-            // Update coupon usage if applied (non-blocking errors)
-            if (appliedCoupon) {
-                try {
-                    // Get current count and increment
-                    const { data: couponData } = await supabase
-                        .from('coupons')
-                        .select('usage_count')
-                        .eq('id', appliedCoupon.id)
-                        .single();
-
-                    if (couponData) {
-                        await supabase
-                            .from('coupons')
-                            .update({ usage_count: (couponData.usage_count || 0) + 1 })
-                            .eq('id', appliedCoupon.id);
-                    }
-
-                    // Record coupon usage
-                    await supabase.from('coupon_usage').insert({
-                        coupon_id: appliedCoupon.id,
-                        order_id: order.id,
-                        customer_phone: customerPhone || null,
-                        discount_applied: discount
+            const itemAddons: { itemIndex: number, addon_id: string, addon_name: string, addon_price: number, quantity: number }[] = [];
+            cart.forEach((item, index) => {
+                item.addons.forEach(addon => {
+                    itemAddons.push({
+                        itemIndex: index,
+                        addon_id: addon.id,
+                        addon_name: addon.name,
+                        addon_price: addon.price,
+                        quantity: 1
                     });
-                } catch (couponErr) {
-                    console.warn('Coupon usage tracking failed:', couponErr);
-                }
+                });
+            });
+
+            let couponData = null;
+            if (appliedCoupon) {
+                couponData = {
+                    appliedCoupon,
+                    discount,
+                    customerPhone
+                };
             }
 
-            // Register customer in loyalty program if phone provided (always, not just when paid)
+            let loyaltyData = null;
             if (customerPhone) {
-                try {
-                    // Normalize phone number - remove all non-digits
-                    const cleanPhone = customerPhone.replace(/\D/g, '');
-
-                    // Skip if phone is too short after cleaning
-                    if (cleanPhone.length < 10) {
-                        console.warn('Phone number too short for loyalty registration:', cleanPhone);
-                    } else {
-                        // Get or create customer
-                        const { data: customerData, error: fetchError } = await supabase
-                            .from('customers')
-                            .select('id, total_points, total_spent, total_orders')
-                            .eq('user_id', user.id)
-                            .eq('phone', cleanPhone)
-                            .single();
-
-                        let customer = customerData;
-
-                        if (fetchError && fetchError.code === 'PGRST116') {
-                            // Customer doesn't exist - create new one
-                            const { data: newCustomer, error: insertError } = await supabase
-                                .from('customers')
-                                .insert({
-                                    user_id: user.id,
-                                    name: customerName.trim(),
-                                    phone: cleanPhone,
-                                    total_points: 0,
-                                    total_spent: 0,
-                                    total_orders: 0,
-                                    tier: 'bronze'
-                                })
-                                .select()
-                                .single();
-
-                            if (insertError) {
-                                console.error('Failed to create customer:', insertError);
-                            } else {
-                                customer = newCustomer;
-                            }
-                        }
-
-                        if (customer) {
-                            // Calculate points only if order is paid
-                            let pointsEarned = 0;
-
-                            if (isPaid) {
-                                // Get loyalty settings
-                                const { data: settings } = await supabase
-                                    .from('loyalty_settings')
-                                    .select('points_per_real')
-                                    .eq('user_id', user.id)
-                                    .single();
-
-                                const pointsPerReal = settings?.points_per_real || 1;
-                                pointsEarned = Math.floor(total * pointsPerReal);
-
-                                // Add points transaction if earned
-                                if (pointsEarned > 0) {
-                                    await supabase.from('points_transactions').insert({
-                                        user_id: user.id,
-                                        customer_id: customer.id,
-                                        points: pointsEarned,
-                                        type: 'earned',
-                                        description: `Pedido #${orderNumber}`,
-                                        order_id: order.id
-                                    });
-                                }
-                            }
-
-                            // Get current customer data for coupon tracking
-                            const { data: currentCustomer } = await supabase
-                                .from('customers')
-                                .select('coupons_used, total_discount_savings')
-                                .eq('id', customer.id)
-                                .single();
-
-                            // Build update data - always update orders count
-                            const updateData: Record<string, number> = {
-                                total_orders: (customer.total_orders || 0) + 1
-                            };
-
-                            // Add spent and points if paid
-                            if (isPaid) {
-                                updateData.total_spent = (customer.total_spent || 0) + total;
-                                updateData.total_points = (customer.total_points || 0) + pointsEarned;
-                            }
-
-                            // Add coupon tracking if coupon was applied
-                            if (appliedCoupon && discount > 0) {
-                                updateData.coupons_used = (currentCustomer?.coupons_used || 0) + 1;
-                                updateData.total_discount_savings = (currentCustomer?.total_discount_savings || 0) + discount;
-                            }
-
-                            await supabase
-                                .from('customers')
-                                .update(updateData)
-                                .eq('id', customer.id);
-                        }
-                    }
-                } catch (loyaltyErr) {
-                    console.warn('Loyalty registration failed:', loyaltyErr);
+                const cleanPhone = customerPhone.replace(/\D/g, '');
+                if (cleanPhone.length >= 10) {
+                    const currentCustomer = loyaltyCustomer;
+                    loyaltyData = {
+                        customer: currentCustomer,
+                        newCustomer: !currentCustomer ? {
+                            user_id: user.id,
+                            name: customerName.trim(),
+                            phone: cleanPhone,
+                            total_points: 0,
+                            total_spent: 0,
+                            total_orders: 0,
+                            tier: 'bronze'
+                        } : null,
+                        pointsEarned: isPaid ? Math.floor(total * 1) : 0, // Fallback default = 1 point per real
+                        updateData: currentCustomer ? {
+                            total_orders: (currentCustomer.total_orders || 0) + 1,
+                            ...(isPaid ? {
+                                total_spent: (currentCustomer.total_spent || 0) + total,
+                                total_points: (currentCustomer.total_points || 0) + Math.floor(total * 1)
+                            } : {}),
+                            ...(appliedCoupon ? {
+                                coupons_used: (currentCustomer.coupons_used || 0) + 1,
+                                total_discount_savings: (currentCustomer.total_discount_savings || 0) + discount
+                            } : {})
+                        } : null
+                    };
                 }
             }
+
+            await createFullOrder(orderData, orderItems, itemAddons, loyaltyData, couponData);
 
             if (user) {
-                sendNewOrderPush(user.id, orderNumber, customerName, total);
+                sendNewOrderPush(user.id, orderNumber, customerName, total).catch(console.error);
             }
 
-            toast.success(`Pedido #${orderNumber} criado com sucesso!`);
+            logOrderCreated("local-sync", orderNumber, total);
+            toast.success(`Pedido #${orderNumber} gerado com sucesso!`);
             router.push('/pedidos');
         } catch (error) {
             console.error('Error creating order:', error);

@@ -14,6 +14,10 @@ export interface CachedProduct {
     image_url: string | null;
     category_id: string | null;
     available: boolean | null;
+    display_order: number | null;
+    promo_enabled: boolean | null;
+    promo_value: number | null;
+    promo_type: 'value' | 'percentage' | null;
     created_at: string | null;
 }
 
@@ -23,6 +27,7 @@ export interface CachedCategory {
     name: string;
     icon: string | null;
     color: string | null;
+    display_order: number | null;
     created_at: string | null;
 }
 
@@ -85,10 +90,10 @@ export interface CachedUserSetting {
 }
 
 export interface PendingAction {
-    id: string;
-    type: 'create' | 'update' | 'delete';
+    id: string; // UUID of the action itself
+    type: 'create' | 'update' | 'delete' | 'create_full_order';
     table: string;
-    data: Record<string, unknown>;
+    data: any; // Record data
     timestamp: number;
 }
 
@@ -134,4 +139,33 @@ export class LigeirinhoDB extends Dexie {
     }
 }
 
-export const db = new LigeirinhoDB();
+// ────────────────────────────────────────────
+// Lazy singleton — SSR-safe
+// Dexie depende de IndexedDB (browser-only).
+// Usar getDb() em vez de um export estático
+// evita "window is not defined" durante build/SSR.
+// ────────────────────────────────────────────
+
+let _db: LigeirinhoDB | null = null;
+
+/**
+ * Retorna a instância singleton do Dexie.
+ * DEVE ser chamado apenas no client-side.
+ */
+export function getDb(): LigeirinhoDB {
+    if (typeof window === 'undefined') {
+        throw new Error(
+            '[db] getDb() foi chamado no servidor. ' +
+            'Dexie só pode ser usado no client-side.'
+        );
+    }
+    if (!_db) {
+        _db = new LigeirinhoDB();
+    }
+    return _db;
+}
+
+/**
+ * @deprecated Use getDb() no lugar. Mantido temporariamente para compatibilidade.
+ */
+export const db = typeof window !== 'undefined' ? new LigeirinhoDB() : (null as unknown as LigeirinhoDB);

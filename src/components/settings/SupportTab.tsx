@@ -45,7 +45,7 @@ export default function SupportTab() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [sendingMsg, setSendingMsg] = useState(false);
-    const { success, error } = useToast();
+    const toast = useToast();
 
     // New Ticket Modal State
     const [showNewTicket, setShowNewTicket] = useState(false);
@@ -66,11 +66,11 @@ export default function SupportTab() {
             setTickets(data as unknown as Ticket[]);
         } catch (err) {
             console.error('Error fetching tickets:', err);
-            error('Erro ao carregar tickets');
+            toast.error('Erro ao carregar tickets');
         } finally {
             setLoading(false);
         }
-    }, [error]);
+    }, [toast]);
 
     useEffect(() => {
         fetchTickets();
@@ -148,7 +148,7 @@ export default function SupportTab() {
 
     const handleCreateTicket = async () => {
         if (!newTicketData.subject.trim()) {
-            error('Assunto é obrigatório');
+            toast.error('Assunto é obrigatório');
             return;
         }
 
@@ -158,14 +158,14 @@ export default function SupportTab() {
             setTickets(prev => [ticket as unknown as Ticket, ...prev]);
             setShowNewTicket(false);
             setNewTicketData({ subject: '', priority: 'medium', category: 'Dúvida' });
-            success('Ticket criado com sucesso!');
+            toast.success('Ticket criado com sucesso!');
 
             // Automatically open chat
             setSelectedTicket(ticket as unknown as Ticket);
             setView('chat');
         } catch (err) {
             console.error('Error creating ticket:', err);
-            error('Erro ao criar ticket');
+            toast.error('Erro ao criar ticket');
         } finally {
             setCreating(false);
         }
@@ -193,7 +193,7 @@ export default function SupportTab() {
             // Real-time subscription will update the ID and official state
         } catch (err) {
             console.error('Error sending message:', err);
-            error('Erro ao enviar mensagem');
+            toast.error('Erro ao enviar mensagem');
             setMessages(prev => prev.filter(m => m.id !== tempId));
         } finally {
             setSendingMsg(false);

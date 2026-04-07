@@ -41,6 +41,7 @@ import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import { useProductsCache, useCategoriesCache } from '@/hooks/useDataCache';
 import { revalidateStoreMenu } from '@/app/actions/menu';
+import * as dataAccess from '@/lib/dataAccess';
 
 interface Category {
     id: string;
@@ -294,9 +295,11 @@ export default function ProdutosPage() {
                 if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
                 saveTimeoutRef.current = setTimeout(async () => {
                     try {
-                        await Promise.all(newItems.map((item, index) =>
-                            supabase.from('products').update({ display_order: index }).eq('id', item.id)
-                        ));
+                        const updates = newItems.map((item, index) => ({
+                            id: item.id,
+                            display_order: index
+                        }));
+                        await dataAccess.bulkUpdateProducts(updates);
                         revalidateStoreMenu();
                     } catch (error) {
                         console.error('Failed to save product order:', error);
@@ -369,13 +372,16 @@ export default function ProdutosPage() {
             };
             let productId: string;
             if (editingProduct) {
-                await supabase.from('products').update(productData).eq('id', editingProduct.id);
+                await dataAccess.updateProduct(editingProduct.id, productData);
                 productId = editingProduct.id;
             } else {
                 const maxOrder = products.length > 0 ? Math.max(...products.map(p => p.display_order || 0)) : -1;
-                const { data } = await supabase.from('products').insert({ ...productData, display_order: maxOrder + 1 }).select().single();
-                productId = data.id;
+                // Note: dataAccess.createProduct handles local record creation and pending action
+                productId = (productData as any).id || crypto.randomUUID();
+                await dataAccess.createProduct({ ...productData, id: productId, display_order: maxOrder + 1 });
             }
+            // For addon groups, still using direct supabase for now as it's secondary metadata
+            // but we could expand dataAccess if needed.
             await supabase.from('product_addon_groups').delete().eq('product_id', productId);
             if (selectedAddonGroups.length > 0) {
                 await supabase.from('product_addon_groups').insert(selectedAddonGroups.map(groupId => ({ product_id: productId, group_id: groupId })));
@@ -402,7 +408,7 @@ export default function ProdutosPage() {
                     await supabase.storage.from('product-images').remove([urlParts[1]]);
                 }
             }
-            await supabase.from('products').delete().eq('id', id);
+            await dataAccess.deleteProduct(id);
             toast.success('Produto excluído!');
             refetchProducts(); // Invalida o cache
             revalidateStoreMenu();
@@ -414,7 +420,7 @@ export default function ProdutosPage() {
 
     const toggleAvailability = async (product: Product) => {
         try {
-            await supabase.from('products').update({ available: !product.available }).eq('id', product.id);
+            await dataAccess.updateProduct(product.id, { available: !product.available });
             refetchProducts(); // Invalida o cache
             revalidateStoreMenu();
         } catch (error) {

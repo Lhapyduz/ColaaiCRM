@@ -1,7 +1,7 @@
 // Offline Storage Utility
 // Uses Dexie wrapper for IndexedDB to store data for offline access
 
-import { db, type PendingAction } from './db';
+import { getDb, type PendingAction } from './db';
 import type {
     CachedProduct,
     CachedCategory,
@@ -20,49 +20,49 @@ export type StoreName = 'products' | 'categories' | 'orders' | 'userSettings' | 
  */
 export async function initOfflineDB() {
     // A inicialização no Dexie é automática quando chamado db.open() ou ao interagir com as tabelas.
-    return db;
+    return getDb();
 }
 
 /**
  * Get all items from a store
  */
 export async function getAll<T>(storeName: StoreName): Promise<T[]> {
-    return db.table(storeName).toArray() as Promise<T[]>;
+    return getDb().table(storeName).toArray() as Promise<T[]>;
 }
 
 /**
  * Get single item by key
  */
 export async function getItem<T>(storeName: StoreName, key: string): Promise<T | undefined> {
-    return db.table(storeName).get(key) as Promise<T | undefined>;
+    return getDb().table(storeName).get(key) as Promise<T | undefined>;
 }
 
 /**
  * Save item to store
  */
 export async function saveItem<T>(storeName: StoreName, item: T): Promise<void> {
-    await db.table(storeName).put(item);
+    await getDb().table(storeName).put(item);
 }
 
 /**
  * Save multiple items to store
  */
 export async function saveAll<T>(storeName: StoreName, items: T[]): Promise<void> {
-    await db.table(storeName).bulkPut(items);
+    await getDb().table(storeName).bulkPut(items);
 }
 
 /**
  * Delete item from store
  */
 export async function deleteItem(storeName: StoreName, key: string): Promise<void> {
-    await db.table(storeName).delete(key);
+    await getDb().table(storeName).delete(key);
 }
 
 /**
  * Clear all items from store
  */
 export async function clearStore(storeName: StoreName): Promise<void> {
-    await db.table(storeName).clear();
+    await getDb().table(storeName).clear();
 }
 
 /**
@@ -74,21 +74,28 @@ export async function addPendingAction(action: Omit<PendingAction, 'id' | 'times
         id: crypto.randomUUID(),
         timestamp: Date.now()
     };
-    await db.pendingActions.put(pendingAction);
+    await getDb().pendingActions.put(pendingAction);
 }
 
 /**
  * Get all pending actions
  */
 export async function getPendingActions(): Promise<PendingAction[]> {
-    return db.pendingActions.orderBy('timestamp').toArray();
+    return getDb().pendingActions.orderBy('timestamp').toArray();
 }
 
 /**
  * Remove a pending action after successful sync
  */
 export async function removePendingAction(id: string): Promise<void> {
-    await db.pendingActions.delete(id);
+    await getDb().pendingActions.delete(id);
+}
+
+/**
+ * Remove multiple pending actions after successful sync
+ */
+export async function removePendingActions(ids: string[]): Promise<void> {
+    await getDb().pendingActions.bulkDelete(ids);
 }
 
 /**

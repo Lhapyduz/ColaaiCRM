@@ -5,7 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import React, { useState } from 'react';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 
 // ────────────────────────────────────────────
 // Async Storage adapter usando Dexie (IndexedDB)
@@ -14,7 +14,7 @@ import { db } from '@/lib/db';
 const dexieAsyncStorage = {
     getItem: async (key: string): Promise<string | null> => {
         try {
-            const entry = await db.queryCache.get(key);
+            const entry = await getDb().queryCache.get(key);
             return entry?.value ?? null;
         } catch {
             return null;
@@ -22,14 +22,14 @@ const dexieAsyncStorage = {
     },
     setItem: async (key: string, value: string): Promise<void> => {
         try {
-            await db.queryCache.put({ key, value });
+            await getDb().queryCache.put({ key, value });
         } catch {
             // Silently fail — cache persistence is best-effort
         }
     },
     removeItem: async (key: string): Promise<void> => {
         try {
-            await db.queryCache.delete(key);
+            await getDb().queryCache.delete(key);
         } catch {
             // Silently fail
         }

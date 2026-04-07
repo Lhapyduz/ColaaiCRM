@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || vercelUrl || 'http://localhost:3000';
 
-        const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+        const sessionConfig: any = {
             customer: customer.id,
             line_items: [
                 {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, ReactNode } from 'react';
+import React, { createContext, ReactNode, useRef } from 'react';
 import toast from 'react-hot-toast';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -35,22 +35,26 @@ export function ToastProvider({ children }: ToastProviderProps) {
     return <>{children}</>;
 }
 
-// Hook refatorado para usar o react-hot-toast por baixo dos panos, sem estado React pesado
+// Funções estáveis de toast — definidas fora do hook para referência única
+const toastActions: ToastContextType = {
+    toasts: [],
+    addToast: (type: ToastType, message: string, duration: number = 4000) => {
+        if (type === 'success') toast.success(message, { duration });
+        else if (type === 'error') toast.error(message, { duration });
+        else if (type === 'warning') toast(message, { duration, icon: '⚠️' });
+        else toast(message, { duration, icon: 'ℹ️' });
+    },
+    removeToast: (id: string) => toast.dismiss(id),
+    success: (message: string, duration: number = 4000) => toast.success(message, { duration }),
+    error: (message: string, duration: number = 4000) => toast.error(message, { duration }),
+    warning: (message: string, duration: number = 4000) => toast(message, { duration, icon: '⚠️' }),
+    info: (message: string, duration: number = 4000) => toast(message, { duration, icon: 'ℹ️' })
+};
+
+// Hook retorna referência estável (mesma instância em todos os renders)
 export function useToast(): ToastContextType {
-    return {
-        toasts: [],
-        addToast: (type: ToastType, message: string, duration: number = 4000) => {
-            if (type === 'success') toast.success(message, { duration });
-            else if (type === 'error') toast.error(message, { duration });
-            else if (type === 'warning') toast(message, { duration, icon: '⚠️' });
-            else toast(message, { duration, icon: 'ℹ️' });
-        },
-        removeToast: (id: string) => toast.dismiss(id),
-        success: (message: string, duration: number = 4000) => toast.success(message, { duration }),
-        error: (message: string, duration: number = 4000) => toast.error(message, { duration }),
-        warning: (message: string, duration: number = 4000) => toast(message, { duration, icon: '⚠️' }),
-        info: (message: string, duration: number = 4000) => toast(message, { duration, icon: 'ℹ️' })
-    };
+    const ref = useRef(toastActions);
+    return ref.current;
 }
 
 export default ToastProvider;

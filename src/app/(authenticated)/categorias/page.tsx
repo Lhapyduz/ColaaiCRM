@@ -29,6 +29,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { revalidateStoreMenu } from '@/app/actions/menu';
+import * as dataAccess from '@/lib/dataAccess';
 
 interface Category {
     id: string;
@@ -116,13 +117,17 @@ export default function CategoriasPage() {
     const fetchCategories = useCallback(async () => {
         if (!user) return;
         try {
-            const { data: categoriesData } = await supabase.from('categories').select('*').eq('user_id', user.id).order('display_order', { ascending: true });
+            const categoriesData = await dataAccess.fetchCategories(user.id);
             if (categoriesData) {
-                const categoriesWithCounts = await Promise.all(categoriesData.map(async (cat) => {
+                const sorted = [...categoriesData].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+                
+                // Still use direct supabase for head counts for now to keep it simple
+                // or we could fetch from local db if we want full offline counts
+                const categoriesWithCounts = await Promise.all(sorted.map(async (cat) => {
                     const { count } = await supabase.from('products').select('*', { count: 'exact', head: true }).eq('category_id', cat.id);
                     return { ...cat, productCount: count || 0 };
                 }));
-                setCategories(categoriesWithCounts);
+                setCategories(categoriesWithCounts as Category[]);
             }
         } catch (error) { console.error('Error fetching categories:', error); }
         finally { setLoading(false); }
@@ -142,7 +147,8 @@ export default function CategoriasPage() {
                 if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
                 saveTimeoutRef.current = setTimeout(async () => {
                     try {
-                        await Promise.all(newItems.map((item, index) => supabase.from('categories').update({ display_order: index }).eq('id', item.id)));
+                        const updates = newItems.map((item, index) => ({ id: item.id, display_order: index }));
+                        await dataAccess.bulkUpdateCategories(updates);
                         revalidateStoreMenu();
                     }
                     catch (error) { console.error('Failed to save category order:', error); }
@@ -166,10 +172,12 @@ export default function CategoriasPage() {
         setSaving(true);
         try {
             const categoryData = { user_id: user.id, name: categoryForm.name, icon: categoryForm.icon, color: categoryForm.color };
-            if (editingCategory) { await supabase.from('categories').update(categoryData).eq('id', editingCategory.id); }
+            if (editingCategory) { 
+                await dataAccess.updateCategory(editingCategory.id, categoryData); 
+            }
             else {
                 const maxOrder = categories.length > 0 ? Math.max(...categories.map(c => c.display_order || 0)) : -1;
-                await supabase.from('categories').insert({ ...categoryData, display_order: maxOrder + 1 });
+                await dataAccess.createCategory({ ...categoryData, display_order: maxOrder + 1 });
             }
             revalidateStoreMenu();
             fetchCategories(); closeModal();
@@ -182,7 +190,7 @@ export default function CategoriasPage() {
         if (category && (category.productCount || 0) > 0) { alert('Não é possível excluir uma categoria que possui produtos.'); return; }
         if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
         try {
-            await supabase.from('categories').delete().eq('id', id);
+            await dataAccess.deleteCategory(id);
             revalidateStoreMenu();
             fetchCategories();
         }
