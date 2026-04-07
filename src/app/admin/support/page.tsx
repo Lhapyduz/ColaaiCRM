@@ -77,7 +77,8 @@ export default function SupportPage() {
         } finally {
             setLoading(false);
         }
-    }, [error]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         fetchTickets();
