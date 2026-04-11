@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import { WhatsappSenderModal } from './WhatsappSenderModal';
+import { useCustomersCache, useOrdersCache } from '@/hooks/useDataCache';
 
 export interface CustomerCRM {
     id: string;
@@ -19,70 +20,38 @@ export interface CustomerCRM {
     total_points: number;
     total_spent: number;
     total_orders: number;
-    created_at: string;
-    last_order_date?: string; // Pode ser mapeado via pedidos
+    created_at: string | null;
+    last_order_date?: string | null; // Pode ser mapeado via pedidos
 }
 
 export function CustomerListTab() {
-    const { user } = useAuth();
-    const [customers, setCustomers] = useState<CustomerCRM[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { customers: rawCustomers, loading: loadingCustomers } = useCustomersCache();
+    const { orders: rawOrders, loading: loadingOrders } = useOrdersCache();
     const [searchTerm, setSearchTerm] = useState('');
     const [filterInactive, setFilterInactive] = useState(false);
     const [selectedCustomerIds, setSelectedCustomerIds] = useState<Set<string>>(new Set());
     const [showWhatsappModal, setShowWhatsappModal] = useState(false);
 
-    // Buscar clientes
-    const fetchCustomers = useCallback(async () => {
-        if (!user) return;
-        setLoading(true);
-        try {
-            // Busca clientes reais
-            const { data: customerData, error: customerError } = await supabase
-                .from('customers')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('total_spent', { ascending: false });
+    const loading = loadingCustomers && loadingOrders;
 
-            if (customerError) throw customerError;
-
-            // Tenta buscar a data do último pedido para cada cliente (simplificado)
-            // Para não pesar, buscamos todos os pedidos e depois agrupamos no JS
-            const { data: ordersData } = await supabase
-                .from('orders')
-                .select('customer_phone, created_at')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
-
-            // Mapeamento de último pedido
-            const lastOrdersMap = new Map<string, string>();
-            if (ordersData) {
-                ordersData.forEach(order => {
-                    if (!lastOrdersMap.has(order.customer_phone)) {
-                        lastOrdersMap.set(order.customer_phone, order.created_at);
-                    }
-                });
-            }
-
-            const mergedCustomers: CustomerCRM[] = (customerData || []).map(c => ({
-                ...c,
-                last_order_date: lastOrdersMap.get(c.phone) || c.created_at
-            }));
-
-            setCustomers(mergedCustomers);
-        } catch (error) {
-            console.error('Error fetching customers:', error);
-        } finally {
-            setLoading(false);
+    const customers = React.useMemo(() => {
+        const lastOrdersMap = new Map<string, string | null>();
+        if (rawOrders) {
+            rawOrders.forEach(order => {
+                if (order.customer_phone && !lastOrdersMap.has(order.customer_phone)) {
+                    lastOrdersMap.set(order.customer_phone, order.created_at);
+                }
+            });
         }
-    }, [user]);
 
-    useEffect(() => {
-        fetchCustomers();
-    }, [fetchCustomers]);
+        return (rawCustomers || []).map(c => ({
+            ...c,
+            last_order_date: lastOrdersMap.get(c.phone) || c.created_at
+        })).sort((a, b) => (b.total_spent || 0) - (a.total_spent || 0));
+    }, [rawCustomers, rawOrders]);
 
     // Lógica de inatividade (mais de 30 dias)
-    const isInactive = (dateStr?: string) => {
+    const isInactive = (dateStr?: string | null) => {
         if (!dateStr) return false;
         const now = new Date();
         const date = new Date(dateStr);
@@ -127,7 +96,7 @@ export function CustomerListTab() {
     const selectedCustomersList = customers.filter(c => selectedCustomerIds.has(c.id));
 
     // Utils visuais
-    const formatDate = (dateStr?: string) => {
+    const formatDate = (dateStr?: string | null) => {
         if (!dateStr) return 'Nunca';
         return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(dateStr));
     };

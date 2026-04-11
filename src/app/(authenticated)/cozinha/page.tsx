@@ -1,17 +1,16 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { FiClock, FiCheck, FiVolume2, FiVolumeX, FiPrinter } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
-import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
+import { useOrdersCache } from '@/hooks/useDataCache';
+import { updateOrder } from '@/lib/dataAccess';
+import type { CachedOrder } from '@/types/db';
 import { printKitchenTicket } from '@/lib/print';
 import { cn } from '@/lib/utils';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useUpdateOrderStatus } from '@/hooks/useOrderMutations';
 
 interface OrderItemAddon {
     id: string;
@@ -51,80 +50,29 @@ interface Order {
 const KITCHEN_QUERY_KEY = ['kitchen-orders'];
 
 export default function CozinhaPage() {
-    const { user } = useAuth();
     const { plan, canAccess } = useSubscription();
+    const { orders: rawOrders, loading } = useOrdersCache();
     const [soundEnabled, setSoundEnabled] = useState(true);
     const audioRef = useRef<HTMLAudioElement | null>(null);
-    const queryClient = useQueryClient();
-
-    // ── React Query para buscar pedidos da cozinha ──
-    const { data: orders = [], isLoading: loading } = useQuery({
-        queryKey: KITCHEN_QUERY_KEY,
-        queryFn: async () => {
-            if (!user) return [];
-
-            const { data: ordersData, error } = await supabase
-                .from('orders')
-                .select(`
-                    *,
-                    order_items (
-                        *,
-                        order_item_addons (*)
-                    )
-                `)
-                .eq('user_id', user.id)
-                .in('status', ['pending', 'preparing'])
-                .order('created_at', { ascending: true });
-
-            if (error) throw error;
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const mappedOrders: Order[] = (ordersData || []).map((o: any) => ({
-                ...o,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                items: (o.order_items || []).map((item: any) => ({
-                    ...item,
-                    addons: item.order_item_addons || []
-                }))
-            }));
-
-            return mappedOrders;
-        },
-        enabled: !!user && canAccess('kitchen'),
-        refetchInterval: 30_000, // Auto-refresh a cada 30s como fallback
-    });
-
-    // ── Mutation com Optimistic Update ──
-    const updateStatusMutation = useUpdateOrderStatus<Order>(KITCHEN_QUERY_KEY);
+    const prevOrdersCount = useRef(0);
 
     const playNotificationSound = useCallback(() => {
         if (audioRef.current) audioRef.current.play().catch(() => { });
     }, []);
 
-    // ── Realtime: todos os eventos de orders ──
-    useEffect(() => {
-        if (!user || !canAccess('kitchen')) return;
-
-        const subscription = supabase
-            .channel('kitchen_orders')
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'orders',
-                filter: `user_id=eq.${user.id}`
-            }, (payload) => {
-                console.log('Order change:', payload);
-                queryClient.invalidateQueries({ queryKey: KITCHEN_QUERY_KEY });
-                if (payload.eventType === 'INSERT' && soundEnabled) {
-                    playNotificationSound();
-                }
-            })
-            .subscribe();
-
-        return () => {
-            subscription.unsubscribe();
-        };
-    }, [user, soundEnabled, canAccess, queryClient, playNotificationSound]);
+    const orders = useMemo(() => {
+        const filtered = rawOrders
+            .filter((o: CachedOrder) => o.status === 'pending' || o.status === 'preparing')
+            .sort((a: CachedOrder, b: CachedOrder) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+        
+        // Sound notification for new orders
+        if (soundEnabled && !loading && filtered.length > prevOrdersCount.current) {
+            playNotificationSound();
+        }
+        prevOrdersCount.current = filtered.length;
+        
+        return filtered;
+    }, [rawOrders, soundEnabled, loading, playNotificationSound]);
 
     if (!canAccess('kitchen')) {
         return (
@@ -132,9 +80,12 @@ export default function CozinhaPage() {
         );
     }
 
-    // ── Wrapper de updateOrderStatus com Optimistic Update ──
-    const updateOrderStatus = (orderId: string, newStatus: string) => {
-        updateStatusMutation.mutate({ orderId, newStatus });
+    const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+        try {
+            await updateOrder(orderId, { status: newStatus });
+        } catch (error) {
+            console.error('Error updating order status:', error);
+        }
     };
 
     const getTimeElapsed = (date: string) => {
@@ -155,33 +106,33 @@ export default function CozinhaPage() {
         return 'text-error';
     };
 
-    const pendingOrders = orders.filter(o => o.status === 'pending');
-    const preparingOrders = orders.filter(o => o.status === 'preparing');
+    const pendingOrders = orders.filter((o: CachedOrder) => o.status === 'pending');
+    const preparingOrders = orders.filter((o: CachedOrder) => o.status === 'preparing');
 
-    const OrderCard = ({ order, isPreparing }: { order: Order; isPreparing?: boolean }) => (
+    const OrderCard = ({ order, isPreparing }: { order: CachedOrder; isPreparing?: boolean }) => (
         <Card className={cn('p-4! animate-[slideInUp_0.3s_ease]', isPreparing && 'border-info shadow-[0_0_0_1px_rgba(9,132,227,0.2)]')}>
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                     <span className="text-xl font-bold text-primary">#{order.order_number}</span>
                     <span className="text-xl">{order.is_delivery ? '🚚' : '🏪'}</span>
                 </div>
-                <div className={cn('flex items-center gap-1.5 text-sm font-semibold px-2.5 py-1 bg-white/5 rounded-full', getTimeColor(order.created_at))}>
+                <div className={cn('flex items-center gap-1.5 text-sm font-semibold px-2.5 py-1 bg-white/5 rounded-full', getTimeColor(order.created_at || new Date().toISOString()))}>
                     <FiClock />
-                    {getTimeElapsed(order.created_at)}
+                    {getTimeElapsed(order.created_at || new Date().toISOString())}
                 </div>
             </div>
 
             <div className="font-medium mb-3 pb-3 border-b border-border">{order.customer_name}</div>
 
             <div className="mb-4">
-                {order.items.map((item) => (
+                {(order.order_items || []).map((item) => (
                     <div key={item.id} className="flex items-center gap-2 py-2 not-last:border-b not-last:border-dashed not-last:border-border">
                         <span className="font-bold text-primary min-w-8">{item.quantity}x</span>
                         <span className="flex-1 font-medium">{item.product_name}</span>
                         {item.notes && <span className="text-[0.8125rem] text-text-secondary italic">({item.notes})</span>}
-                        {item.addons && item.addons.length > 0 && (
+                        {item.order_item_addons && item.order_item_addons.length > 0 && (
                             <div className="flex flex-wrap gap-1 w-full mt-1 pl-8">
-                                {item.addons.map((addon) => (
+                                {(item.order_item_addons || []).map((addon) => (
                                     <span key={addon.id} className="text-xs text-warning bg-warning/15 px-2 py-0.5 rounded-full font-medium">
                                         + {addon.addon_name}
                                     </span>
@@ -197,12 +148,12 @@ export default function CozinhaPage() {
                     fullWidth
                     variant="primary"
                     leftIcon={isPreparing ? <FiCheck /> : undefined}
-                    onClick={() => updateOrderStatus(order.id, isPreparing ? 'ready' : 'preparing')}
+                    onClick={() => handleUpdateStatus(order.id, isPreparing ? 'ready' : 'preparing')}
                     style={isPreparing ? { background: 'var(--accent)' } : undefined}
                 >
                     {isPreparing ? 'Marcar Pronto' : 'Iniciar Preparo'}
                 </Button>
-                <Button variant="ghost" leftIcon={<FiPrinter />} onClick={() => printKitchenTicket(order)} title="Imprimir comanda" />
+                <Button variant="ghost" leftIcon={<FiPrinter />} onClick={() => printKitchenTicket({ ...order, items: order.order_items || [] } as any)} title="Imprimir comanda" />
             </div>
         </Card>
     );

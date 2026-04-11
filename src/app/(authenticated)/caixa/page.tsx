@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { FiCreditCard, FiSmartphone } from 'react-icons/fi';
 import { BsCash } from 'react-icons/bs';
 import Card from '@/components/ui/Card';
-import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
-import { formatCurrency, formatDate } from '@/hooks/useFormatters';
+import { formatCurrency } from '@/hooks/useFormatters';
+import { useOrdersCache } from '@/hooks/useDataCache';
 
 interface DaySummary {
     totalOrders: number;
@@ -19,36 +18,41 @@ interface DaySummary {
 
 export default function CaixaPage() {
     const { user } = useAuth();
-    const [summary, setSummary] = useState<DaySummary>({
-        totalOrders: 0, totalRevenue: 0, paidOrders: 0, pendingPayments: 0,
-        byMethod: { money: 0, pix: 0, credit: 0, debit: 0 }
-    });
-    const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-    const toast = useToast();
+    const { orders, loading } = useOrdersCache({ date: selectedDate });
 
-    useEffect(() => { if (user) fetchSummary(); }, [user, selectedDate]);
+    const summary = useMemo<DaySummary>(() => {
+        if (!orders) return {
+            totalOrders: 0, totalRevenue: 0, paidOrders: 0, pendingPayments: 0,
+            byMethod: { money: 0, pix: 0, credit: 0, debit: 0 }
+        };
 
-    const fetchSummary = async () => {
-        if (!user) return;
-        try {
-            const startDate = new Date(`${selectedDate}T00:00:00`);
-            const endDate = new Date(`${selectedDate}T23:59:59.999`);
-            const { data: orders } = await supabase.from('orders').select('*').eq('user_id', user.id).gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString()).neq('status', 'cancelled');
-            if (orders) {
-                const paidOrders = orders.filter(o => o.payment_status === 'paid');
-                const pendingOrders = orders.filter(o => o.payment_status === 'pending');
-                const byMethod = {
-                    money: paidOrders.filter(o => o.payment_method === 'money').reduce((sum, o) => sum + o.total, 0),
-                    pix: paidOrders.filter(o => o.payment_method === 'pix').reduce((sum, o) => sum + o.total, 0),
-                    credit: paidOrders.filter(o => o.payment_method === 'credit').reduce((sum, o) => sum + o.total, 0),
-                    debit: paidOrders.filter(o => o.payment_method === 'debit').reduce((sum, o) => sum + o.total, 0)
-                };
-                setSummary({ totalOrders: orders.length, totalRevenue: paidOrders.reduce((sum, o) => sum + o.total, 0), paidOrders: paidOrders.length, pendingPayments: pendingOrders.reduce((sum, o) => sum + o.total, 0), byMethod });
-            }
-        } catch (error) { console.error('Error fetching summary:', error); toast.error('Erro ao carregar dados'); }
-        finally { setLoading(false); }
-    };
+        const startDate = new Date(`${selectedDate}T00:00:00`).getTime();
+        const endDate = new Date(`${selectedDate}T23:59:59.999`).getTime();
+
+        const filteredOrders = orders.filter(o => {
+            const createdAt = new Date(o.created_at || 0).getTime();
+            return createdAt >= startDate && createdAt <= endDate && o.status !== 'cancelled';
+        });
+
+        const paidOrders = filteredOrders.filter(o => o.payment_status === 'paid');
+        const pendingOrders = filteredOrders.filter(o => o.payment_status === 'pending');
+
+        const byMethod = {
+            money: paidOrders.filter(o => o.payment_method === 'money').reduce((sum, o) => sum + (o.total || 0), 0),
+            pix: paidOrders.filter(o => o.payment_method === 'pix').reduce((sum, o) => sum + (o.total || 0), 0),
+            credit: paidOrders.filter(o => o.payment_method === 'credit').reduce((sum, o) => sum + (o.total || 0), 0),
+            debit: paidOrders.filter(o => o.payment_method === 'debit').reduce((sum, o) => sum + (o.total || 0), 0)
+        };
+
+        return {
+            totalOrders: filteredOrders.length,
+            totalRevenue: paidOrders.reduce((sum, o) => sum + (o.total || 0), 0),
+            paidOrders: paidOrders.length,
+            pendingPayments: pendingOrders.reduce((sum, o) => sum + (o.total || 0), 0),
+            byMethod
+        };
+    }, [orders, selectedDate]);
 
     const formatDateLong = (dateStr: string) => {
         const date = new Date(dateStr + 'T12:00:00');
@@ -74,7 +78,7 @@ export default function CaixaPage() {
 
             <div className="text-lg text-text-secondary mb-6 capitalize">{isToday ? 'Hoje' : formatDateLong(selectedDate)}</div>
 
-            {loading ? (
+            {loading && orders.length === 0 ? (
                 <div className="flex flex-col gap-6">
                     <div className="h-[150px] rounded-2xl bg-bg-tertiary animate-pulse" />
                     <div className="grid grid-cols-4 gap-4 mb-8 max-md:grid-cols-2">{[1, 2, 3, 4].map(i => <div key={i} className="h-[100px] rounded-xl bg-bg-tertiary animate-pulse" />)}</div>

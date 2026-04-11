@@ -180,7 +180,7 @@ export default function CategoriasPage() {
                 await dataAccess.createCategory({ ...categoryData, display_order: maxOrder + 1 });
             }
             revalidateStoreMenu();
-            fetchCategories(); closeModal();
+            closeModal();
         } catch (error) { console.error('Error saving category:', error); }
         finally { setSaving(false); }
     };
@@ -192,7 +192,6 @@ export default function CategoriasPage() {
         try {
             await dataAccess.deleteCategory(id);
             revalidateStoreMenu();
-            fetchCategories();
         }
         catch (error) { console.error('Error deleting category:', error); }
     };

@@ -9,75 +9,75 @@ import Button from '@/components/ui/Button';
 import PixQRCode from '@/components/pix/PixQRCode';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { useSingleOrderCache } from '@/hooks/useDataCache';
+import { confirmOrderPayment } from '@/lib/dataAccess';
 import { printOrder, printCustomerReceipt, printKitchenTicket } from '@/lib/print';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
-
-interface OrderItem { id: string; product_name: string; quantity: number; unit_price: number; total: number; notes: string | null; }
-interface Order { id: string; order_number: number; customer_name: string; customer_phone: string | null; customer_address: string | null; status: string; payment_method: string; payment_status: string; subtotal: number; delivery_fee: number; total: number; notes: string | null; is_delivery: boolean; created_at: string; items: OrderItem[]; coupon_discount?: number; }
 
 export default function OrderDetailsPage() {
     const { user, userSettings } = useAuth();
     const router = useRouter();
     const params = useParams();
-    const [order, setOrder] = useState<Order | null>(null);
-    const [loading, setLoading] = useState(true);
+    const orderId = params.id as string;
+    
+    const { order: cachedOrder, loading, error: cacheError } = useSingleOrderCache(orderId);
+    
     const [showPrintMenu, setShowPrintMenu] = useState(false);
     const [printing, setPrinting] = useState(false);
     const appName = userSettings?.app_name || 'Cola Aí';
     const toast = useToast();
 
-    useEffect(() => { if (user && params.id) fetchOrderDetails(); }, [user, params.id]);
+    // Map cachedOrder to local interface if needed, or use directly
+    const order = cachedOrder ? {
+        ...cachedOrder,
+        items: (cachedOrder.order_items || []).map(item => ({
+            ...item,
+            total: item.total || (item.quantity * item.unit_price)
+        }))
+    } : null;
 
-    const fetchOrderDetails = async () => {
+    const formatDateFull = (date: string) => {
         try {
-            const { data: orderData, error: orderError } = await supabase.from('orders').select('*').eq('id', params.id).single();
-            if (orderError) throw orderError;
-            const { data: itemsData, error: itemsError } = await supabase.from('order_items').select('*').eq('order_id', params.id);
-            if (itemsError) throw itemsError;
-            setOrder({ ...orderData, items: itemsData });
-        } catch (e) { console.error(e); alert('Erro ao carregar detalhes do pedido'); router.push('/pedidos'); } finally { setLoading(false); }
+            return new Intl.DateTimeFormat('pt-BR', { 
+                day: '2-digit', month: '2-digit', year: 'numeric', 
+                hour: '2-digit', minute: '2-digit', 
+                timeZone: 'America/Sao_Paulo' 
+            }).format(new Date(date));
+        } catch (e) {
+            return 'Data inválida';
+        }
     };
-
-    const formatDateFull = (date: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).format(new Date(date));
 
     const updatePaymentStatus = async () => {
         if (!order || !user) return;
         try {
-            await supabase.from('orders').update({ payment_status: 'paid', updated_at: new Date().toISOString() }).eq('id', order.id);
-            if (order.customer_phone) {
-                const cleanPhone = order.customer_phone.replace(/\D/g, '');
-                const { data: customer } = await supabase.from('customers').select('id, total_spent, total_points').eq('user_id', user.id).eq('phone', cleanPhone).single();
-                if (customer) {
-                    const { data: settings } = await supabase.from('loyalty_settings').select('points_per_real').eq('user_id', user.id).single();
-                    const pointsPerReal = settings?.points_per_real || 1;
-                    const pointsEarned = Math.floor(order.total * pointsPerReal);
-                    await supabase.from('customers').update({ total_spent: (customer.total_spent || 0) + order.total, total_points: (customer.total_points || 0) + pointsEarned }).eq('id', customer.id);
-                    if (pointsEarned > 0) await supabase.from('points_transactions').insert({ user_id: user.id, customer_id: customer.id, points: pointsEarned, type: 'earned', description: `Pedido #${order.order_number}`, order_id: order.id });
-                }
-            }
-            setOrder({ ...order, payment_status: 'paid' });
+            await confirmOrderPayment(order as any, user.id);
             toast.success('Pagamento confirmado!');
-        } catch (e) { console.error(e); toast.error('Erro ao atualizar status do pagamento'); }
+        } catch (e) { 
+            console.error(e); 
+            toast.error('Erro ao atualizar status do pagamento'); 
+        }
     };
 
     const getStatusLabel = (status: string) => ({ pending: 'Aguardando', preparing: 'Preparando', ready: 'Pronto', delivering: 'Entregando', delivered: 'Entregue', cancelled: 'Cancelado' }[status] || status);
     const getPaymentLabel = (method: string) => ({ money: 'Dinheiro', credit: 'Crédito', debit: 'Débito', pix: 'PIX' }[method] || method);
 
-    const handlePrintBoth = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printOrder(order, { type: 'both', appName }); } finally { setPrinting(false); } };
-    const handlePrintCustomer = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printCustomerReceipt(order, appName); } finally { setPrinting(false); } };
-    const handlePrintKitchen = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printKitchenTicket(order); } finally { setPrinting(false); } };
+    const handlePrintBoth = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printOrder(order as any, { type: 'both', appName }); } finally { setPrinting(false); } };
+    const handlePrintCustomer = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printCustomerReceipt(order as any, appName); } finally { setPrinting(false); } };
+    const handlePrintKitchen = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printKitchenTicket(order as any); } finally { setPrinting(false); } };
     
-    if (loading) return <div className="max-w-[800px] mx-auto"><div className="h-[200px] bg-bg-tertiary rounded-xl animate-pulse mb-4" /><div className="h-[300px] bg-bg-tertiary rounded-xl animate-pulse" /></div>;
-    if (!order) return null;
+    if (loading && !order) return <div className="max-w-[800px] mx-auto"><div className="h-[200px] bg-bg-tertiary rounded-xl animate-pulse mb-4" /><div className="h-[300px] bg-bg-tertiary rounded-xl animate-pulse" /></div>;
+    if (cacheError) return <div className="max-w-[800px] mx-auto p-8 text-center"><p className="text-error mb-4">Erro ao carregar pedido.</p><Button onClick={() => router.push('/pedidos')}>Voltar para Pedidos</Button></div>;
+    if (!order) return <div className="max-w-[800px] mx-auto p-8 text-center"><p className="text-text-secondary mb-4">Pedido não encontrado.</p><Button onClick={() => router.push('/pedidos')}>Voltar para Pedidos</Button></div>;
+
     
     return (
         <div className="max-w-[800px] mx-auto">
             {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
                     <button className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-tertiary text-text-secondary hover:bg-primary hover:text-white transition-all" onClick={() => router.back()}><FiArrowLeft size={20} /></button>
-                    <div className="flex-1"><h1 className="text-2xl font-bold">Pedido #{order.order_number}</h1><p className="text-text-secondary flex items-center gap-1"><FiClock size={14} /> {formatDateFull(order.created_at)}</p></div>
+                    <div className="flex-1"><h1 className="text-2xl font-bold">Pedido #{order.order_number}</h1><p className="text-text-secondary flex items-center gap-1"><FiClock size={14} /> {formatDateFull(order.created_at || new Date().toISOString())}</p></div>
                     <div className="relative">
                         <Button variant="secondary" leftIcon={<FiPrinter />} rightIcon={<FiChevronDown />} onClick={() => setShowPrintMenu(!showPrintMenu)} disabled={printing}>{printing ? 'Imprimindo...' : 'Imprimir'}</Button>
                         {showPrintMenu && (
@@ -93,7 +93,7 @@ export default function OrderDetailsPage() {
                 {/* Status Card */}
                 <Card className="mb-4 p-4!">
                     <div className="flex justify-between items-center">
-                        <div><span className="text-sm text-text-muted">Status do Pedido</span><span className={cn('block mt-1 px-3 py-1 rounded-full text-sm font-medium w-fit', order.status === 'pending' && 'bg-warning/20 text-warning', order.status === 'preparing' && 'bg-accent/20 text-accent', order.status === 'ready' && 'bg-primary/20 text-primary', order.status === 'delivered' && 'bg-success/20 text-success', order.status === 'cancelled' && 'bg-error/20 text-error')}>{getStatusLabel(order.status)}</span></div>
+                        <div><span className="text-sm text-text-muted">Status do Pedido</span><span className={cn('block mt-1 px-3 py-1 rounded-full text-sm font-medium w-fit', order.status === 'pending' && 'bg-warning/20 text-warning', order.status === 'preparing' && 'bg-accent/20 text-accent', order.status === 'ready' && 'bg-primary/20 text-primary', order.status === 'delivered' && 'bg-success/20 text-success', order.status === 'cancelled' && 'bg-error/20 text-error')}>{getStatusLabel(order.status || 'pending')}</span></div>
                         <div className="text-right"><span className="text-sm text-text-muted">Tipo</span><span className="block mt-1 text-lg">{order.is_delivery ? '🚚 Entrega' : '🏪 Balcão'}</span></div>
                     </div>
                 </Card>
@@ -129,7 +129,7 @@ export default function OrderDetailsPage() {
                     <div className="border-t border-border my-4" />
                     <div className="flex flex-col gap-2">
                         <div className="flex justify-between text-text-secondary"><span>Subtotal</span><span>{formatCurrency(order.subtotal)}</span></div>
-                        {order.delivery_fee > 0 && <div className="flex justify-between text-text-secondary"><span>Taxa de Entrega</span><span>{formatCurrency(order.delivery_fee)}</span></div>}
+                        {order.delivery_fee !== null && order.delivery_fee > 0 && <div className="flex justify-between text-text-secondary"><span>Taxa de Entrega</span><span>{formatCurrency(order.delivery_fee)}</span></div>}
                         {order.coupon_discount && order.coupon_discount > 0 && <div className="flex justify-between text-success"><span>Desconto</span><span>-{formatCurrency(order.coupon_discount)}</span></div>}
                         <div className="flex justify-between text-lg font-bold pt-2 border-t border-border"><span>Total</span><span className="text-primary">{formatCurrency(order.total)}</span></div>
                     </div>

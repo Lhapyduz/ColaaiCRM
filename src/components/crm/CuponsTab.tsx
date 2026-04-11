@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, ReactNode } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiPercent, FiDollarSign, FiCopy, FiCheck } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -9,31 +9,19 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
+import { useCouponsCache } from '@/hooks/useDataCache';
+import { saveCoupon, deleteCoupon } from '@/lib/dataAccess';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
-
-interface Coupon {
-    id: string;
-    code: string;
-    description: string | null;
-    discount_type: 'percentage' | 'fixed';
-    discount_value: number;
-    min_order_value: number;
-    max_discount: number | null;
-    usage_limit: number | null;
-    usage_count: number;
-    valid_from: string;
-    valid_until: string | null;
-    active: boolean;
-    first_order_only: boolean;
-}
+import type { CachedCoupon as Coupon } from '@/types/db';
 
 export function CuponsTab() {
     const { user } = useAuth();
     const { plan, canAccess } = useSubscription();
-    const [coupons, setCoupons] = useState<Coupon[]>([]);
-    const [loading, setLoading] = useState(true);
+    
+    // Reactive local-first cache
+    const { coupons: rawCoupons, loading } = useCouponsCache();
+    
     const [searchTerm, setSearchTerm] = useState('');
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
@@ -49,43 +37,114 @@ export function CuponsTab() {
     const [formFirstOrderOnly, setFormFirstOrderOnly] = useState(false);
     const toast = useToast();
 
-    const fetchCoupons = useCallback(async () => {
-        if (!user) return;
-        try { const { data, error } = await supabase.from('coupons').select('*').eq('user_id', user.id).order('created_at', { ascending: false }); if (error) throw error; setCoupons(data || []); }
-        catch (error) { console.error('Error fetching coupons:', error); } finally { setLoading(false); }
-    }, [user]);
-
-    useEffect(() => { if (user && canAccess('coupons')) fetchCoupons(); }, [user, canAccess, fetchCoupons]);
-
-    if (!canAccess('coupons')) {
+    if (!canAccess?.('coupons')) {
         return <UpgradePrompt feature="Cupons de Desconto" requiredPlan="Profissional" currentPlan={plan} fullPage />;
     }
 
+    const generateRandomCode = () => { 
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; 
+        let code = ''; 
+        for (let i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length)); 
+        setFormCode(code); 
+    };
 
+    const openAddModal = () => { 
+        setEditingCoupon(null); 
+        setFormCode(''); 
+        setFormDescription(''); 
+        setFormDiscountType('percentage'); 
+        setFormDiscountValue(''); 
+        setFormMinOrderValue(''); 
+        setFormMaxDiscount(''); 
+        setFormUsageLimit(''); 
+        setFormValidUntil(''); 
+        setFormFirstOrderOnly(false); 
+        setShowModal(true); 
+    };
 
-    const generateRandomCode = () => { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; let code = ''; for (let i = 0; i < 8; i++) code += chars.charAt(Math.floor(Math.random() * chars.length)); setFormCode(code); };
-    const openAddModal = () => { setEditingCoupon(null); setFormCode(''); setFormDescription(''); setFormDiscountType('percentage'); setFormDiscountValue(''); setFormMinOrderValue(''); setFormMaxDiscount(''); setFormUsageLimit(''); setFormValidUntil(''); setFormFirstOrderOnly(false); setShowModal(true); };
-    const openEditModal = (coupon: Coupon) => { setEditingCoupon(coupon); setFormCode(coupon.code); setFormDescription(coupon.description || ''); setFormDiscountType(coupon.discount_type); setFormDiscountValue(coupon.discount_value.toString()); setFormMinOrderValue(coupon.min_order_value.toString()); setFormMaxDiscount(coupon.max_discount?.toString() || ''); setFormUsageLimit(coupon.usage_limit?.toString() || ''); setFormValidUntil(coupon.valid_until ? coupon.valid_until.split('T')[0] : ''); setFormFirstOrderOnly(coupon.first_order_only); setShowModal(true); };
+    const openEditModal = (coupon: Coupon) => { 
+        setEditingCoupon(coupon); 
+        setFormCode(coupon.code); 
+        setFormDescription(coupon.description || ''); 
+        setFormDiscountType(coupon.discount_type); 
+        setFormDiscountValue(coupon.discount_value.toString()); 
+        setFormMinOrderValue(coupon.min_order_value.toString()); 
+        setFormMaxDiscount(coupon.max_discount?.toString() || ''); 
+        setFormUsageLimit(coupon.usage_limit?.toString() || ''); 
+        setFormValidUntil(coupon.valid_until ? coupon.valid_until.split('T')[0] : ''); 
+        setFormFirstOrderOnly(coupon.first_order_only); 
+        setShowModal(true); 
+    };
 
     const handleSaveCoupon = async () => {
         if (!user || !formCode || !formDiscountValue) return;
         try {
-            const couponData = { user_id: user.id, code: formCode.toUpperCase(), description: formDescription || null, discount_type: formDiscountType, discount_value: parseFloat(formDiscountValue), min_order_value: parseFloat(formMinOrderValue) || 0, max_discount: formMaxDiscount ? parseFloat(formMaxDiscount) : null, usage_limit: formUsageLimit ? parseInt(formUsageLimit) : null, valid_until: formValidUntil ? new Date(formValidUntil).toISOString() : null, first_order_only: formFirstOrderOnly };
-            if (editingCoupon) await supabase.from('coupons').update(couponData).eq('id', editingCoupon.id);
-            else await supabase.from('coupons').insert(couponData);
+            const couponData = { 
+                user_id: user.id, 
+                code: formCode.toUpperCase(), 
+                description: formDescription || null, 
+                discount_type: formDiscountType, 
+                discount_value: parseFloat(formDiscountValue), 
+                min_order_value: parseFloat(formMinOrderValue) || 0, 
+                max_discount: formMaxDiscount ? parseFloat(formMaxDiscount) : null, 
+                usage_limit: formUsageLimit ? parseInt(formUsageLimit) : null, 
+                valid_until: formValidUntil ? new Date(formValidUntil).toISOString() : null, 
+                first_order_only: formFirstOrderOnly,
+                active: editingCoupon ? editingCoupon.active : true,
+                usage_count: editingCoupon ? editingCoupon.usage_count : 0,
+                ...(editingCoupon ? { id: editingCoupon.id } : {})
+            };
+            
+            await saveCoupon(couponData);
             toast.success(editingCoupon ? 'Cupom atualizado!' : 'Cupom criado!');
-            setShowModal(false); fetchCoupons();
-        } catch (error) { console.error('Error saving coupon:', error); toast.error('Erro ao salvar cupom'); }
+            setShowModal(false); 
+        } catch (error) { 
+            console.error('Error saving coupon:', error); 
+            toast.error('Erro ao salvar cupom'); 
+        }
     };
 
-    const handleDeleteCoupon = async (id: string) => { if (!confirm('Tem certeza que deseja excluir este cupom?')) return; try { await supabase.from('coupons').delete().eq('id', id); toast.success('Cupom excluído!'); fetchCoupons(); } catch (error) { console.error('Error deleting coupon:', error); toast.error('Erro ao excluir cupom'); } };
-    const toggleCouponActive = async (coupon: Coupon) => { try { await supabase.from('coupons').update({ active: !coupon.active }).eq('id', coupon.id); toast.success(coupon.active ? 'Cupom desativado!' : 'Cupom ativado!'); fetchCoupons(); } catch (error) { console.error('Error toggling coupon:', error); } };
-    const copyCode = (code: string, id: string) => { navigator.clipboard.writeText(code); setCopiedId(id); toast.success('Código copiado!'); setTimeout(() => setCopiedId(null), 2000); };
+    const handleDeleteCoupon = async (id: string) => { 
+        if (!confirm('Tem certeza que deseja excluir este cupom?')) return; 
+        try { 
+            await deleteCoupon(id); 
+            toast.success('Cupom excluído!'); 
+        } catch (error) { 
+            console.error('Error deleting coupon:', error); 
+            toast.error('Erro ao excluir cupom'); 
+        } 
+    };
+
+    const toggleCouponActive = async (coupon: Coupon) => { 
+        try { 
+            await saveCoupon({ ...coupon, active: !coupon.active }); 
+            toast.success(!coupon.active ? 'Cupom ativado!' : 'Cupom desativado!'); 
+        } catch (error) { 
+            console.error('Error toggling coupon:', error); 
+            toast.error('Erro ao alternar status do cupom');
+        } 
+    };
+
+    const copyCode = (code: string, id: string) => { 
+        navigator.clipboard.writeText(code); 
+        setCopiedId(id); 
+        toast.success('Código copiado!'); 
+        setTimeout(() => setCopiedId(null), 2000); 
+    };
+
     const formatDateShort = (date: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(date));
     const isExpired = (coupon: Coupon) => coupon.valid_until ? new Date(coupon.valid_until) < new Date() : false;
     const isLimitReached = (coupon: Coupon) => coupon.usage_limit ? coupon.usage_count >= coupon.usage_limit : false;
     const getDiscountLabel = (coupon: Coupon) => coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : formatCurrency(coupon.discount_value);
-    const filteredCoupons = coupons.filter(c => c.code.toLowerCase().includes(searchTerm.toLowerCase()) || c.description?.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const filteredCoupons = React.useMemo(() => 
+        (rawCoupons || []).filter(c => 
+            c.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            c.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        ), [rawCoupons, searchTerm]);
+
+    const activeCount = React.useMemo(() => (rawCoupons || []).filter(c => c.active).length, [rawCoupons]);
+    const totalUsage = React.useMemo(() => (rawCoupons || []).reduce((sum, c) => sum + (c.usage_count || 0), 0), [rawCoupons]);
 
     return (
         <div className="max-w-[1200px] mx-auto">
@@ -97,9 +156,9 @@ export function CuponsTab() {
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4 mb-6 max-md:grid-cols-1">
-                <Card className="p-5! text-center"><span className="block text-2xl font-bold mb-1">{coupons.length}</span><span className="text-sm text-text-muted">Total de Cupons</span></Card>
-                <Card className="p-5! text-center"><span className="block text-2xl font-bold mb-1">{coupons.filter(c => c.active).length}</span><span className="text-sm text-text-muted">Ativos</span></Card>
-                <Card className="p-5! text-center"><span className="block text-2xl font-bold mb-1">{coupons.reduce((sum, c) => sum + c.usage_count, 0)}</span><span className="text-sm text-text-muted">Usos Totais</span></Card>
+                <Card className="p-5! text-center"><span className="block text-2xl font-bold mb-1">{(rawCoupons || []).length}</span><span className="text-sm text-text-muted">Total de Cupons</span></Card>
+                <Card className="p-5! text-center"><span className="block text-2xl font-bold mb-1">{activeCount}</span><span className="text-sm text-text-muted">Ativos</span></Card>
+                <Card className="p-5! text-center"><span className="block text-2xl font-bold mb-1">{totalUsage}</span><span className="text-sm text-text-muted">Usos Totais</span></Card>
             </div>
 
             {/* Search */}
@@ -151,19 +210,19 @@ export function CuponsTab() {
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-1000 p-4" onClick={() => setShowModal(false)}>
                     <div className="bg-bg-card rounded-lg p-6 w-full max-w-[500px] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                         <h2 className="text-xl font-semibold mb-5">{editingCoupon ? 'Editar Cupom' : 'Novo Cupom'}</h2>
-                        <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Código do Cupom</label><div className="flex gap-2"><Input value={formCode} onChange={(e) => setFormCode(e.target.value.toUpperCase())} placeholder="Ex: PROMO10" /><Button variant="outline" onClick={generateRandomCode}>Gerar</Button></div></div>
-                        <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Descrição (opcional)</label><Input value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Ex: Desconto de inauguração" /></div>
+                        <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Código do Cupom</label><div className="flex gap-2"><Input value={formCode} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormCode(e.target.value.toUpperCase())} placeholder="Ex: PROMO10" /><Button variant="outline" onClick={generateRandomCode}>Gerar</Button></div></div>
+                        <div className="mb-4"><label className="block text-sm text-text-secondary mb-2">Descrição (opcional)</label><Input value={formDescription} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormDescription(e.target.value)} placeholder="Ex: Desconto de inauguração" /></div>
                         <div className="grid grid-cols-2 gap-4 mb-4 max-md:grid-cols-1">
                             <div><label className="block text-sm text-text-secondary mb-2">Tipo de Desconto</label><select value={formDiscountType} onChange={(e) => setFormDiscountType(e.target.value as 'percentage' | 'fixed')} className="w-full px-4 py-3 bg-bg-tertiary border border-border rounded-md text-text-primary text-base cursor-pointer"><option value="percentage">Porcentagem (%)</option><option value="fixed">Valor Fixo (R$)</option></select></div>
-                            <div><label className="block text-sm text-text-secondary mb-2">Valor do Desconto</label><Input type="number" step={formDiscountType === 'percentage' ? '1' : '0.01'} value={formDiscountValue} onChange={(e) => setFormDiscountValue(e.target.value)} placeholder={formDiscountType === 'percentage' ? '10' : '5.00'} /></div>
+                            <div><label className="block text-sm text-text-secondary mb-2">Valor do Desconto</label><Input type="number" step={formDiscountType === 'percentage' ? '1' : '0.01'} value={formDiscountValue} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormDiscountValue(e.target.value)} placeholder={formDiscountType === 'percentage' ? '10' : '5.00'} /></div>
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-4 max-md:grid-cols-1">
-                            <div><label className="block text-sm text-text-secondary mb-2">Pedido Mínimo (R$)</label><Input type="number" step="0.01" value={formMinOrderValue} onChange={(e) => setFormMinOrderValue(e.target.value)} placeholder="0.00" /></div>
-                            {formDiscountType === 'percentage' && <div><label className="block text-sm text-text-secondary mb-2">Desconto Máximo (R$)</label><Input type="number" step="0.01" value={formMaxDiscount} onChange={(e) => setFormMaxDiscount(e.target.value)} placeholder="Sem limite" /></div>}
+                            <div><label className="block text-sm text-text-secondary mb-2">Pedido Mínimo (R$)</label><Input type="number" step="0.01" value={formMinOrderValue} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormMinOrderValue(e.target.value)} placeholder="0.00" /></div>
+                            {formDiscountType === 'percentage' && <div><label className="block text-sm text-text-secondary mb-2">Desconto Máximo (R$)</label><Input type="number" step="0.01" value={formMaxDiscount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormMaxDiscount(e.target.value)} placeholder="Sem limite" /></div>}
                         </div>
                         <div className="grid grid-cols-2 gap-4 mb-4 max-md:grid-cols-1">
-                            <div><label className="block text-sm text-text-secondary mb-2">Limite de Usos</label><Input type="number" value={formUsageLimit} onChange={(e) => setFormUsageLimit(e.target.value)} placeholder="Ilimitado" /></div>
-                            <div><label className="block text-sm text-text-secondary mb-2">Válido Até</label><Input type="date" value={formValidUntil} onChange={(e) => setFormValidUntil(e.target.value)} /></div>
+                            <div><label className="block text-sm text-text-secondary mb-2">Limite de Usos</label><Input type="number" value={formUsageLimit} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormUsageLimit(e.target.value)} placeholder="Ilimitado" /></div>
+                            <div><label className="block text-sm text-text-secondary mb-2">Válido Até</label><Input type="date" value={formValidUntil} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormValidUntil(e.target.value)} /></div>
                         </div>
                         <div className="mb-4"><label className="flex items-center gap-2.5 cursor-pointer"><input type="checkbox" className="w-[18px] h-[18px] accent-primary" checked={formFirstOrderOnly} onChange={(e) => setFormFirstOrderOnly(e.target.checked)} />Válido apenas para primeira compra</label></div>
                         <div className="flex gap-3 justify-end mt-6"><Button variant="outline" onClick={() => setShowModal(false)}>Cancelar</Button><Button onClick={handleSaveCoupon}>{editingCoupon ? 'Salvar' : 'Criar Cupom'}</Button></div>

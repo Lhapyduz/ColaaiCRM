@@ -10,25 +10,13 @@ import {
 import { useFormatters } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import Card from '@/components/ui/Card';
-import { MesaWithActiveSession, getMesaById, abrirMesa, addSessionItem, fecharMesaSessao, confirmarItensMesa, separarMesa, desagruparTodas } from '@/lib/services/mesas';
+import { MesaWithActiveSession, abrirMesa, addSessionItem, fecharMesaSessao, confirmarItensMesa, separarMesa, desagruparTodas } from '@/lib/services/mesas';
 import { printOrder } from '@/lib/print';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProductsCache, useCategoriesCache, useTableDetailCache, type Product, type Category } from '@/hooks/useDataCache';
 import { supabase } from '@/lib/supabase';
 
-interface Category {
-    id: string;
-    name: string;
-    icon?: string;
-}
 
-interface Product {
-    id: string;
-    name: string;
-    price: number;
-    category_id: string;
-    image_url?: string;
-    available?: boolean;
-}
 
 export default function MesaDetailsPage() {
     const router = useRouter();
@@ -36,13 +24,13 @@ export default function MesaDetailsPage() {
     const { formatCurrency } = useFormatters();
 
     const { user, userSettings } = useAuth();
-    const [mesa, setMesa] = useState<MesaWithActiveSession | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { table: mesa, loading: loadingMesa, refetch: reloadMesa } = useTableDetailCache(params.id);
+    const { products, loading: loadingProducts } = useProductsCache();
+    const { categories, loading: loadingCategories } = useCategoriesCache();
+    
     const [addingItem, setAddingItem] = useState(false);
     const [closingMesa, setClosingMesa] = useState(false);
     const [isConfirming, setIsConfirming] = useState(false);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
     const [groupedCount, setGroupedCount] = useState(0);
 
     // Abrir sessão state
@@ -52,16 +40,24 @@ export default function MesaDetailsPage() {
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
-    const loadMesa = async () => {
-        setLoading(true);
-        try {
-            const data = await getMesaById(params.id);
-            setMesa(data);
-            if (data?.active_session?.status === 'fechando') {
-                setView('pagamento');
-            }
-            if (data?.active_session) {
-                const tableNumStr = String(data.numero_mesa).padStart(2, '0');
+    const loading = loadingMesa && !mesa;
+
+    useEffect(() => {
+        if (categories.length > 0 && !activeCategory) {
+            setActiveCategory(categories[0].id);
+        }
+    }, [categories, activeCategory]);
+
+    useEffect(() => {
+        if (mesa?.active_session?.status === 'fechando') {
+            setView('pagamento');
+        }
+    }, [mesa?.active_session?.status]);
+
+    useEffect(() => {
+        const checkGrouped = async () => {
+            if (mesa?.active_session) {
+                const tableNumStr = String(String(mesa.numero_mesa).padStart(2, '0'));
                 const groupedStr = `[Unida c/ Mesa ${tableNumStr}]`;
                 const { count } = await supabase
                     .from('mesa_sessions')
@@ -71,46 +67,11 @@ export default function MesaDetailsPage() {
                 
                 setGroupedCount(count || 0);
             }
-        } catch (error) {
-            console.error("Erro ao carregar mesa", error);
-        } finally {
-            setLoading(false);
-        }
-    };
+        };
+        checkGrouped();
+    }, [mesa]);
 
-    useEffect(() => {
-        loadMesa();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [params.id]);
 
-    const fetchData = async () => {
-        if (!user) return;
-        try {
-            const [categoriesRes, productsRes] = await Promise.all([
-                supabase.from('categories').select('*').eq('user_id', user.id),
-                supabase.from('products').select('*').eq('user_id', user.id).eq('available', true)
-            ]);
-
-            if (categoriesRes.data) {
-                setCategories(categoriesRes.data);
-                if (categoriesRes.data.length > 0 && !activeCategory) {
-                    setActiveCategory(categoriesRes.data[0].id);
-                }
-            }
-            if (productsRes.data) {
-                setProducts(productsRes.data);
-            }
-        } catch (e) {
-            console.error('Erro get produtos/categorias', e);
-        }
-    };
-
-    useEffect(() => {
-        if (user) {
-            fetchData();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user]);
 
     const filteredProducts = useMemo(() => {
         const normalize = (text: string) =>
@@ -207,7 +168,7 @@ export default function MesaDetailsPage() {
     }
 
     const allItems = activeSession?.items || [];
-    const unconfirmedItems = allItems.filter(item => !item.enviado_cozinha);
+    const unconfirmedItems = allItems.filter((item: any) => !item.enviado_cozinha);
     const totalItems = allItems.length;
     const subtotal = activeSession?.valor_parcial || 0;
     const taxaServico = taxaServicoEnabled ? subtotal * (taxaServicoPercent / 100) : 0;
@@ -219,7 +180,7 @@ export default function MesaDetailsPage() {
         try {
             await abrirMesa(mesa.id, nomeGarcom.trim());
             alert("Mesa aberta com sucesso!");
-            await loadMesa();
+            // No manual reload needed due to useLiveQuery
         } catch (error) {
             console.error("Erro ao abrir mesa:", error);
             alert("Erro ao abrir mesa.");
@@ -236,7 +197,7 @@ export default function MesaDetailsPage() {
                 preco: produto.price,
             });
             alert(`${produto.name} adicionado.`);
-            await loadMesa();
+            // No manual reload needed due to useLiveQuery
         } catch (error) {
             console.error("Erro ao adicionar produto:", error);
             alert("Erro ao adicionar produto.");
@@ -273,7 +234,7 @@ export default function MesaDetailsPage() {
         try {
             await confirmarItensMesa(activeSession.id, mesa.numero_mesa, user.id, unconfirmedItems);
             alert("Itens enviados para a cozinha com sucesso!");
-            await loadMesa();
+            // No manual reload needed due to useLiveQuery
         } catch (error) {
             console.error("Erro ao enviar para cozinha:", error);
             alert("Erro ao enviar para a cozinha.");
@@ -300,7 +261,7 @@ export default function MesaDetailsPage() {
             notes: null,
             is_delivery: false,
             created_at: activeSession.opened_at || new Date().toISOString(),
-            items: allItems.map(item => ({
+            items: allItems.map((item: any) => ({
                 id: item.id,
                 product_name: item.product_name || 'Produto',
                 quantity: item.quantidade,
@@ -331,7 +292,7 @@ export default function MesaDetailsPage() {
             notes: null,
             is_delivery: false,
             created_at: activeSession.opened_at || new Date().toISOString(),
-            items: allItems.map(item => ({
+            items: allItems.map((item: any) => ({
                 id: item.id,
                 product_name: item.product_name || 'Produto',
                 quantity: item.quantidade,
@@ -597,7 +558,7 @@ export default function MesaDetailsPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {allItems.map(item => (
+                                        {allItems.map((item: any) => (
                                             <tr key={item.id} className="hover:bg-bg-card-hover transition-colors">
                                                 <td className="px-4 py-3">
                                                     <div className="flex flex-col">
@@ -690,7 +651,7 @@ export default function MesaDetailsPage() {
 
                                 {/* Category Tabs */}
                                 <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
-                                    {categories.map(cat => (
+                                    {categories.map((cat: any) => (
                                         <button
                                             key={cat.id}
                                             onClick={() => setActiveCategory(cat.id)}
@@ -698,10 +659,10 @@ export default function MesaDetailsPage() {
                                                 "px-4 py-1.5 rounded-full border text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer",
                                                 activeCategory === cat.id
                                                     ? "bg-primary border-primary text-white"
-                                                    : "bg-bg-tertiary border-border text-text-muted hover:border-primary"
+                                                    : "bg-bg-tertiary border-border text-text-secondary hover:border-primary/30"
                                             )}
                                         >
-                                            {cat.name.toUpperCase()}
+                                            {cat.name}
                                         </button>
                                     ))}
                                 </div>

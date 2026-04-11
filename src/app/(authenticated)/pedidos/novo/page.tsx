@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     FiArrowLeft,
@@ -19,11 +19,20 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+// import { supabase } from '@/lib/supabase'; // Removed for local-first
 import { logOrderCreated } from '@/lib/actionLogger';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { createFullOrder } from '@/lib/dataAccess';
-import { getDb } from '@/lib/db';
+import { 
+    useProductsCache, 
+    useCategoriesCache, 
+    useAddonsCache, 
+    useAppSettingsCache, 
+    useCouponsCache, 
+    useCustomersCache,
+    Addon,
+    AddonGroup
+} from '@/hooks/useDataCache';
 import styles from './page.module.css';
 
 // Função para disparar notificação local
@@ -58,19 +67,7 @@ interface Product {
     category_id: string;
 }
 
-interface Addon {
-    id: string;
-    name: string;
-    price: number;
-}
-
-interface AddonGroup {
-    id: string;
-    name: string;
-    required: boolean;
-    max_selection: number;
-    addons: Addon[];
-}
+// Interfaces are now imported from useDataCache
 
 interface SelectedAddon {
     id: string;
@@ -96,11 +93,17 @@ export default function NovoPedidoPage() {
     const { user } = useAuth();
     const router = useRouter();
 
-    const [categories, setCategories] = useState<Category[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
+    const { categories, loading: categoriesLoading } = useCategoriesCache();
+    const { products: allProducts, loading: productsLoading } = useProductsCache();
+    const { getProductAddons, loading: addonsLoading } = useAddonsCache();
+    const { settings: appSettings, loading: settingsLoading } = useAppSettingsCache();
+    const { coupons, loading: couponsLoading } = useCouponsCache();
+    const { customers: allCustomers, loading: customersLoading } = useCustomersCache();
+
+    const products = allProducts.filter(p => p.available);
+    
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [cart, setCart] = useState<CartItem[]>([]);
-    const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
     // Customer info
@@ -127,113 +130,28 @@ export default function NovoPedidoPage() {
     // Loyalty state
     const [loyaltyCustomer, setLoyaltyCustomer] = useState<{ id: string; name: string; total_points: number; total_orders?: number; total_spent?: number; coupons_used?: number; total_discount_savings?: number; } | null>(null);
 
-    // App settings (for feature toggles)
-    const [appSettings, setAppSettings] = useState<{ coupons_enabled: boolean; loyalty_enabled: boolean } | null>(null);
-
     // Addons modal state
     const [showAddonModal, setShowAddonModal] = useState(false);
     const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
     const [productAddonGroups, setProductAddonGroups] = useState<AddonGroup[]>([]);
     const [selectedAddons, setSelectedAddons] = useState<SelectedAddon[]>([]);
-    const [loadingAddons, setLoadingAddons] = useState(false);
     const toast = useToast();
 
+    // Overall Loading State
+    const loading = categoriesLoading || productsLoading || settingsLoading || couponsLoading || customersLoading;
+
     useEffect(() => {
-        if (user) {
-            fetchData();
+        if (categories.length > 0 && !selectedCategory) {
+            setSelectedCategory(categories[0].id);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user]);
-
-    const fetchData = async () => {
-        if (!user) return;
-
-        try {
-            const [categoriesRes, productsRes, appSettingsRes] = await Promise.all([
-                supabase.from('categories').select('*').eq('user_id', user.id),
-                supabase.from('products').select('*').eq('user_id', user.id).eq('available', true),
-                supabase.from('app_settings').select('coupons_enabled, loyalty_enabled').eq('user_id', user.id).single()
-            ]);
-
-            if (categoriesRes.data) {
-                setCategories(categoriesRes.data);
-                if (categoriesRes.data.length > 0) {
-                    setSelectedCategory(categoriesRes.data[0].id);
-                }
-            }
-
-            if (productsRes.data) {
-                setProducts(productsRes.data);
-            }
-
-            if (appSettingsRes.data) {
-                setAppSettings(appSettingsRes.data);
-            } else {
-                // Default to enabled if no settings
-                setAppSettings({ coupons_enabled: true, loyalty_enabled: true });
-            }
-        } catch (error) {
-            console.error('Error fetching data:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [categories, selectedCategory]);
 
     const filteredProducts = selectedCategory
         ? products.filter(p => p.category_id === selectedCategory)
         : products;
 
-    // Load addons for a product
-    const loadProductAddons = async (productId: string): Promise<AddonGroup[]> => {
-        const { data: groupLinks } = await supabase
-            .from('product_addon_groups')
-            .select(`
-                group_id,
-                addon_groups (
-                    id,
-                    name,
-                    required,
-                    max_selection,
-                    addon_group_items (
-                        product_addons (
-                            id,
-                            name,
-                            price,
-                            available
-                        )
-                    )
-                )
-            `)
-            .eq('product_id', productId);
-
-        if (!groupLinks) return [];
-
-        return groupLinks
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .filter((link: any) => link.addon_groups)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .map((link: any) => ({
-                id: link.addon_groups.id,
-                name: link.addon_groups.name,
-                required: link.addon_groups.required,
-                max_selection: link.addon_groups.max_selection,
-                addons: (link.addon_groups.addon_group_items || [])
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    .filter((item: any) => item.product_addons?.available)
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    .map((item: any) => ({
-                        id: item.product_addons.id,
-                        name: item.product_addons.name,
-                        price: item.product_addons.price
-                    }))
-            }))
-            .filter((g: AddonGroup) => g.addons.length > 0);
-    };
-
     const handleAddToCart = async (product: Product) => {
-        setLoadingAddons(true);
-        const addonGroups = await loadProductAddons(product.id);
-        setLoadingAddons(false);
+        const addonGroups = getProductAddons(product.id);
 
         if (addonGroups.length > 0) {
             // Product has addons, show modal
@@ -325,7 +243,7 @@ export default function NovoPedidoPage() {
     const total = subtotal - discount + (isDelivery ? deliveryFee : 0);
 
 
-    // Validate coupon
+    // Validate coupon locally
     const validateCoupon = async () => {
         if (!couponCode.trim() || !user) return;
 
@@ -334,16 +252,9 @@ export default function NovoPedidoPage() {
 
         try {
             const now = new Date().toISOString();
+            const coupon = coupons.find(c => c.code === couponCode.toUpperCase() && c.active);
 
-            const { data: coupon, error } = await supabase
-                .from('coupons')
-                .select('*')
-                .eq('user_id', user.id)
-                .eq('code', couponCode.toUpperCase())
-                .eq('active', true)
-                .single();
-
-            if (error || !coupon) {
+            if (!coupon) {
                 setCouponError('Cupom inválido ou expirado');
                 setAppliedCoupon(null);
                 return;
@@ -374,7 +285,7 @@ export default function NovoPedidoPage() {
             setAppliedCoupon({
                 id: coupon.id,
                 code: coupon.code,
-                discount_type: coupon.discount_type,
+                discount_type: coupon.discount_type as 'percentage' | 'fixed',
                 discount_value: coupon.discount_value
             });
         } catch {
@@ -384,23 +295,23 @@ export default function NovoPedidoPage() {
         }
     };
 
-    // Search loyalty customer by phone
-    const searchLoyaltyCustomer = async (phone: string) => {
+    // Search loyalty customer by phone locally
+    const searchLoyaltyCustomer = useCallback(async (phone: string) => {
         if (!phone || phone.length < 10 || !user) return;
 
-        const { data } = await supabase
-            .from('customers')
-            .select('id, name, total_points')
-            .eq('user_id', user.id)
-            .eq('phone', phone.replace(/\D/g, ''))
-            .single();
+        const cleanPhone = phone.replace(/\D/g, '');
+        const customer = allCustomers.find(c => c.phone === cleanPhone);
 
-        if (data) {
-            setLoyaltyCustomer(data);
+        if (customer) {
+            setLoyaltyCustomer({
+                id: customer.id,
+                name: customer.name,
+                total_points: customer.total_points
+            });
         } else {
             setLoyaltyCustomer(null);
         }
-    };
+    }, [user, allCustomers]);
 
     // Effect to search customer when phone changes
     useEffect(() => {
@@ -424,22 +335,22 @@ export default function NovoPedidoPage() {
 
         try {
             let orderNumber = 1;
+            // Use local Dexie as primary source of truth for order numbers to support offline creation
             try {
-                const { data: lastOrder } = await supabase
-                    .from('orders')
-                    .select('order_number')
-                    .eq('user_id', user.id)
-                    .order('order_number', { ascending: false })
-                    .limit(1)
-                    .single();
-                orderNumber = lastOrder ? lastOrder.order_number + 1 : 1;
+                const module = await import('@/lib/db');
+                const db = module.getDb();
+                const lastOrder = await db.orders
+                    .where('user_id')
+                    .equals(user.id)
+                    .reverse()
+                    .sortBy('order_number');
+                
+                // Get the literal max or 0
+                const maxNum = lastOrder.length > 0 ? (lastOrder[0].order_number || 0) : 0;
+                orderNumber = maxNum + 1;
             } catch (err) {
-                try {
-                    const cachedOrders = await getDb().orders.orderBy('order_number').reverse().limit(1).toArray();
-                    orderNumber = cachedOrders.length > 0 ? cachedOrders[0].order_number + 1 : 1;
-                } catch {
-                    orderNumber = Math.floor(Math.random() * 10000);
-                }
+                console.error('Failed to get last order number from local DB:', err);
+                orderNumber = Math.floor(Math.random() * 10000);
             }
 
             const orderData = {
@@ -525,13 +436,16 @@ export default function NovoPedidoPage() {
                 }
             }
 
-            await createFullOrder(orderData, orderItems, itemAddons, loyaltyData, couponData);
+            const orderId = crypto.randomUUID();
+            const orderWithId = { ...orderData, id: orderId };
+
+            await createFullOrder(orderWithId, orderItems, itemAddons, loyaltyData, couponData);
 
             if (user) {
                 sendNewOrderPush(user.id, orderNumber, customerName, total).catch(console.error);
             }
 
-            logOrderCreated("local-sync", orderNumber, total);
+            logOrderCreated(orderId, orderNumber, total);
             toast.success(`Pedido #${orderNumber} gerado com sucesso!`);
             router.push('/pedidos');
         } catch (error) {
@@ -887,11 +801,6 @@ export default function NovoPedidoPage() {
                 </div>
             )}
 
-            {loadingAddons && (
-                <div className={styles.loadingOverlay}>
-                    <div className={styles.spinner} />
-                </div>
-            )}
         </div>
     );
 }

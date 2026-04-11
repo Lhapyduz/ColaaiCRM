@@ -9,9 +9,18 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
+import { useBillsCache, useBillCategoriesCache } from '@/hooks/useDataCache';
+import { 
+    createBillDAL, 
+    updateBillDAL, 
+    deleteBillDAL, 
+    createBillCategoryDAL, 
+    deleteBillCategoryDAL,
+    markBillPaidDAL 
+} from '@/lib/dataAccess';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 interface Bill {
     id: string;
@@ -43,9 +52,13 @@ type TabType = 'payable' | 'receivable' | 'all';
 export default function ContasPage() {
     const { user } = useAuth();
     const { canAccess, plan } = useSubscription();
-    const [bills, setBills] = useState<Bill[]>([]);
-    const [categories, setCategories] = useState<BillCategory[]>([]);
-    const [loading, setLoading] = useState(true);
+    
+    // Reactive cache hooks
+    const { bills, loading: loadingBills } = useBillsCache();
+    const { categories, loading: loadingCategories } = useBillCategoriesCache();
+    
+    const loading = loadingBills || loadingCategories;
+    
     const [activeTab, setActiveTab] = useState<TabType>('all');
     const [filterStatus, setFilterStatus] = useState<string>('');
     const [showModal, setShowModal] = useState(false);
@@ -60,20 +73,9 @@ export default function ContasPage() {
 
 
 
-    const fetchBills = useCallback(async () => {
-        if (!user) return;
-        try { await supabase.rpc('update_overdue_bills'); } catch { }
-        const { data, error } = await supabase.from('bills').select('*').eq('user_id', user.id).order('due_date', { ascending: true });
-        if (!error && data) setBills(data);
-    }, [user]);
-
-    const fetchCategories = useCallback(async () => {
-        if (!user) return;
-        const { data, error } = await supabase.from('bill_categories').select('*').eq('user_id', user.id);
-
-        if (!error && data && data.length > 0) {
-            setCategories(data);
-        } else if (!error) {
+    // Initialize defaults if no categories exist
+    useEffect(() => {
+        if (user && hasAccess && categories.length === 0 && !loadingCategories) {
             const defaults = [
                 { name: 'Fornecedores', type: 'payable', icon: '📦', color: '#e74c3c' },
                 { name: 'Aluguel', type: 'payable', icon: '🏠', color: '#9b59b6' },
@@ -82,28 +84,19 @@ export default function ContasPage() {
                 { name: 'Vendas', type: 'receivable', icon: '💰', color: '#27ae60' },
                 { name: 'Outros', type: 'both', icon: '📝', color: '#7f8c8d' }
             ];
-
-            const insertPromises = defaults.map(cat =>
-                supabase.from('bill_categories').insert({ user_id: user.id, ...cat })
-            );
-            await Promise.all(insertPromises);
-
-            const { data: newData, error: newError } = await supabase.from('bill_categories').select('*').eq('user_id', user.id);
-            if (!newError && newData) setCategories(newData);
+            
+            defaults.forEach(cat => createBillCategoryDAL({ user_id: user.id, ...cat }));
         }
-    }, [user]);
-
-    const fetchData = useCallback(async () => {
-        await Promise.all([fetchBills(), fetchCategories()]);
-        setLoading(false);
-    }, [fetchBills, fetchCategories]);
+    }, [user, hasAccess, categories.length, loadingCategories]);
 
     useEffect(() => {
         if (user && hasAccess) {
-            // avoid calling setState directly within the effect synchronously
-            setTimeout(() => fetchData(), 0);
+            // Background update for overdue status
+            supabase.rpc('update_overdue_bills').then(({error}) => {
+                if (error) console.warn('RPC update_overdue_bills failed:', error.message);
+            });
         }
-    }, [user, hasAccess, fetchData]);
+    }, [user, hasAccess]);
 
     if (!hasAccess) {
         return <UpgradePrompt feature="Contas a Pagar/Receber" requiredPlan="Avançado" currentPlan={plan} fullPage />;
@@ -118,10 +111,17 @@ export default function ContasPage() {
             recurrence: form.recurrence || 'none',
             recurrence_end_date: form.recurrence_end_date || null
         };
-        if (editingBill) await supabase.from('bills').update(billData).eq('id', editingBill.id);
-        else await supabase.from('bills').insert(billData);
-        toast.success(editingBill ? 'Conta atualizada!' : 'Conta adicionada!');
-        setShowModal(false); resetForm(); fetchBills();
+        
+        try {
+            if (editingBill) await updateBillDAL(editingBill.id, billData);
+            else await createBillDAL(billData);
+            
+            toast.success(editingBill ? 'Conta atualizada!' : 'Conta adicionada!');
+            setShowModal(false); 
+            resetForm();
+        } catch (error: any) {
+            toast.error('Erro ao salvar conta: ' + error.message);
+        }
     };
 
     const getNextDueDate = (currentDueDate: string, recurrence: string): string => {
@@ -135,47 +135,72 @@ export default function ContasPage() {
     };
 
     const handleMarkPaid = async (bill: Bill) => {
-        await supabase.from('bills').update({ status: 'paid', payment_date: new Date().toISOString().split('T')[0] }).eq('id', bill.id);
-        await supabase.from('cash_flow').insert({ user_id: user!.id, type: bill.type === 'payable' ? 'expense' : 'income', category: bill.category, description: bill.description, amount: bill.amount, transaction_date: new Date().toISOString().split('T')[0], reference_type: 'bill', reference_id: bill.id });
-
-        // Se for recorrente, gera a próxima conta automaticamente
+        let nextDueDate: string | undefined;
         if (bill.recurrence && bill.recurrence !== 'none') {
-            const nextDueDate = getNextDueDate(bill.due_date, bill.recurrence);
+            const calculatedNext = getNextDueDate(bill.due_date, bill.recurrence);
             const endDate = bill.recurrence_end_date ? new Date(bill.recurrence_end_date + 'T12:00:00') : null;
-            const nextDate = new Date(nextDueDate + 'T12:00:00');
+            const nextDate = new Date(calculatedNext + 'T12:00:00');
 
             if (!endDate || nextDate <= endDate) {
-                await supabase.from('bills').insert({
-                    user_id: user!.id, type: bill.type, description: bill.description,
-                    category: bill.category, amount: bill.amount, due_date: nextDueDate,
-                    supplier_customer: bill.supplier_customer, notes: bill.notes,
-                    status: 'pending', recurrence: bill.recurrence,
-                    recurrence_end_date: bill.recurrence_end_date
-                });
-                toast.success('Conta paga! Próxima parcela gerada automaticamente 🔄');
-            } else {
-                toast.success('Conta paga! Recorrência finalizada.');
+                nextDueDate = calculatedNext;
             }
-        } else {
-            toast.success('Conta marcada como paga!');
         }
-        fetchBills();
+
+        try {
+            await markBillPaidDAL(
+                bill as any, 
+                user!.id, 
+                new Date().toISOString().split('T')[0], 
+                nextDueDate
+            );
+            
+            if (nextDueDate) {
+                toast.success('Conta paga! Próxima parcela gerada automaticamente 🔄');
+            } else if (bill.recurrence && bill.recurrence !== 'none') {
+                toast.success('Conta paga! Recorrência finalizada.');
+            } else {
+                toast.success('Conta marcada como paga!');
+            }
+        } catch (error: any) {
+            toast.error('Erro ao processar pagamento: ' + error.message);
+        }
     };
 
-    const handleDelete = async (id: string) => { if (!confirm('Excluir esta conta?')) return; await supabase.from('bills').delete().eq('id', id); toast.success('Conta excluída!'); fetchBills(); };
+    const handleDelete = async (id: string) => { 
+        if (!confirm('Excluir esta conta?')) return; 
+        try {
+            await deleteBillDAL(id);
+            toast.success('Conta excluída!'); 
+        } catch (error: any) {
+            toast.error('Erro ao excluir conta: ' + error.message);
+        }
+    };
 
     const handleSaveCategory = async () => {
         if (!user || !newCategory.name.trim()) return;
-        await supabase.from('bill_categories').insert({ user_id: user.id, name: newCategory.name, type: newCategory.type, icon: newCategory.icon, color: newCategory.color });
-        setNewCategory({ name: '', type: 'both', icon: '📁', color: '#6366f1' });
-        setShowCategoryModal(false);
-        fetchCategories();
+        try {
+            await createBillCategoryDAL({ 
+                user_id: user.id, 
+                name: newCategory.name, 
+                type: newCategory.type, 
+                icon: newCategory.icon, 
+                color: newCategory.color 
+            });
+            setNewCategory({ name: '', type: 'both', icon: '📁', color: '#6366f1' });
+            setShowCategoryModal(false);
+        } catch (error: any) {
+            toast.error('Erro ao salvar categoria: ' + error.message);
+        }
     };
 
     const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
         if (!confirm(`Excluir a categoria "${categoryName}"? Esta ação não pode ser desfeita.`)) return;
-        await supabase.from('bill_categories').delete().eq('id', categoryId);
-        fetchCategories();
+        try {
+            await deleteBillCategoryDAL(categoryId);
+            toast.success('Categoria excluída!');
+        } catch (error: any) {
+            toast.error('Erro ao excluir categoria: ' + error.message);
+        }
     };
 
     const resetForm = () => { setForm({ type: 'payable', description: '', category: '', amount: '', due_date: '', supplier_customer: '', notes: '', recurrence: 'none', recurrence_end_date: '' }); setEditingBill(null); };
@@ -195,16 +220,16 @@ export default function ContasPage() {
         return badges[status] || badges.pending;
     };
 
-    const filteredBills = bills.filter(b => { if (activeTab !== 'all' && b.type !== activeTab) return false; if (filterStatus && b.status !== filterStatus) return false; return true; });
+    const filteredBills = bills.filter((b: Bill) => { if (activeTab !== 'all' && b.type !== activeTab) return false; if (filterStatus && b.status !== filterStatus) return false; return true; });
 
-    const recurringBills = bills.filter(b => b.recurrence && b.recurrence !== 'none' && b.status === 'pending');
+    const recurringBills = bills.filter((b: Bill) => b.recurrence && b.recurrence !== 'none' && b.status === 'pending');
     const stats = {
-        totalPayable: bills.filter(b => b.type === 'payable' && b.status === 'pending').reduce((sum, b) => sum + b.amount, 0),
-        totalReceivable: bills.filter(b => b.type === 'receivable' && b.status === 'pending').reduce((sum, b) => sum + b.amount, 0),
-        overdue: bills.filter(b => b.status === 'overdue').length,
-        dueThisWeek: bills.filter(b => { if (b.status !== 'pending') return false; const due = new Date(b.due_date); const now = new Date(); const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); return due <= weekFromNow && due >= now; }).length,
+        totalPayable: bills.filter((b: Bill) => b.type === 'payable' && b.status === 'pending').reduce((sum: number, b: Bill) => sum + b.amount, 0),
+        totalReceivable: bills.filter((b: Bill) => b.type === 'receivable' && b.status === 'pending').reduce((sum: number, b: Bill) => sum + b.amount, 0),
+        overdue: bills.filter((b: Bill) => b.status === 'overdue').length,
+        dueThisWeek: bills.filter((b: Bill) => { if (b.status !== 'pending') return false; const due = new Date(b.due_date); const now = new Date(); const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); return due <= weekFromNow && due >= now; }).length,
         recurring: recurringBills.length,
-        recurringTotal: recurringBills.reduce((sum, b) => sum + b.amount, 0)
+        recurringTotal: recurringBills.reduce((sum: number, b: Bill) => sum + b.amount, 0)
     };
 
     return (

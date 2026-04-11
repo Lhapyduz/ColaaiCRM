@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useCallback, ReactNode } from 'react';
-import { initOfflineDB, onNetworkChange, isOnline, getPendingActions } from '@/lib/offlineStorage';
+import { initOfflineDB, onNetworkChange, isOnline, getPendingActions, checkConnectivity } from '@/lib/offlineStorage';
 import { syncPendingActions, cacheDataForOffline, updateLastSync } from '@/lib/offlineSync';
 import { useStorageStore, type StorageMode } from '@/stores/useStorageStore';
 import { useAuth } from './AuthContext';
@@ -66,10 +66,8 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
             await updatePendingCount();
 
-            // Refresh cache after sync
-            if (user && isEffectivelyOnline) {
-                await cacheDataForOffline(user.id);
-            }
+            // Note: cacheDataForOffline has its own 5-min cooldown guard,
+            // so calling it here won't cause redundant fetches
         } catch (error) {
             console.error('[Offline] Sync failed:', error);
             toast.error('Erro ao sincronizar com servidor.');
@@ -90,7 +88,9 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
             } catch {
                 // DB init may fail on very first SSR render attempt
             }
-            setHardwareOnline(isOnline());
+            // Use robust async check
+            const isOnlineNow = await checkConnectivity();
+            setHardwareOnline(isOnlineNow);
             await updatePendingCount();
 
             // Restore lastSync from localStorage for backward compat

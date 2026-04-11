@@ -7,11 +7,12 @@ import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
-import { supabase } from '@/lib/supabase';
+import { useEmployeesCache } from '@/hooks/useDataCache';
 import { cn } from '@/lib/utils';
 import EditEmployeeSheet, { EmployeeData } from '@/components/funcionarios/EditEmployeeSheet';
+import type { CachedEmployee } from '@/types/db';
 
-interface Employee { id: string; name: string; email: string | null; phone: string | null; role: 'admin' | 'manager' | 'cashier' | 'kitchen' | 'attendant' | 'delivery'; pin_code: string | null; is_active: boolean; is_fixed?: boolean; permissions: Record<string, boolean>; hourly_rate: number | null; salario_fixo?: number | null; created_at: string; }
+type Employee = CachedEmployee;
 
 const ROLES = [
     { value: 'admin', label: 'Administrador', icon: '👑', color: '#9b59b6' },
@@ -34,43 +35,31 @@ const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
 export default function FuncionariosPage() {
     const { user } = useAuth();
     const { plan, isWithinLimit, getLimit } = useSubscription();
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { employees, loading, error: cacheError } = useEmployeesCache();
     const [showModal, setShowModal] = useState(false);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
-
-
-    const fetchEmployees = useCallback(async () => {
-        if (!user) return;
-        setLoading(true);
-        const { data, error } = await supabase.from('employees').select('*').eq('user_id', user.id).order('name');
-        if (!error && data) setEmployees(data);
-        setLoading(false);
-    }, [user]);
-
-    useEffect(() => {
-        if (user) {
-            // eslint-disable-next-line
-            fetchEmployees();
-        }
-    }, [user, fetchEmployees]);
-    const handleAddClick = () => { const regularEmployees = employees.filter(e => !e.is_fixed); if (!isWithinLimit('employees', regularEmployees.length)) { setShowUpgradeModal(true); return; } setEditingEmployee(null); setShowModal(true); };
+    const handleAddClick = () => { 
+        const regularEmployees = employees.filter(e => !e.is_fixed); 
+        if (!isWithinLimit('employees', regularEmployees.length)) { 
+            setShowUpgradeModal(true); 
+            return; 
+        } 
+        setEditingEmployee(null); 
+        setShowModal(true); 
+    };
 
     const handleSave = async (updatedData: EmployeeData) => {
         if (!user) return;
         
         const isCreating = !editingEmployee;
+        const { createEmployee, updateEmployee } = await import('@/lib/dataAccess');
         
         if (editingEmployee?.is_fixed) {
-            await supabase.from('employees')
-                .update({ pin_code: updatedData.pin_code || null })
-                .eq('id', editingEmployee.id)
-                .eq('user_id', user.id);
+            await updateEmployee(editingEmployee.id, { pin_code: updatedData.pin_code || null });
             setShowModal(false);
             setEditingEmployee(null);
-            fetchEmployees();
             return;
         }
 
@@ -88,24 +77,41 @@ export default function FuncionariosPage() {
         };
 
         if (isCreating) {
-            await supabase.from('employees').insert(employeeData);
+            await createEmployee(employeeData);
         } else {
-            await supabase.from('employees').update(employeeData).eq('id', editingEmployee.id).eq('user_id', user.id);
+            await updateEmployee(editingEmployee.id, employeeData);
         }
 
         setShowModal(false);
         setEditingEmployee(null);
-        fetchEmployees();
     };
 
-    const handleToggleActive = async (employee: Employee) => { if (!user) return; await supabase.from('employees').update({ is_active: !employee.is_active }).eq('id', employee.id).eq('user_id', user.id); fetchEmployees(); };
-    const handleDelete = async (employee: Employee) => { if (!user) return; if (employee.is_fixed) { alert('Este funcionário é fixo e não pode ser removido.'); return; } if (!confirm('Excluir este funcionário?')) return; await supabase.from('employees').delete().eq('id', employee.id).eq('user_id', user.id); fetchEmployees(); };
+    const handleToggleActive = async (employee: Employee) => { 
+        if (!user) return; 
+        const { updateEmployee } = await import('@/lib/dataAccess');
+        await updateEmployee(employee.id, { is_active: !employee.is_active }); 
+    };
+
+    const handleDelete = async (employee: Employee) => { 
+        if (!user) return; 
+        if (employee.is_fixed) { 
+            alert('Este funcionário é fixo e não pode ser removido.'); 
+            return; 
+        } 
+        if (!confirm('Excluir este funcionário?')) return; 
+        const { deleteEmployee } = await import('@/lib/dataAccess');
+        await deleteEmployee(employee.id); 
+    };
     const openEdit = (employee: Employee) => { setEditingEmployee(employee); setShowModal(true); };
     const getRoleInfo = (role: string) => ROLES.find(r => r.value === role) || ROLES[4];
 
-    const regularEmployees = employees.filter(e => !e.is_fixed);
-    const fixedEmployees = employees.filter(e => e.is_fixed);
-    const stats = { total: regularEmployees.length, active: regularEmployees.filter(e => e.is_active).length, byRole: ROLES.map(r => ({ ...r, count: employees.filter(e => e.role === r.value).length })) };
+    const regularEmployees = employees.filter((e: Employee) => !e.is_fixed);
+    const fixedEmployees = employees.filter((e: Employee) => e.is_fixed);
+    const stats = { 
+        total: regularEmployees.length, 
+        active: regularEmployees.filter((e: Employee) => e.is_active).length, 
+        byRole: ROLES.map(r => ({ ...r, count: employees.filter((e: Employee) => e.role === r.value).length })) 
+    };
 
     return (
         <div className="max-w-[1200px] mx-auto">

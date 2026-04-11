@@ -1,4 +1,8 @@
 import { supabase, Database } from '../supabase';
+import { getDb } from '@/lib/db';
+import { getMode, incrPending } from '@/lib/dataAccess';
+import { saveItem, getItem, deleteItem, addPendingAction } from '@/lib/offlineStorage';
+import type { CachedMesaSession, CachedMesaSessionItem, CachedOrder, CachedTable, CachedEmployee } from '@/types/db';
 
 export type Mesa = Database['public']['Tables']['mesas']['Row'];
 export type MesaSession = Database['public']['Tables']['mesa_sessions']['Row'];
@@ -96,53 +100,92 @@ export async function abrirMesa(mesaId: string, garcom?: string) {
     const userId = userRes.data.user.id;
 
     // Buscar configurações do usuário para pegar a taxa padrão
-    const { data: settings } = await supabase
-        .from('user_settings')
-        .select('taxa_servico_enabled, taxa_servico_percent')
-        .eq('user_id', userId)
-        .single();
+    let taxaServico = 10;
+    let taxaServicoEnabled = true;
+    if (getMode() === 'cloud') {
+        const { data: settings } = await supabase
+            .from('user_settings')
+            .select('taxa_servico_enabled, taxa_servico_percent')
+            .eq('user_id', userId)
+            .single();
+        if (settings) {
+            taxaServico = Number(settings.taxa_servico_percent) || 10;
+            taxaServicoEnabled = settings.taxa_servico_enabled ?? true;
+        }
+    } else {
+        const localSettings = await getItem<any>('userSettings', userId);
+        if (localSettings) {
+            taxaServico = Number(localSettings.taxa_servico_percent) || 10;
+            taxaServicoEnabled = localSettings.taxa_servico_enabled ?? true;
+        }
+    }
 
-    const sessionToInsert: Database['public']['Tables']['mesa_sessions']['Insert'] = {
+    const sessionId = crypto.randomUUID();
+    const sessionToInsert = {
+        id: sessionId,
         mesa_id: mesaId,
         user_id: userId,
         status: 'ocupada',
         garcom: garcom && garcom.trim() !== '' ? garcom.trim() : 'Nenhum',
         valor_parcial: 0,
-        taxa_servico_percent: settings?.taxa_servico_enabled ? (Number(settings.taxa_servico_percent) || 10) : 0,
+        taxa_servico_percent: taxaServicoEnabled ? taxaServico : 0,
         desconto: 0,
-        total_final: 0
+        total_final: 0,
+        closed_at: null as string | null,
+        created_at: new Date().toISOString()
     };
 
-    const { data: newSession, error } = await supabase
-        .from('mesa_sessions')
-        .insert(sessionToInsert)
-        .select()
-        .single();
+    if (getMode() === 'cloud') {
+        const { data: newSession, error } = await supabase
+            .from('mesa_sessions')
+            .insert(sessionToInsert)
+            .select()
+            .single();
 
-    if (error) {
-        console.error("Erro ao abrir mesa:", error);
-        throw error;
+        if (error) {
+            console.error("Erro ao abrir mesa:", error);
+            throw error;
+        }
+        await saveItem('mesa_sessions', newSession as unknown as CachedMesaSession);
+        return newSession;
+    } else {
+        await saveItem('mesa_sessions', sessionToInsert as unknown as CachedMesaSession);
+        await addPendingAction({ type: 'create', table: 'mesa_sessions', data: sessionToInsert });
+        incrPending();
+        return sessionToInsert;
     }
-
-    return newSession;
 }
 
 /**
  * Altera status da sessão ativa de uma mesa (ex: para 'fechando' ou 'suja')
  */
 export async function updateStatusMesa(sessionId: string, newStatus: 'livre' | 'ocupada' | 'fechando' | 'suja') {
-    const { data, error } = await supabase
-        .from('mesa_sessions')
-        .update({ status: newStatus })
-        .eq('id', sessionId)
-        .select()
-        .single();
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase
+            .from('mesa_sessions')
+            .update({ status: newStatus })
+            .eq('id', sessionId)
+            .select()
+            .single();
 
-    if (error) {
-        console.error("Erro ao atualizar status:", error);
-        throw error;
+        if (error) {
+            console.error("Erro ao atualizar status:", error);
+            throw error;
+        }
+        const existing = await getItem<any>('mesa_sessions', sessionId);
+        if (existing) {
+            await saveItem('mesa_sessions', { ...existing, status: newStatus } as CachedMesaSession);
+        }
+        return data;
+    } else {
+        const existing = await getItem<any>('mesa_sessions', sessionId);
+        if (existing) {
+            await saveItem('mesa_sessions', { ...existing, status: newStatus } as CachedMesaSession);
+        }
+        await addPendingAction({ type: 'update', table: 'mesa_sessions', data: { id: sessionId, status: newStatus } });
+        incrPending();
+        return { ...existing, status: newStatus };
     }
-    return data;
 }
 
 /**
@@ -155,42 +198,66 @@ export async function addSessionItem(
     observacao: string = ''
 ) {
     const itemTotal = produto.preco * quantidade;
+    const itemId = crypto.randomUUID();
+    const itemToInsert = {
+        id: itemId,
+        session_id: sessionId,
+        product_id: produto.id,
+        product_name: produto.nome,
+        quantidade,
+        preco_unitario: produto.preco,
+        preco_total: itemTotal,
+        observacao,
+        enviado_cozinha: false
+    };
 
-    const { data: newItem, error: itemError } = await supabase
-        .from('mesa_session_items')
-        .insert({
-            session_id: sessionId,
-            product_id: produto.id,
-            product_name: produto.nome,
-            quantidade,
-            preco_unitario: produto.preco,
-            preco_total: itemTotal,
-            observacao,
-            enviado_cozinha: false
-        })
-        .select()
-        .single();
+    if (getMode() === 'cloud') {
+        const { data: newItem, error: itemError } = await supabase
+            .from('mesa_session_items')
+            .insert(itemToInsert)
+            .select()
+            .single();
 
-    if (itemError) {
-        console.error("Erro ao adicionar item:", itemError);
-        throw itemError;
-    }
+        if (itemError) {
+            console.error("Erro ao adicionar item:", itemError);
+            throw itemError;
+        }
 
-    // Após adicionar item, buscar sessão para atualizar o valor parcial
-    const { data: sessionData, error: sessionFetchError } = await supabase
-        .from('mesa_sessions')
-        .select('valor_parcial')
-        .eq('id', sessionId)
-        .single();
+        await saveItem('mesa_session_items', newItem as unknown as CachedMesaSessionItem);
 
-    if (!sessionFetchError && sessionData) {
-        await supabase
+        // Após adicionar item, buscar sessão para atualizar o valor parcial
+        const { data: sessionData, error: sessionFetchError } = await supabase
             .from('mesa_sessions')
-            .update({ valor_parcial: sessionData.valor_parcial + itemTotal })
-            .eq('id', sessionId);
-    }
+            .select('valor_parcial')
+            .eq('id', sessionId)
+            .single();
 
-    return newItem;
+        if (!sessionFetchError && sessionData) {
+            await supabase
+                .from('mesa_sessions')
+                .update({ valor_parcial: sessionData.valor_parcial + itemTotal })
+                .eq('id', sessionId);
+            const existingSession = await getItem<any>('mesa_sessions', sessionId);
+            if (existingSession) {
+                await saveItem('mesa_sessions', { ...existingSession, valor_parcial: existingSession.valor_parcial + itemTotal } as CachedMesaSession);
+            }
+        }
+
+        return newItem;
+    } else {
+        await saveItem('mesa_session_items', itemToInsert as unknown as CachedMesaSessionItem);
+        await addPendingAction({ type: 'create', table: 'mesa_session_items', data: itemToInsert });
+        
+        const existingSession = await getItem<any>('mesa_sessions', sessionId);
+        if (existingSession) {
+            const newVal = (existingSession.valor_parcial || 0) + itemTotal;
+            await saveItem('mesa_sessions', { ...existingSession, valor_parcial: newVal } as CachedMesaSession);
+            await addPendingAction({ type: 'update', table: 'mesa_sessions', data: { id: sessionId, valor_parcial: newVal } });
+        }
+        
+        incrPending();
+        return itemToInsert;
+    }
 }
 
 /**
@@ -203,6 +270,84 @@ export async function fecharMesaSessao(
     desconto: number = 0,
     totalFinal: number
 ) {
+    if (getMode() !== 'cloud') {
+        const session = await getItem<any>('mesa_sessions', sessionId);
+        if (!session) throw new Error("Sessão não encontrada no cache local");
+        
+        const db = getDb();
+        const items = await db.mesa_session_items.where('session_id').equals(sessionId).toArray();
+        const mesas = await db.mesas.where('id').equals(session.mesa_id).toArray();
+        const mesa = mesas[0];
+
+        const orderNumber = (await db.orders.count()) + 1; // Fake order number local
+
+        const orderId = crypto.randomUUID();
+        const paymentMethodMap: Record<string, string> = {
+            'money': 'money',
+            'dinheiro': 'money',
+            'pix': 'pix',
+            'credito': 'credit',
+            'debito': 'debit',
+            'credit': 'credit',
+            'debit': 'debit'
+        };
+        const dbPaymentMethod = paymentMethodMap[paymentMethod] || 'money';
+
+        const orderToInsert = {
+            id: orderId,
+            user_id: session.user_id,
+            order_number: orderNumber,
+            customer_name: `Mesa ${mesa?.numero_mesa || ''} - ${session.garcom || 'Consumidor'}`,
+            status: 'delivered',
+            payment_method: dbPaymentMethod,
+            payment_status: 'paid',
+            subtotal: totalFinal + desconto - taxaServico,
+            total: totalFinal,
+            discount_amount: desconto,
+            service_fee: taxaServico,
+            garcom_id: null,
+            is_delivery: false,
+            notes: `Fechamento de mesa via PDV`,
+            created_at: new Date().toISOString()
+        };
+
+        if (items && items.length > 0) {
+            const orderItems = items.map((item: any) => ({
+                id: crypto.randomUUID(),
+                order_id: orderId,
+                product_id: item.product_id,
+                product_name: item.product_name || 'Produto',
+                quantity: item.quantidade,
+                unit_price: item.preco_unitario,
+                total: item.preco_total,
+                created_at: new Date().toISOString()
+            }));
+            
+            await db.order_items.bulkAdd(orderItems as any[]);
+            for (const oi of orderItems) {
+                await addPendingAction({ type: 'create', table: 'order_items', data: oi });
+            }
+        }
+
+        await addPendingAction({ type: 'create', table: 'orders', data: orderToInsert });
+
+        const updatedSession = {
+            ...session,
+            status: 'livre',
+            payment_method: paymentMethod,
+            taxa_servico_percent: taxaServico,
+            desconto: desconto,
+            total_final: totalFinal,
+            closed_at: new Date().toISOString()
+        };
+        await saveItem('mesa_sessions', updatedSession);
+        await addPendingAction({ type: 'update', table: 'mesa_sessions', data: updatedSession });
+        
+        incrPending(2);
+        return updatedSession;
+    }
+
+    // --- Cloud Mode ---
     // 1. Buscar dados da sessão e itens para criar o Pedido (Order)
     const { data: session, error: sessionError } = await supabase
         .from('mesa_sessions')
@@ -314,16 +459,18 @@ export async function fecharMesaSessao(
     }
 
     // 5. Atualizar a sessão da mesa como encerrada
+    const updatedStatusInfo = {
+        status: 'livre',
+        payment_method: paymentMethod,
+        taxa_servico_percent: taxaServico,
+        desconto: desconto,
+        total_final: totalFinal,
+        closed_at: new Date().toISOString()
+    };
+
     const { data, error } = await supabase
         .from('mesa_sessions')
-        .update({
-            status: 'livre',
-            payment_method: paymentMethod,
-            taxa_servico_percent: taxaServico, // Guardamos o valor fixo por simplicidade ou percentual se preferir
-            desconto: desconto,
-            total_final: totalFinal,
-            closed_at: new Date().toISOString()
-        })
+        .update(updatedStatusInfo)
         .eq('id', sessionId)
         .select()
         .single();
@@ -332,20 +479,28 @@ export async function fecharMesaSessao(
         console.error("Erro ao fechar sessão da mesa:", error);
         throw error;
     }
+    await saveItem('mesa_sessions', data as unknown as CachedMesaSession);
 
     // 6. Liberar qualquer mesa que tenha sido agrupada a esta
     if (session.mesas?.numero_mesa) {
         const tableNumberStr = String(session.mesas.numero_mesa).padStart(2, '0');
         const groupedString = `[Unida c/ Mesa ${tableNumberStr}]`;
         
-        await supabase
+        const { data: updatedAgroups } = await supabase
             .from('mesa_sessions')
             .update({
                 status: 'livre',
                 closed_at: new Date().toISOString()
             })
             .eq('garcom', groupedString)
-            .is('closed_at', null);
+            .is('closed_at', null)
+            .select();
+        
+        if (updatedAgroups) {
+            for (const agroup of updatedAgroups) {
+                await saveItem('mesa_sessions', agroup as unknown as CachedMesaSession);
+            }
+        }
     }
 
     return data;
@@ -355,6 +510,21 @@ export async function fecharMesaSessao(
  * Separa a força todas as mesas que estão agrupadas a uma mesa destino.
  */
 export async function desagruparTodas(numeroMesa: number) {
+    if (getMode() !== 'cloud') {
+        const db = getDb();
+        const tableNumberStr = String(numeroMesa).padStart(2, '0');
+        const groupedString = `[Unida c/ Mesa ${tableNumberStr}]`;
+        const grouped = await db.mesa_sessions.where('garcom').equals(groupedString).toArray();
+        for (const session of grouped) {
+            if (!session.closed_at) {
+                await db.mesa_sessions.update(session.id, { status: 'livre', closed_at: new Date().toISOString() });
+                await addPendingAction({ type: 'update', table: 'mesa_sessions', data: { id: session.id, status: 'livre', closed_at: new Date().toISOString() } });
+            }
+        }
+        incrPending(grouped.length);
+        return true;
+    }
+
     const tableNumberStr = String(numeroMesa).padStart(2, '0');
     const groupedString = `[Unida c/ Mesa ${tableNumberStr}]`;
     
@@ -426,6 +596,63 @@ export async function confirmarItensMesa(
     }[]
 ) {
     if (!itemsToConfirm || itemsToConfirm.length === 0) return;
+
+    if (getMode() !== 'cloud') {
+        const module = await import('@/lib/db');
+        const db = module.getDb();
+        
+        const lastOrder = await db.orders
+            .where('user_id').equals(userId)
+            .reverse()
+            .first();
+            
+        const nextOrderNumber = (lastOrder?.order_number || 0) + 1;
+        const newOrderId = crypto.randomUUID();
+        
+        const newOrder = {
+            id: newOrderId,
+            user_id: userId,
+            customer_name: `Mesa ${numeroMesa}`,
+            status: 'pending', // Fica pendente na cozinha
+            payment_method: 'money',
+            payment_status: 'pending',
+            subtotal: 0,
+            delivery_fee: 0,
+            total: 0,
+            notes: `Pedido da Mesa ${numeroMesa}`,
+            is_delivery: false,
+            order_number: nextOrderNumber,
+            created_at: new Date().toISOString(),
+        };
+        
+        await db.orders.add(newOrder as any);
+        await addPendingAction({ type: 'create', table: 'orders', data: newOrder });
+        
+        const orderItems = itemsToConfirm.map((item) => ({
+            id: crypto.randomUUID(),
+            order_id: newOrder.id,
+            product_id: item.product_id,
+            product_name: item.product_name,
+            quantity: item.quantidade,
+            unit_price: item.preco_unitario,
+            total: item.preco_total,
+            notes: item.observacao,
+            created_at: new Date().toISOString(),
+        }));
+        
+        await db.order_items.bulkAdd(orderItems as any[]);
+        for (const oi of orderItems) {
+             await addPendingAction({ type: 'create', table: 'order_items', data: oi });
+        }
+        
+        for (const item of itemsToConfirm) {
+             await db.mesa_session_items.update(item.id, { enviado_cozinha: true, order_id: newOrder.id });
+             await addPendingAction({ type: 'update', table: 'mesa_session_items', data: { id: item.id, enviado_cozinha: true, order_id: newOrder.id } });
+        }
+        
+        incrPending();
+        return newOrder;
+    }
 
     // 0. Pegar o próximo número do pedido para o usuário (vendedor)
     const { data: lastOrder } = await supabase
@@ -509,6 +736,63 @@ export async function unirMesas(sourceMesaId: string, targetMesaId: string, garc
         throw new Error("IDs de mesa inválidos para união.");
     }
 
+    if (getMode() !== 'cloud') {
+        const db = getDb();
+        const sourceMesa = await db.mesas.get(sourceMesaId);
+        const targetMesa = await db.mesas.get(targetMesaId);
+        
+        if (!sourceMesa || !targetMesa) throw new Error("Mesa não encontrada");
+        
+        let sourceSession = await db.mesa_sessions.where('mesa_id').equals(sourceMesaId).filter(s => !s.closed_at).first();
+        let targetSession = await db.mesa_sessions.where('mesa_id').equals(targetMesaId).filter(s => !s.closed_at).first();
+        
+        let finalTargetSessionId = targetSession?.id;
+        if (!finalTargetSessionId) {
+            const principalName = garcomNome && garcomNome.trim() !== '' ? garcomNome : 'Mesa Principal';
+            const newTargetSession = await abrirMesa(targetMesaId, principalName);
+            finalTargetSessionId = newTargetSession.id;
+        } else if (garcomNome && garcomNome.trim() !== '') {
+            await db.mesa_sessions.update(finalTargetSessionId, { garcom: garcomNome });
+            await addPendingAction({ type: 'update', table: 'mesa_sessions', data: { id: finalTargetSessionId, garcom: garcomNome } });
+        }
+        
+        if (!finalTargetSessionId) return true;
+        
+        if (sourceSession && sourceSession.id) {
+            const sourceValor = sourceSession.valor_parcial || 0;
+            if (sourceValor > 0) {
+                const items = await db.mesa_session_items.where('session_id').equals(sourceSession.id).toArray();
+                for (const item of items) {
+                    await db.mesa_session_items.update(item.id, { session_id: finalTargetSessionId });
+                    await addPendingAction({ type: 'update', table: 'mesa_session_items', data: { id: item.id, session_id: finalTargetSessionId } });
+                }
+                const currentTargetSession = await db.mesa_sessions.get(finalTargetSessionId);
+                if (currentTargetSession) {
+                    const currentValor = currentTargetSession.valor_parcial || 0;
+                    await db.mesa_sessions.update(finalTargetSessionId, { valor_parcial: currentValor + sourceValor });
+                    await addPendingAction({ type: 'update', table: 'mesa_sessions', data: { id: finalTargetSessionId, valor_parcial: currentValor + sourceValor } });
+                }
+            }
+            
+            await db.mesa_sessions.update(sourceSession.id, {
+                status: 'ocupada',
+                garcom: `[Unida c/ Mesa ${String(targetMesa.numero_mesa).padStart(2, '0')}]`,
+                valor_parcial: 0
+            });
+            await addPendingAction({ type: 'update', table: 'mesa_sessions', data: {
+                id: sourceSession.id,
+                status: 'ocupada',
+                garcom: `[Unida c/ Mesa ${String(targetMesa.numero_mesa).padStart(2, '0')}]`,
+                valor_parcial: 0
+            } });
+        } else {
+            await abrirMesa(sourceMesaId, `[Unida c/ Mesa ${String(targetMesa.numero_mesa).padStart(2, '0')}]`);
+        }
+        
+        incrPending();
+        return true;
+    }
+
     const { data: sourceMesa } = await supabase.from('mesas').select('numero_mesa').eq('id', sourceMesaId).single();
     const { data: targetMesa } = await supabase.from('mesas').select('numero_mesa').eq('id', targetMesaId).single();
 
@@ -563,12 +847,24 @@ export async function unirMesas(sourceMesaId: string, targetMesaId: string, garc
  * Libera/Separa uma mesa que estava bloqueada por causa de uma junção.
  */
 export async function separarMesa(sessionId: string) {
-    const { error } = await supabase.from('mesa_sessions').update({
+    if (getMode() !== 'cloud') {
+        const payload = { status: 'livre', closed_at: new Date().toISOString() };
+        const existing = await getItem<any>('mesa_sessions', sessionId);
+        if (existing) {
+            await saveItem('mesa_sessions', { ...existing, ...payload } as CachedMesaSession);
+        }
+        await addPendingAction({ type: 'update', table: 'mesa_sessions', data: { ...payload, id: sessionId }});
+        incrPending();
+        return true;
+    }
+
+    const { data, error } = await supabase.from('mesa_sessions').update({
         status: 'livre',
         closed_at: new Date().toISOString()
-    }).eq('id', sessionId);
+    }).eq('id', sessionId).select().single();
     
     if (error) throw new Error("Erro ao separar mesa: " + error.message);
+    if (data) await saveItem('mesa_sessions', data as unknown as CachedMesaSession);
     return true;
 }
 

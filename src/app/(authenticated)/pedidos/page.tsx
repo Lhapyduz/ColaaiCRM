@@ -23,9 +23,9 @@ import { formatCurrency, formatDateTime } from '@/hooks/useFormatters';
 import { openWhatsAppNotification, shouldNotifyOnStatusChange, OrderDetails } from '@/lib/whatsapp';
 import { logOrderStatusChange, logPaymentReceived } from '@/lib/actionLogger';
 import { cn } from '@/lib/utils';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useUpdateOrderStatus, useUpdatePaymentStatus, useDeleteOrder } from '@/hooks/useOrderMutations';
+import { useOrdersCache } from '@/hooks/useDataCache';
 import { updateLoyaltyPoints } from '@/app/actions/loyalty';
+import { getStatusLabel } from '@/components/ui/StatusBadge';
 
 // Função para disparar notificação local de status
 async function sendStatusChangePush(userId: string, orderNumber: number, status: string) {
@@ -51,12 +51,12 @@ interface Order {
     customer_name: string;
     customer_phone: string | null;
     customer_address: string | null;
-    status: string;
+    status: string | null;
     payment_method: string;
-    payment_status: string;
+    payment_status: string | null;
     total: number;
-    is_delivery: boolean;
-    created_at: string;
+    is_delivery: boolean | null;
+    created_at: string | null;
     rating_token: string | null;
 }
 
@@ -70,66 +70,47 @@ const statusOptions = [
     { value: 'cancelled', label: 'Cancelado' }
 ];
 
-const ORDERS_QUERY_KEY = ['orders'];
 const ORDERS_PER_PAGE = 30;
 
 export default function PedidosPage() {
     const { user, userSettings } = useAuth();
+    const { orders: allOrders, loading, error: cacheError } = useOrdersCache();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [showDropdown, setShowDropdown] = useState<string | null>(null);
     const [showWhatsAppModal, setShowWhatsAppModal] = useState<Order | null>(null);
     const [pendingStatusForModal, setPendingStatusForModal] = useState<string | null>(null);
-    const [page, setPage] = useState(0);
-    const [hasMore, setHasMore] = useState(true);
+    const [visibleCount, setVisibleCount] = useState(ORDERS_PER_PAGE);
 
     const toast = useToast();
-    const queryClient = useQueryClient();
 
-    // ── React Query para buscar pedidos ──
-    const queryKey = useMemo(() => [...ORDERS_QUERY_KEY, statusFilter, page], [statusFilter, page]);
+    // ── Pre-processamento local ──
+    const { filteredOrders, hasMore } = useMemo(() => {
+        const filtered = allOrders.filter(order => {
+            const matchesSearch = order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                 order.order_number.toString().includes(searchTerm);
+            const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
 
-    const { data: orders = [], isLoading: loading } = useQuery({
-        queryKey,
-        queryFn: async () => {
-            if (!user) return [];
+        return {
+            filteredOrders: filtered.slice(0, visibleCount),
+            hasMore: filtered.length > visibleCount
+        };
+    }, [allOrders, searchTerm, statusFilter, visibleCount]);
 
-            const from = page * ORDERS_PER_PAGE;
-            const to = from + ORDERS_PER_PAGE - 1;
+    const ordersMap = useMemo(() => {
+        const map = new Map<string, Order>();
+        allOrders.forEach(o => map.set(o.id, o as Order));
+        return map;
+    }, [allOrders]);
 
-            let query = supabase
-                .from('orders')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-                .range(from, to);
-
-            if (statusFilter !== 'all') {
-                query = query.eq('status', statusFilter);
-            }
-
-            const { data, error } = await query;
-            if (error) throw error;
-
-            const newOrders = data || [];
-            setHasMore(newOrders.length === ORDERS_PER_PAGE);
-            return newOrders as Order[];
-        },
-        enabled: !!user,
-        staleTime: 30_000, // 30s antes de considerar stale
-    });
-
-    // ── Mutations com Optimistic Updates ──
-    const updateStatusMutation = useUpdateOrderStatus<Order>(queryKey);
-    const updatePaymentMutation = useUpdatePaymentStatus<Order>(queryKey);
-    const deleteOrderMutation = useDeleteOrder<Order>(queryKey);
-
-    // ── Realtime: apenas INSERT para novos pedidos ──
+    // ── Realtime: apenas para novos pedidos recebidos na nuvem ──
     useEffect(() => {
         if (!user) return;
 
         const subscription = supabase
-            .channel('orders-realtime')
+            .channel('orders-realtime-page')
             .on(
                 'postgres_changes',
                 {
@@ -138,11 +119,13 @@ export default function PedidosPage() {
                     table: 'orders',
                     filter: `user_id=eq.${user.id}`
                 },
-                () => {
+                async () => {
                     const audio = new Audio('/notification.mp3');
                     audio.play().catch(() => { });
-                    toast.info('Novo pedido recebido!');
-                    queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+                    toast.info('Novo pedido recebido na nuvem!');
+                    // Trigger a background sync to fetch the new order into Dexie
+                    const { fetchOrders } = await import('@/lib/dataAccess');
+                    await fetchOrders(user.id);
                 }
             )
             .subscribe();
@@ -150,18 +133,11 @@ export default function PedidosPage() {
         return () => {
             subscription.unsubscribe();
         };
-    }, [user, queryClient, toast]);
+    }, [user, toast]);
 
-    // Carregar mais pedidos
     const loadMore = useCallback(() => {
-        setPage(prev => prev + 1);
+        setVisibleCount(prev => prev + ORDERS_PER_PAGE);
     }, []);
-
-    const ordersMap = useMemo(() => {
-        const map = new Map<string, Order>();
-        orders.forEach(o => map.set(o.id, o));
-        return map;
-    }, [orders]);
 
     const sendWhatsAppNotification = (order: Order, newStatus: string) => {
         if (!order.customer_phone || !userSettings?.whatsapp_number) return;
@@ -172,7 +148,7 @@ export default function PedidosPage() {
             customer_phone: order.customer_phone,
             total: order.total,
             status: newStatus,
-            is_delivery: order.is_delivery,
+            is_delivery: order.is_delivery ?? false,
             customer_address: order.customer_address || undefined,
             rating_token: order.rating_token || undefined
         };
@@ -186,36 +162,41 @@ export default function PedidosPage() {
         openWhatsAppNotification(orderDetails, notificationSettings, newStatus, baseUrl);
     };
 
-    // ── Wrapper de updateOrderStatus com Optimistic Update ──
-    const updateOrderStatus = (orderId: string, newStatus: string, sendNotification: boolean = false) => {
+    // ── Wrapper de updateOrderStatus Local-First ──
+    const updateOrderStatus = async (orderId: string, newStatus: string, sendNotification: boolean = false) => {
         const order = ordersMap.get(orderId);
+        if (!order) return;
 
-        // Log antes da mutation
-        if (order) {
-            logOrderStatusChange(orderId, order.order_number, order.status, newStatus);
-        }
+        try {
+            const { updateOrder } = await import('@/lib/dataAccess');
+            
+            logOrderStatusChange(orderId, order.order_number, order.status || 'pending', newStatus);
+            
+            // Dexie update + Reactive UI refresh (instant)
+            await updateOrder(orderId, { 
+                status: newStatus, 
+                updated_at: new Date().toISOString() 
+            });
 
-        // Optimistic mutation — UI atualiza instantaneamente
-        updateStatusMutation.mutate(
-            { orderId, newStatus },
-            {
-                onSuccess: () => {
-                    if (sendNotification && order?.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
-                        sendWhatsAppNotification(order, newStatus);
-                    }
-                    if (user && order) {
-                        sendStatusChangePush(user.id, order.order_number, newStatus);
-                    }
-                },
+            toast.success(`Status atualizado para ${getStatusLabel(newStatus || 'pending')}`);
+
+            if (sendNotification && order.customer_phone && shouldNotifyOnStatusChange(order.status || 'pending', newStatus)) {
+                sendWhatsAppNotification(order, newStatus);
             }
-        );
+            if (user) {
+                sendStatusChangePush(user.id, order.order_number, newStatus);
+            }
+        } catch (err) {
+            console.error('Error updating status:', err);
+            toast.error('Erro ao atualizar status');
+        }
 
         setShowDropdown(null);
         setShowWhatsAppModal(null);
     };
 
     const handleStatusChangeWithNotification = (order: Order, newStatus: string) => {
-        if (order.customer_phone && shouldNotifyOnStatusChange(order.status, newStatus)) {
+        if (order.customer_phone && shouldNotifyOnStatusChange(order.status || 'pending', newStatus)) {
             setShowWhatsAppModal(order);
             setPendingStatusForModal(newStatus);
         } else {
@@ -223,38 +204,52 @@ export default function PedidosPage() {
         }
     };
 
-    // ── Confirmar pagamento com Optimistic Update + Fidelidade em background ──
-    const updatePaymentStatus = (orderId: string) => {
+    // ── Confirmar pagamento Local-First ──
+    const updatePaymentStatus = async (orderId: string) => {
         const order = ordersMap.get(orderId);
         if (!order) return;
 
-        logPaymentReceived(orderId, order.order_number, order.total, order.payment_method);
+        try {
+            const { updateOrder } = await import('@/lib/dataAccess');
+            
+            logPaymentReceived(orderId, order.order_number, order.total, order.payment_method);
 
-        // Optimistic mutation — botão "Recebido" reage instantaneamente
-        updatePaymentMutation.mutate({ orderId });
-
-        // Disparar atualização de fidelidade em background (Server Action)
-        if (order.customer_phone && user) {
-            void updateLoyaltyPoints({
-                userId: user.id,
-                orderId: order.id,
-                orderNumber: order.order_number,
-                orderTotal: order.total,
-                customerPhone: order.customer_phone,
+            await updateOrder(orderId, { 
+                payment_status: 'paid', 
+                updated_at: new Date().toISOString() 
             });
+            
+            toast.success('Pagamento confirmado!');
+
+            if (order.customer_phone && user) {
+                void updateLoyaltyPoints({
+                    userId: user.id,
+                    orderId: order.id,
+                    orderNumber: order.order_number,
+                    orderTotal: order.total,
+                    customerPhone: order.customer_phone,
+                });
+            }
+        } catch (err) {
+            console.error('Error updating payment:', err);
+            toast.error('Erro ao confirmar pagamento');
         }
     };
 
-    // ── Excluir pedido com Optimistic Update ──
-    const deleteOrder = (orderId: string) => {
+    // ── Excluir pedido Local-First ──
+    const deleteOrder = async (orderId: string) => {
         if (!confirm('Tem certeza que deseja excluir este pedido?')) return;
-        deleteOrderMutation.mutate({ orderId });
+        
+        try {
+            const { deleteOrder } = await import('@/lib/dataAccess');
+            await deleteOrder(orderId);
+            toast.success('Pedido excluído');
+        } catch (err) {
+            console.error('Error deleting order:', err);
+            toast.error('Erro ao excluir pedido');
+        }
     };
 
-    const filteredOrders = orders.filter(order =>
-        order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.order_number.toString().includes(searchTerm)
-    );
 
     return (
         <div className="max-w-[1200px] mx-auto">
@@ -351,7 +346,7 @@ export default function PedidosPage() {
                                                         <button
                                                             className="flex items-center gap-2.5 w-full px-3.5 py-2.5 bg-transparent border-none text-[#25D366] text-sm text-left cursor-pointer transition-all duration-fast hover:bg-[rgba(37,211,102,0.1)]"
                                                             onClick={() => {
-                                                                sendWhatsAppNotification(order, order.status);
+                                                                sendWhatsAppNotification(order, order.status || 'pending');
                                                                 setShowDropdown(null);
                                                             }}
                                                         >
@@ -414,7 +409,7 @@ export default function PedidosPage() {
 
                                 <div className="flex items-center justify-between max-md:flex-col max-md:gap-3 max-md:items-stretch">
                                     <span className="flex items-center gap-1.5 text-sm text-text-muted">
-                                        <FiClock /> {formatDateTime(order.created_at)}
+                                        <FiClock /> {formatDateTime(order.created_at || new Date().toISOString())}
                                     </span>
 
                                     <div className="flex gap-2 max-md:justify-end">

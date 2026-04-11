@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { FiCheck, FiPhone, FiMapPin, FiClock, FiVolume2, FiVolumeX } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -9,71 +9,45 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
 import { formatCurrency, formatRelativeTime, formatDateTime } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
-
-interface Order {
-    id: string;
-    order_number: number;
-    customer_name: string;
-    customer_phone: string | null;
-    customer_address: string | null;
-    status: string;
-    total: number;
-    is_delivery: boolean;
-    created_at: string;
-}
+import { useOrdersCache } from '@/hooks/useDataCache';
+import { updateOrder } from '@/lib/dataAccess';
+import type { CachedOrder as Order } from '@/types/db';
 
 export default function EntregasPage() {
     const { user } = useAuth();
     const { plan, canAccess } = useSubscription();
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { orders: rawOrders, loading } = useOrdersCache();
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
     const [soundEnabled, setSoundEnabled] = useState(true);
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const prevOrdersCount = useRef<number>(0);
     const toast = useToast();
 
-    const fetchOrders = useCallback(async () => {
-        if (!user) return;
-        try {
-            let query = supabase.from('orders').select('*').eq('user_id', user.id).eq('is_delivery', true).order('created_at', { ascending: activeTab === 'pending' });
-            if (activeTab === 'pending') query = query.in('status', ['ready', 'delivering']);
-            else query = query.eq('status', 'delivered');
-            const { data } = await query;
-            setOrders(data || []);
-        } catch (error) { console.error('Error fetching orders:', error); }
-        finally { setLoading(false); }
-    }, [user, activeTab]);
-
-    useEffect(() => {
-        if (user && canAccess('deliveries')) {
-            fetchOrders();
-
-            // Real-time subscription for delivery orders
-            const subscription = supabase
-                .channel('delivery_orders')
-                .on('postgres_changes', {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'orders',
-                    filter: `user_id=eq.${user.id}`
-                }, (payload) => {
-                    console.log('Order change for delivery:', payload);
-                    // Check if order status changed to 'ready' (delivery ready)
-                    if (payload.new && (payload.new as Order).status === 'ready' && (payload.new as Order).is_delivery && soundEnabled) {
-                        playNotificationSound();
-                    }
-                    fetchOrders();
-                })
-                .subscribe();
-
-            return () => {
-                subscription.unsubscribe();
-            };
+    const orders = useMemo(() => {
+        if (!rawOrders) return [];
+        let filtered = rawOrders.filter(o => o.is_delivery);
+        
+        if (activeTab === 'pending') {
+            filtered = filtered.filter(o => ['ready', 'delivering'].includes(o.status || ''));
+            return filtered.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
+        } else {
+            filtered = filtered.filter(o => o.status === 'delivered');
+            return filtered.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
         }
-    }, [user, soundEnabled, canAccess, fetchOrders]);
+    }, [rawOrders, activeTab]);
+
+    // Notification sound for new 'ready' orders
+    useEffect(() => {
+        if (!soundEnabled || loading) return;
+        
+        const readyCount = rawOrders.filter(o => o.is_delivery && o.status === 'ready').length;
+        if (readyCount > prevOrdersCount.current) {
+            if (audioRef.current) audioRef.current.play().catch(() => { });
+        }
+        prevOrdersCount.current = readyCount;
+    }, [rawOrders, soundEnabled, loading]);
 
     if (!canAccess('deliveries')) {
         return <UpgradePrompt feature="Gestão de Entregas" requiredPlan="Avançado" currentPlan={plan} fullPage />;
@@ -83,13 +57,10 @@ export default function EntregasPage() {
         if (audioRef.current) audioRef.current.play().catch(() => { });
     };
 
-
-
-    const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    const handleUpdateStatus = async (orderId: string, newStatus: string) => {
         try {
-            await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId);
+            await updateOrder(orderId, { status: newStatus, updated_at: new Date().toISOString() });
             toast.success(newStatus === 'delivering' ? 'Saiu para entrega!' : 'Entrega finalizada!');
-            fetchOrders();
         }
         catch (error) {
             console.error('Error updating order:', error);
@@ -143,14 +114,14 @@ export default function EntregasPage() {
                                     <Card key={order.id} className="p-4!">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-lg font-bold text-primary">#{order.order_number}</span>
-                                            <span className="flex items-center gap-1 text-[0.8125rem] text-text-muted"><FiClock /> {formatRelativeTime(order.created_at)}</span>
+                                            <span className="flex items-center gap-1 text-[0.8125rem] text-text-muted"><FiClock /> {formatRelativeTime(order.created_at || new Date().toISOString())}</span>
                                         </div>
                                         <div className="font-medium mb-2">{order.customer_name}</div>
                                         {order.customer_phone && <div className="flex items-center gap-2 text-sm text-text-secondary mb-1"><FiPhone /> {order.customer_phone}</div>}
                                         {order.customer_address && <div className="flex items-center gap-2 text-sm text-text-secondary mb-1"><FiMapPin /> {order.customer_address}</div>}
                                         <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
                                             <span className="text-lg font-bold text-accent">{formatCurrency(order.total)}</span>
-                                            <Button size="sm" onClick={() => updateOrderStatus(order.id, 'delivering')}>Saiu para Entrega</Button>
+                                            <Button size="sm" onClick={() => handleUpdateStatus(order.id, 'delivering')}>Saiu para Entrega</Button>
                                         </div>
                                     </Card>
                                 ))}
@@ -168,13 +139,13 @@ export default function EntregasPage() {
                                     <Card key={order.id} className="p-4! border-primary">
                                         <div className="flex justify-between items-center mb-2">
                                             <span className="text-lg font-bold text-primary">#{order.order_number}</span>
-                                            <span className="flex items-center gap-1 text-[0.8125rem] text-text-muted"><FiClock /> {formatRelativeTime(order.created_at)}</span>
+                                            <span className="flex items-center gap-1 text-[0.8125rem] text-text-muted"><FiClock /> {formatRelativeTime(order.created_at || new Date().toISOString())}</span>
                                         </div>
                                         <div className="font-medium mb-2">{order.customer_name}</div>
                                         {order.customer_address && <div className="flex items-center gap-2 text-sm text-text-secondary mb-1"><FiMapPin /> {order.customer_address}</div>}
                                         <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
                                             <span className="text-lg font-bold text-accent">{formatCurrency(order.total)}</span>
-                                            <Button size="sm" leftIcon={<FiCheck />} onClick={() => updateOrderStatus(order.id, 'delivered')} style={{ background: 'var(--accent)' }}>Entregue</Button>
+                                            <Button size="sm" leftIcon={<FiCheck />} onClick={() => handleUpdateStatus(order.id, 'delivered')} style={{ background: 'var(--accent)' }}>Entregue</Button>
                                         </div>
                                     </Card>
                                 ))}
@@ -199,7 +170,7 @@ export default function EntregasPage() {
                                 </div>
                                 <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
                                     <span className="text-lg font-bold text-accent">{formatCurrency(order.total)}</span>
-                                    <span className="text-sm text-text-secondary">{formatDateTime(order.created_at)}</span>
+                                    <span className="text-sm text-text-secondary">{formatDateTime(order.created_at || new Date().toISOString())}</span>
                                     <StatusBadge status="delivered" size="sm" />
                                 </div>
                             </Card>

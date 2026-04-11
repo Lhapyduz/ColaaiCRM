@@ -9,77 +9,168 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
-import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
+import { 
+    useCustomersCache, 
+    useLoyaltyRewardsCache, 
+    useLoyaltySettingsCache, 
+    useAppSettingsCache 
+} from '@/hooks/useDataCache';
+import { 
+    saveLoyaltyReward, 
+    deleteLoyaltyReward, 
+    saveLoyaltySettings, 
+    saveAppSettings 
+} from '@/lib/dataAccess';
 
-interface Customer { id: string; phone: string; name: string; email: string | null; total_points: number; total_spent: number; total_orders: number; coupons_used: number; total_discount_savings: number; tier: 'bronze' | 'silver' | 'gold' | 'platinum'; created_at: string; }
-interface LoyaltyReward { id: string; name: string; description: string | null; points_cost: number; reward_type: 'discount_percent' | 'discount_fixed' | 'free_product' | 'free_delivery'; reward_value: number | null; min_order_value: number; is_active: boolean; }
-interface LoyaltySettings { id: string; points_per_real: number; min_points_to_redeem: number; points_expiry_days: number; tier_bronze_min: number; tier_silver_min: number; tier_gold_min: number; tier_platinum_min: number; silver_multiplier: number; gold_multiplier: number; platinum_multiplier: number; is_active: boolean; }
-interface AppSettings { id: string; loyalty_enabled: boolean; coupons_enabled: boolean; }
+import type { 
+    CachedClient as Customer, 
+    CachedLoyaltyReward as LoyaltyReward, 
+    CachedLoyaltySettings as LoyaltySettings, 
+    CachedAppSetting as AppSettings 
+} from '@/types/db';
+
 type TabType = 'customers' | 'rewards' | 'settings';
 
 export function FidelidadeTab() {
     const { user } = useAuth();
     const { plan, canAccess } = useSubscription();
+    
+    // Use the reactive cache hooks
+    const { customers: rawCustomers, loading: loadingCustomers } = useCustomersCache();
+    const { rewards: rawRewards, loading: loadingRewards } = useLoyaltyRewardsCache();
+    const { settings: rawSettings, loading: loadingSettings } = useLoyaltySettingsCache();
+    const { settings: rawAppSettings, loading: loadingAppSettings } = useAppSettingsCache();
+
     const [activeTab, setActiveTab] = useState<TabType>('customers');
-    const [customers, setCustomers] = useState<Customer[]>([]);
-    const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
-    const [settings, setSettings] = useState<LoyaltySettings | null>(null);
-    const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [showRewardModal, setShowRewardModal] = useState(false);
     const [editingReward, setEditingReward] = useState<LoyaltyReward | null>(null);
-    const [rewardForm, setRewardForm] = useState({ name: '', description: '', points_cost: 100, reward_type: 'discount_percent' as LoyaltyReward['reward_type'], reward_value: 10, min_order_value: 0 });
+    const [rewardForm, setRewardForm] = useState({ 
+        name: '', 
+        description: '', 
+        points_cost: 100, 
+        reward_type: 'discount_percent' as LoyaltyReward['reward_type'], 
+        reward_value: 10, 
+        min_order_value: 0 
+    });
+    
     const toast = useToast();
 
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+    };
 
+    const loading = loadingCustomers || loadingRewards || loadingSettings || loadingAppSettings;
 
+    const toggleLoyalty = async () => { 
+        if (!rawAppSettings || !user) return; 
+        try {
+            const newValue = !rawAppSettings.loyalty_enabled; 
+            // All dataAccess write functions now take a single data object
+            await saveAppSettings({ ...rawAppSettings, loyalty_enabled: newValue, user_id: user.id });
+            toast.success(newValue ? 'Fidelidade ativada!' : 'Fidelidade desativada!');
+        } catch (err) {
+            console.error('Error toggling loyalty:', err);
+            toast.error('Erro ao salvar configuração');
+        }
+    };
 
-    const fetchCustomers = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from('customers').select('*').eq('user_id', user.id).gt('total_orders', 0).order('total_points', { ascending: false }); if (!error && data) setCustomers(data); }, [user]);
-    const fetchRewards = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from('loyalty_rewards').select('*').eq('user_id', user.id).order('points_cost', { ascending: true }); if (!error && data) setRewards(data); }, [user]);
-    const fetchSettings = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from('loyalty_settings').select('*').eq('user_id', user.id).single(); if (error?.code === 'PGRST116') { const { data: newSettings } = await supabase.from('loyalty_settings').insert({ user_id: user.id, points_per_real: 1, min_points_to_redeem: 100, points_expiry_days: 365, tier_bronze_min: 0, tier_silver_min: 500, tier_gold_min: 2000, tier_platinum_min: 5000, silver_multiplier: 1.25, gold_multiplier: 1.50, platinum_multiplier: 2.00, is_active: true }).select().single(); if (newSettings) setSettings(newSettings); } else if (data) setSettings(data); }, [user]);
-    const fetchAppSettings = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from('app_settings').select('*').eq('user_id', user.id).single(); if (error?.code === 'PGRST116') { const { data: newSettings } = await supabase.from('app_settings').insert({ user_id: user.id, loyalty_enabled: true, coupons_enabled: true }).select().single(); if (newSettings) setAppSettings(newSettings); } else if (data) setAppSettings(data); }, [user]);
+    const toggleCoupons = async () => { 
+        if (!rawAppSettings || !user) return; 
+        try {
+            const newValue = !rawAppSettings.coupons_enabled; 
+            await saveAppSettings({ ...rawAppSettings, coupons_enabled: newValue, user_id: user.id });
+            toast.success(newValue ? 'Cupons ativados!' : 'Cupons desativados!');
+        } catch (err) {
+            console.error('Error toggling coupons:', err);
+            toast.error('Erro ao salvar configuração');
+        }
+    };
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        await Promise.all([fetchCustomers(), fetchRewards(), fetchSettings(), fetchAppSettings()]);
-        setLoading(false);
-    }, [fetchCustomers, fetchRewards, fetchSettings, fetchAppSettings]);
+    const handleSaveReward = async () => { 
+        if (!user) return; 
+        try {
+            const rewardData = { 
+                user_id: user.id, 
+                name: rewardForm.name, 
+                description: rewardForm.description || null, 
+                points_cost: rewardForm.points_cost, 
+                reward_type: rewardForm.reward_type, 
+                reward_value: rewardForm.reward_value, 
+                min_order_value: rewardForm.min_order_value, 
+                is_active: true,
+                ...(editingReward ? { id: editingReward.id } : {})
+            }; 
+            await saveLoyaltyReward(rewardData);
+            toast.success(editingReward ? 'Recompensa atualizada!' : 'Recompensa criada!'); 
+            setShowRewardModal(false); 
+            setEditingReward(null); 
+            resetRewardForm(); 
+        } catch (err) {
+            console.error('Error saving reward:', err);
+            toast.error('Erro ao salvar recompensa');
+        }
+    };
 
-    useEffect(() => {
-        if (user && canAccess('loyalty')) fetchData();
-    }, [user, canAccess, fetchData]);
+    const handleDeleteReward = async (id: string) => { 
+        if (!confirm('Excluir esta recompensa?')) return; 
+        try {
+            await deleteLoyaltyReward(id);
+            toast.success('Recompensa excluída!'); 
+        } catch (err) {
+            console.error('Error deleting reward:', err);
+            toast.error('Erro ao excluir recompensa');
+        }
+    };
 
-    const toggleLoyalty = async () => { if (!appSettings || !user) return; const newValue = !appSettings.loyalty_enabled; await supabase.from('app_settings').update({ loyalty_enabled: newValue, updated_at: new Date().toISOString() }).eq('id', appSettings.id); setAppSettings({ ...appSettings, loyalty_enabled: newValue }); };
-    const toggleCoupons = async () => { if (!appSettings || !user) return; const newValue = !appSettings.coupons_enabled; await supabase.from('app_settings').update({ coupons_enabled: newValue, updated_at: new Date().toISOString() }).eq('id', appSettings.id); setAppSettings({ ...appSettings, coupons_enabled: newValue }); };
+    const handleSaveSettings = async () => { 
+        if (!user || !rawSettings) return; 
+        try {
+            await saveLoyaltySettings({ ...rawSettings, user_id: user.id });
+            toast.success('Configurações salvas!'); 
+        } catch (err) {
+            console.error('Error saving settings:', err);
+            toast.error('Erro ao salvar configurações');
+        }
+    };
 
-    const handleSaveReward = async () => { if (!user) return; const rewardData = { user_id: user.id, name: rewardForm.name, description: rewardForm.description || null, points_cost: rewardForm.points_cost, reward_type: rewardForm.reward_type, reward_value: rewardForm.reward_value, min_order_value: rewardForm.min_order_value, is_active: true }; if (editingReward) await supabase.from('loyalty_rewards').update(rewardData).eq('id', editingReward.id); else await supabase.from('loyalty_rewards').insert(rewardData); toast.success(editingReward ? 'Recompensa atualizada!' : 'Recompensa criada!'); setShowRewardModal(false); setEditingReward(null); resetRewardForm(); fetchRewards(); };
-    const handleDeleteReward = async (id: string) => { if (!confirm('Excluir esta recompensa?')) return; await supabase.from('loyalty_rewards').delete().eq('id', id); toast.success('Recompensa excluída!'); fetchRewards(); };
-    const handleSaveSettings = async () => { if (!user || !settings) return; await supabase.from('loyalty_settings').update({ ...settings, updated_at: new Date().toISOString() }).eq('id', settings.id); toast.success('Configurações salvas!'); };
     const resetRewardForm = () => setRewardForm({ name: '', description: '', points_cost: 100, reward_type: 'discount_percent', reward_value: 10, min_order_value: 0 });
     const openEditReward = (reward: LoyaltyReward) => { setEditingReward(reward); setRewardForm({ name: reward.name, description: reward.description || '', points_cost: reward.points_cost, reward_type: reward.reward_type, reward_value: reward.reward_value || 0, min_order_value: reward.min_order_value }); setShowRewardModal(true); };
 
-    const getTierIcon = (tier: string) => tier === 'platinum' ? '💎' : tier === 'gold' ? '🥇' : tier === 'silver' ? '🥈' : '🥉';
-    const getTierColor = (tier: string) => tier === 'platinum' ? '#a855f7' : tier === 'gold' ? '#f59e0b' : tier === 'silver' ? '#94a3b8' : '#d97706';
+    const getTierIcon = (points: number) => {
+        if (!rawSettings) return '🥉';
+        if (points >= rawSettings.tier_platinum_min) return '💎';
+        if (points >= rawSettings.tier_gold_min) return '🥇';
+        if (points >= rawSettings.tier_silver_min) return '🥈';
+        return '🥉';
+    };
 
-    const filteredCustomers = React.useMemo(() => customers.filter(c => {
+    const getTierColor = (points: number) => {
+        if (!rawSettings) return '#d97706';
+        if (points >= rawSettings.tier_platinum_min) return '#a855f7';
+        if (points >= rawSettings.tier_gold_min) return '#f59e0b';
+        if (points >= rawSettings.tier_silver_min) return '#94a3b8';
+        return '#d97706';
+    };
+
+    const filteredCustomers = React.useMemo(() => (rawCustomers || []).filter(c => {
+        if ((c.total_orders || 0) === 0) return false;
         const searchLower = searchTerm.toLowerCase();
         const searchDigits = searchTerm.replace(/\D/g, '');
-        return c.name.toLowerCase().includes(searchLower) || c.phone.includes(searchDigits) || c.phone.includes(searchTerm);
-    }), [customers, searchTerm]);
+        return c.name.toLowerCase().includes(searchLower) || c.phone.includes(searchDigits);
+    }).sort((a, b) => (b.total_points || 0) - (a.total_points || 0)), [rawCustomers, searchTerm]);
 
     const stats = React.useMemo(() => ({
-        totalCustomers: customers.length,
-        totalPoints: customers.reduce((sum, c) => sum + (c.total_points || 0), 0),
-        avgPoints: customers.length ? Math.round(customers.reduce((sum, c) => sum + (c.total_points || 0), 0) / customers.length) : 0,
-        totalSavings: customers.reduce((sum, c) => sum + (c.total_discount_savings || 0), 0)
-    }), [customers]);
+        totalCustomers: filteredCustomers.length,
+        totalPoints: filteredCustomers.reduce((sum, c) => sum + (c.total_points || 0), 0),
+        avgPoints: filteredCustomers.length ? Math.round(filteredCustomers.reduce((sum, c) => sum + (c.total_points || 0), 0) / filteredCustomers.length) : 0,
+        totalSavings: 0 // Default until we have this field in Dexie
+    }), [filteredCustomers]);
 
-    if (!canAccess('loyalty')) return <UpgradePrompt feature="Programa de Fidelidade" requiredPlan="Avançado" currentPlan={plan} fullPage />;
+    if (!canAccess?.('loyalty')) return <UpgradePrompt feature="Programa de Fidelidade" requiredPlan="Avançado" currentPlan={plan} fullPage />;
 
-    if (appSettings && !appSettings.loyalty_enabled) {
+    if (rawAppSettings && !rawAppSettings.loyalty_enabled) {
         return (
             <div className="max-w-[1200px] mx-auto">
                 <div className="flex items-start justify-between mb-6"><div><h1 className="text-[2rem] font-bold mb-2">Programa de Fidelidade</h1><p className="text-text-secondary">Gerencie seus clientes e recompensas</p></div></div>
@@ -94,8 +185,8 @@ export function FidelidadeTab() {
             <div className="flex items-start justify-between gap-5 mb-6 flex-wrap">
                 <div><h1 className="text-[2rem] font-bold mb-2">Programa de Fidelidade</h1><p className="text-text-secondary">Gerencie seus clientes e recompensas</p></div>
                 <div className="flex gap-2">
-                    <button className={cn('flex items-center gap-2 px-4 py-2 bg-bg-tertiary border border-border rounded-md text-sm font-medium cursor-pointer transition-all duration-fast', appSettings?.loyalty_enabled && 'bg-accent/10 border-accent text-accent')} onClick={toggleLoyalty}>{appSettings?.loyalty_enabled ? <FiToggleRight /> : <FiToggleLeft />} Fidelidade</button>
-                    <button className={cn('flex items-center gap-2 px-4 py-2 bg-bg-tertiary border border-border rounded-md text-sm font-medium cursor-pointer transition-all duration-fast', appSettings?.coupons_enabled && 'bg-accent/10 border-accent text-accent')} onClick={toggleCoupons}>{appSettings?.coupons_enabled ? <FiToggleRight /> : <FiToggleLeft />} Cupons</button>
+                    <button className={cn('flex items-center gap-2 px-4 py-2 bg-bg-tertiary border border-border rounded-md text-sm font-medium cursor-pointer transition-all duration-fast', rawAppSettings?.loyalty_enabled && 'bg-accent/10 border-accent text-accent')} onClick={toggleLoyalty}>{rawAppSettings?.loyalty_enabled ? <FiToggleRight /> : <FiToggleLeft />} Fidelidade</button>
+                    <button className={cn('flex items-center gap-2 px-4 py-2 bg-bg-tertiary border border-border rounded-md text-sm font-medium cursor-pointer transition-all duration-fast', rawAppSettings?.coupons_enabled && 'bg-accent/10 border-accent text-accent')} onClick={toggleCoupons}>{rawAppSettings?.coupons_enabled ? <FiToggleRight /> : <FiToggleLeft />} Cupons</button>
                 </div>
             </div>
 
@@ -125,14 +216,14 @@ export function FidelidadeTab() {
                             {filteredCustomers.map((customer) => (
                                 <div key={customer.id} className="flex items-center justify-between gap-4 p-4 border-b border-border last:border-b-0 max-md:flex-col max-md:items-start">
                                     <div className="flex items-center gap-3">
-                                        <span className="w-10 h-10 flex items-center justify-center rounded-full text-lg" style={{ background: getTierColor(customer.tier) }}>{getTierIcon(customer.tier)}</span>
+                                        <span className="w-10 h-10 flex items-center justify-center rounded-full text-lg" style={{ background: getTierColor(customer.total_points || 0) }}>{getTierIcon(customer.total_points || 0)}</span>
                                         <div className="flex flex-col"><span className="font-medium">{customer.name}</span><span className="text-sm text-text-muted">{customer.phone}</span></div>
                                     </div>
                                     <div className="flex items-center gap-6 flex-wrap max-md:gap-4">
                                         <div className="flex items-center gap-1 text-sm"><FiStar className="text-[#f59e0b]" /><span className="font-semibold">{customer.total_points || 0}</span><span className="text-text-muted">pts</span></div>
                                         <div className="flex items-center gap-1 text-sm"><FiShoppingBag className="text-primary" /><span className="font-semibold">{customer.total_orders || 0}</span><span className="text-text-muted">ped</span></div>
                                         <div className="flex items-center gap-1 text-sm"><FiDollarSign className="text-[#27ae60]" /><span className="font-semibold">{formatCurrency(customer.total_spent || 0)}</span></div>
-                                        <div className="flex items-center gap-1 text-sm"><FiTag className="text-[#8b5cf6]" /><span className="font-semibold">{customer.coupons_used || 0}</span><span className="text-text-muted">cup</span></div>
+                                        <div className="flex items-center gap-1 text-sm"><FiTag className="text-[#8b5cf6]" /><span className="font-semibold">0</span><span className="text-text-muted">cup</span></div>
                                     </div>
                                 </div>
                             ))}
@@ -145,11 +236,11 @@ export function FidelidadeTab() {
             {activeTab === 'rewards' && (
                 <Card>
                     <div className="flex justify-between items-center mb-6 pb-4 border-b border-border"><h2 className="text-lg font-semibold">Recompensas Disponíveis</h2><Button leftIcon={<FiPlus />} onClick={() => { resetRewardForm(); setEditingReward(null); setShowRewardModal(true); }}>Nova Recompensa</Button></div>
-                    {rewards.length === 0 ? (
+                    {(rawRewards || []).length === 0 ? (
                         <div className="flex flex-col items-center p-12 text-center text-text-muted"><span className="text-5xl mb-4">🎁</span><h3 className="text-lg font-semibold text-text-secondary mb-2">Nenhuma recompensa cadastrada</h3><p>Crie recompensas para seus clientes resgatarem</p></div>
                     ) : (
                         <div className="flex flex-col gap-3">
-                            {rewards.map((reward) => (
+                            {(rawRewards || []).map((reward) => (
                                 <div key={reward.id} className="flex items-center justify-between gap-4 p-4 bg-bg-tertiary rounded-md">
                                     <div className="flex items-center gap-4"><span className="text-3xl">🎁</span><div><h3 className="font-medium">{reward.name}</h3>{reward.description && <p className="text-sm text-text-muted">{reward.description}</p>}<div className="flex items-center gap-3 mt-1"><span className="flex items-center gap-1 text-xs text-primary font-medium"><FiStar /> {reward.points_cost} pts</span><span className="text-xs text-text-secondary">{reward.reward_type === 'discount_percent' && `${reward.reward_value}% off`}{reward.reward_type === 'discount_fixed' && `${formatCurrency(reward.reward_value || 0)} off`}{reward.reward_type === 'free_delivery' && 'Frete Grátis'}{reward.reward_type === 'free_product' && 'Produto Grátis'}</span></div></div></div>
                                     <div className="flex gap-2"><button className="p-2 bg-transparent border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:text-text-primary" onClick={() => openEditReward(reward)}><FiEdit2 /></button><button className="p-2 bg-transparent border border-border rounded-md text-text-secondary cursor-pointer transition-all duration-fast hover:text-error hover:border-error" onClick={() => handleDeleteReward(reward.id)}><FiTrash2 /></button></div>
@@ -161,20 +252,68 @@ export function FidelidadeTab() {
             )}
 
             {/* Settings Tab */}
-            {activeTab === 'settings' && settings && (
+            {activeTab === 'settings' && rawSettings && (
                 <Card>
                     <h2 className="text-lg font-semibold mb-6 pb-4 border-b border-border">Configurações do Programa</h2>
                     <div className="grid grid-cols-3 gap-4 mb-6 max-md:grid-cols-1">
-                        <div><label className="block text-sm text-text-secondary mb-2">Pontos por R$ 1,00 gasto</label><Input type="number" value={settings.points_per_real} onChange={(e) => setSettings({ ...settings, points_per_real: parseFloat(e.target.value) || 0 })} min={0} step={0.1} /></div>
-                        <div><label className="block text-sm text-text-secondary mb-2">Mínimo de pontos para resgatar</label><Input type="number" value={settings.min_points_to_redeem} onChange={(e) => setSettings({ ...settings, min_points_to_redeem: parseInt(e.target.value) || 0 })} min={0} /></div>
-                        <div><label className="block text-sm text-text-secondary mb-2">Expiração de pontos (dias)</label><Input type="number" value={settings.points_expiry_days} onChange={(e) => setSettings({ ...settings, points_expiry_days: parseInt(e.target.value) || 365 })} min={30} /></div>
+                        <div><label className="block text-sm text-text-secondary mb-2">Pontos por R$ 1,00 gasto</label><Input type="number" value={rawSettings.points_per_real} onChange={(e) => {
+                            import('@/lib/db').then(({ getDb }) => {
+                                const db = getDb();
+                                db.loyalty_settings.update(rawSettings.id, { points_per_real: parseFloat(e.target.value) || 0 });
+                            });
+                        }} min={0} step={0.1} /></div>
+                        <div><label className="block text-sm text-text-secondary mb-2">Mínimo de pontos para resgatar</label><Input type="number" value={rawSettings.min_points_to_redeem} onChange={(e) => {
+                            import('@/lib/db').then(({ getDb }) => {
+                                const db = getDb();
+                                db.loyalty_settings.update(rawSettings.id, { min_points_to_redeem: parseInt(e.target.value) || 0 });
+                            });
+                        }} min={0} /></div>
+                        <div><label className="block text-sm text-text-secondary mb-2">Expiração de pontos (dias)</label><Input type="number" value={rawSettings.points_expiry_days} onChange={(e) => {
+                            import('@/lib/db').then(({ getDb }) => {
+                                const db = getDb();
+                                db.loyalty_settings.update(rawSettings.id, { points_expiry_days: parseInt(e.target.value) || 365 });
+                            });
+                        }} min={30} /></div>
                     </div>
                     <h3 className="text-base font-medium mb-4">Níveis de Fidelidade</h3>
                     <div className="grid grid-cols-4 gap-4 mb-6 max-md:grid-cols-2">
-                        <div className="p-4 bg-bg-tertiary rounded-md text-center"><span className="text-2xl">🥉</span><div className="text-sm font-medium mt-1">Bronze</div><div className="text-xs text-text-muted">0 - {settings.tier_silver_min - 1} pts</div><div className="text-xs text-text-muted">1x pontos</div></div>
-                        <div className="p-4 bg-bg-tertiary rounded-md text-center"><span className="text-2xl">🥈</span><div className="text-sm font-medium mt-1">Silver</div><Input type="number" className="mt-1 text-center text-sm" value={settings.tier_silver_min} onChange={(e) => setSettings({ ...settings, tier_silver_min: parseInt(e.target.value) || 0 })} /><div className="text-xs text-text-muted">{settings.silver_multiplier}x pts</div></div>
-                        <div className="p-4 bg-bg-tertiary rounded-md text-center"><span className="text-2xl">🥇</span><div className="text-sm font-medium mt-1">Gold</div><Input type="number" className="mt-1 text-center text-sm" value={settings.tier_gold_min} onChange={(e) => setSettings({ ...settings, tier_gold_min: parseInt(e.target.value) || 0 })} /><div className="text-xs text-text-muted">{settings.gold_multiplier}x pts</div></div>
-                        <div className="p-4 bg-bg-tertiary rounded-md text-center"><span className="text-2xl">💎</span><div className="text-sm font-medium mt-1">Platinum</div><Input type="number" className="mt-1 text-center text-sm" value={settings.tier_platinum_min} onChange={(e) => setSettings({ ...settings, tier_platinum_min: parseInt(e.target.value) || 0 })} /><div className="text-xs text-text-muted">{settings.platinum_multiplier}x pts</div></div>
+                        <div className="p-4 bg-bg-tertiary rounded-md text-center"><span className="text-2xl">🥉</span><div className="text-sm font-medium mt-1">Bronze</div><div className="text-xs text-text-muted">0 - {rawSettings.tier_silver_min - 1} pts</div><div className="text-xs text-text-muted">1x pontos</div></div>
+                        
+                        <div className="p-4 bg-bg-tertiary rounded-md text-center">
+                            <span className="text-2xl">🥈</span>
+                            <div className="text-sm font-medium mt-1">Silver</div>
+                            <Input type="number" className="mt-1 text-center text-sm" value={rawSettings.tier_silver_min} onChange={(e) => {
+                                import('@/lib/db').then(({ getDb }) => {
+                                    const db = getDb();
+                                    db.loyalty_settings.update(rawSettings.id, { tier_silver_min: parseInt(e.target.value) || 0 });
+                                });
+                            }} />
+                            <div className="text-xs text-text-muted">{rawSettings.silver_multiplier}x pts</div>
+                        </div>
+
+                        <div className="p-4 bg-bg-tertiary rounded-md text-center">
+                            <span className="text-2xl">🥇</span>
+                            <div className="text-sm font-medium mt-1">Gold</div>
+                            <Input type="number" className="mt-1 text-center text-sm" value={rawSettings.tier_gold_min} onChange={(e) => {
+                                import('@/lib/db').then(({ getDb }) => {
+                                    const db = getDb();
+                                    db.loyalty_settings.update(rawSettings.id, { tier_gold_min: parseInt(e.target.value) || 0 });
+                                });
+                            }} />
+                            <div className="text-xs text-text-muted">{rawSettings.gold_multiplier}x pts</div>
+                        </div>
+
+                        <div className="p-4 bg-bg-tertiary rounded-md text-center">
+                            <span className="text-2xl">💎</span>
+                            <div className="text-sm font-medium mt-1">Platinum</div>
+                            <Input type="number" className="mt-1 text-center text-sm" value={rawSettings.tier_platinum_min} onChange={(e) => {
+                                import('@/lib/db').then(({ getDb }) => {
+                                    const db = getDb();
+                                    db.loyalty_settings.update(rawSettings.id, { tier_platinum_min: parseInt(e.target.value) || 0 });
+                                });
+                            }} />
+                            <div className="text-xs text-text-muted">{rawSettings.platinum_multiplier}x pts</div>
+                        </div>
                     </div>
                     <div className="flex justify-end"><Button onClick={handleSaveSettings}>Salvar Configurações</Button></div>
                 </Card>

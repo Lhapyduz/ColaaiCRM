@@ -5,24 +5,41 @@
 // ─────────────────────────────────────────────────────
 
 import { supabase } from './supabase';
-import { addPendingAction, saveAll, saveItem, getAll, getItem, deleteItem } from './offlineStorage';
+import { addPendingAction, saveAll, saveItem, getAll, getItem, deleteItem, getPendingActions } from './offlineStorage';
+import { db } from './db';
 import { useStorageStore } from '@/stores/useStorageStore';
 import type {
     CachedProduct,
     CachedCategory,
     CachedOrder,
-} from './db';
+    CachedClient,
+    CachedTable,
+    CachedEmployee,
+    CachedLoyaltyReward,
+    CachedLoyaltySettings,
+    CachedCoupon,
+    CachedAppSetting,
+    CachedProductAddon,
+    CachedAddonGroup,
+    CachedProductAddonGroup,
+    CachedAddonGroupItem,
+    CachedActionLog,
+    CachedCashFlow,
+    CachedBill,
+    CachedBillCategory,
+    PendingAction,
+} from '@/types/db';
 
 // ─── Helpers ─────────────────────────────────────────
 
-function getMode() {
+export function getMode() {
     const state = useStorageStore.getState();
     // Use local storage if explicitly set OR if the device has no internet connection
     if (!state.hardwareOnline) return 'local';
     return state.storageMode;
 }
 
-function incrPending(count = 1) {
+export function incrPending(count = 1) {
     useStorageStore.getState().incrementPending(count);
 }
 
@@ -36,8 +53,19 @@ export async function fetchProducts(userId: string): Promise<CachedProduct[]> {
             .eq('user_id', userId);
 
         if (!error && data) {
+            // Get all pending modifications for this table
+            const pending = await getPendingActions();
+            const pendingIds = new Set(
+                pending.filter((a: any) => a.table === 'products').map((a: any) => a.data.id)
+            );
+            
+            // Only overwrite records that DON'T have pending local changes
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            
             // Cache locally for offline fallback
-            await saveAll('products', data);
+            if (toSave.length > 0) {
+                await saveAll('products', toSave);
+            }
             return data as CachedProduct[];
         }
         // Fallback to local on error
@@ -128,7 +156,18 @@ export async function fetchCategories(userId: string): Promise<CachedCategory[]>
             .eq('user_id', userId);
 
         if (!error && data) {
-            await saveAll('categories', data);
+            // Get all pending modifications
+            const pending = await getPendingActions();
+            const pendingIds = new Set(
+                pending.filter((a: any) => a.table === 'categories').map((a: any) => a.data.id)
+            );
+            
+            // Only overwrite records that DON'T have pending local changes
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            
+            if (toSave.length > 0) {
+                await saveAll('categories', toSave);
+            }
             return data as CachedCategory[];
         }
         console.warn('[dataAccess] Supabase categories fetch failed, falling back to local:', error?.message);
@@ -207,17 +246,37 @@ export async function bulkUpdateCategories(updates: Array<{ id: string } & Recor
 
 // ─── Orders ──────────────────────────────────────────
 
-export async function fetchOrders(userId: string, limit = 50): Promise<CachedOrder[]> {
+export async function fetchOrders(userId: string, options: { limit?: number; date?: string } = {}): Promise<CachedOrder[]> {
+    const { limit = 50, date } = options;
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
+        let query = supabase
             .from('orders')
-            .select('*, order_items(*)')
+            .select('*, order_items(*, order_item_addons(*))')
             .eq('user_id', userId)
-            .order('created_at', { ascending: false })
-            .limit(limit);
+            .order('created_at', { ascending: false });
+
+        if (date) {
+            // Se informada uma data, busca o dia inteiro sem limite (ou limite alto)
+            query = query
+                .gte('created_at', `${date}T00:00:00`)
+                .lte('created_at', `${date}T23:59:59.999`);
+        } else {
+            query = query.limit(limit);
+        }
+
+        const { data, error } = await query;
 
         if (!error && data) {
-            await saveAll('orders', data);
+            const pending = await getPendingActions();
+            const pendingIds = new Set(
+                pending.filter((a: any) => a.table === 'orders').map((a: any) => a.data.id)
+            );
+            
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            
+            if (toSave.length > 0) {
+                await saveAllOrdersDeep(toSave);
+            }
             return data as CachedOrder[];
         }
         console.warn('[dataAccess] Supabase orders fetch failed, falling back to local:', error?.message);
@@ -255,6 +314,18 @@ export async function updateOrder(id: string, data: Record<string, unknown>): Pr
             await saveItem('orders', { ...existing, ...data } as CachedOrder);
         }
         await addPendingAction({ type: 'update', table: 'orders', data: { ...data, id } });
+        incrPending();
+    }
+}
+
+export async function deleteOrder(id: string): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('orders').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+        await deleteItem('orders', id);
+    } else {
+        await deleteItem('orders', id);
+        await addPendingAction({ type: 'delete', table: 'orders', data: { id } });
         incrPending();
     }
 }
@@ -333,14 +404,964 @@ export async function createFullOrder(
         }
 
         // Cache order globally
-        await saveItem('orders', record as unknown as CachedOrder);
+        await saveOrderDeep(record as unknown as CachedOrder);
     } else {
-        await saveItem('orders', record as unknown as CachedOrder);
+        await saveOrderDeep(record as unknown as CachedOrder);
         await addPendingAction({
             type: 'create_full_order',
             table: 'orders',
             data: { orderData: record, orderItems, itemAddons, loyaltyData, couponData }
         });
+        incrPending();
+    }
+}
+
+export async function fetchOrderById(id: string): Promise<any> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*, order_items(*, order_item_addons(*))')
+            .eq('id', id)
+            .single();
+
+        if (!error && data) {
+            await saveOrderDeep(data as CachedOrder);
+            return data;
+        }
+    }
+
+    // Local fetch with joins
+    const order = await getItem<CachedOrder>('orders', id);
+    if (!order) return null;
+
+    const items = await db.order_items.where('order_id').equals(id).toArray();
+    const itemIds = items.map((i: any) => i.id);
+    const addons = await db.order_item_addons.where('order_item_id').anyOf(itemIds).toArray();
+
+    return {
+        ...order,
+        order_items: items.map((item: any) => ({
+            ...item,
+            order_item_addons: addons.filter((a: any) => a.order_item_id === item.id)
+        }))
+    };
+}
+
+export async function saveOrderDeep(order: CachedOrder): Promise<void> {
+    const { order_items, ...orderData } = order;
+    await saveItem('orders', orderData as CachedOrder);
+
+    if (order_items && order_items.length > 0) {
+        const itemsToSave = order_items.map(({ order_item_addons, ...item }) => item);
+        await saveAll('order_items', itemsToSave);
+
+        const allAddons: any[] = [];
+        for (const item of order_items) {
+            if (item.order_item_addons) {
+                allAddons.push(...item.order_item_addons);
+            }
+        }
+        if (allAddons.length > 0) {
+            await saveAll('order_item_addons', allAddons);
+        }
+    }
+}
+
+export async function saveAllOrdersDeep(orders: CachedOrder[]): Promise<void> {
+    const mainOrders: CachedOrder[] = [];
+    const allItems: any[] = [];
+    const allAddons: any[] = [];
+
+    for (const order of orders) {
+        const { order_items, ...orderData } = order;
+        mainOrders.push(orderData as CachedOrder);
+
+        if (order_items) {
+            for (const item of order_items) {
+                const { order_item_addons, ...itemData } = item;
+                allItems.push(itemData);
+                if (order_item_addons) {
+                    allAddons.push(...order_item_addons);
+                }
+            }
+        }
+    }
+
+    await saveAll('orders', mainOrders);
+    if (allItems.length > 0) await saveAll('order_items', allItems);
+    if (allAddons.length > 0) await saveAll('order_item_addons', allAddons);
+}
+
+export async function confirmOrderPayment(order: CachedOrder, userId: string): Promise<void> {
+    const now = new Date().toISOString();
+    const updates = { payment_status: 'paid', updated_at: now };
+    
+    // 1. Update Order
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('orders').update(updates).eq('id', order.id);
+        if (error) throw error;
+    } else {
+        await db.orders.update(order.id, updates);
+        await addPendingAction({ type: 'update', table: 'orders', data: { id: order.id, ...updates } });
+    }
+
+    // 2. Loyalty Logic (if customer phone exists)
+    if (order.customer_phone) {
+        const cleanPhone = order.customer_phone.replace(/\D/g, '');
+        
+        let customer: CachedClient | null = null;
+        if (getMode() === 'cloud') {
+            const { data } = await supabase.from('customers').select('*').eq('user_id', userId).eq('phone', cleanPhone).single();
+            customer = data;
+        } else {
+            const customers = await getAll<CachedClient>('customers');
+            customer = customers.find(c => c.phone === cleanPhone) || null;
+        }
+
+        if (customer) {
+            let pointsPerReal = 1;
+            if (getMode() === 'cloud') {
+                const { data } = await supabase.from('loyalty_settings').select('points_per_real').eq('user_id', userId).single();
+                pointsPerReal = data?.points_per_real || 1;
+            } else {
+                const settings = await getAll<CachedLoyaltySettings>('loyalty_settings');
+                pointsPerReal = settings[0]?.points_per_real || 1;
+            }
+
+            const pointsEarned = Math.floor(order.total * pointsPerReal);
+            const customerUpdates = {
+                total_spent: (customer.total_spent || 0) + order.total,
+                total_points: (customer.total_points || 0) + pointsEarned
+            };
+
+            if (getMode() === 'cloud') {
+                await supabase.from('customers').update(customerUpdates).eq('id', customer.id);
+                if (pointsEarned > 0) {
+                    await supabase.from('points_transactions').insert({
+                        user_id: userId,
+                        customer_id: customer.id,
+                        points: pointsEarned,
+                        type: 'earned',
+                        description: `Pedido #${order.order_number}`,
+                        order_id: order.id
+                    });
+                }
+            } else {
+                await db.customers.update(customer.id, customerUpdates);
+                await addPendingAction({ type: 'update', table: 'customers', data: { id: customer.id, ...customerUpdates } });
+                
+                if (pointsEarned > 0) {
+                    await addPendingAction({
+                        type: 'create',
+                        table: 'points_transactions',
+                        data: {
+                            user_id: userId,
+                            customer_id: customer.id,
+                            points: pointsEarned,
+                            type: 'earned',
+                            description: `Pedido #${order.order_number}`,
+                            order_id: order.id
+                        }
+                    });
+                }
+            }
+        }
+    }
+}
+
+// ─── Customers ───────────────────────────────────────
+
+export async function fetchCustomers(userId: string): Promise<CachedClient[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('user_id', userId);
+
+        if (!error && data) {
+            const pending = await getPendingActions();
+            const pendingIds = new Set(
+                pending.filter((a: any) => a.table === 'customers').map((a: any) => a.data.id)
+            );
+            
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            if (toSave.length > 0) {
+                await saveAll('customers', toSave);
+            }
+            return data as CachedClient[];
+        }
+        console.warn('[dataAccess] Supabase fetch failed, falling back to local:', error?.message);
+    }
+    return getAll('customers');
+}
+
+export async function createCustomer(data: Record<string, unknown>): Promise<void> {
+    const id = data.id as string || crypto.randomUUID();
+    const record = { ...data, id };
+
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('customers').insert(record);
+        if (error) throw new Error(error.message);
+        await saveItem('customers', record as unknown as CachedClient);
+    } else {
+        await saveItem('customers', record as unknown as CachedClient);
+        await addPendingAction({ type: 'create', table: 'customers', data: record });
+        incrPending();
+    }
+}
+
+export async function updateCustomer(id: string, data: Record<string, unknown>): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('customers').update(data).eq('id', id);
+        if (error) throw new Error(error.message);
+        const existing = await getItem<any>('customers', id);
+        if (existing) {
+            await saveItem('customers', { ...existing, ...data } as CachedClient);
+        }
+    } else {
+        const existing = await getItem<any>('customers', id);
+        if (existing) {
+            await saveItem('customers', { ...existing, ...data } as CachedClient);
+        }
+        await addPendingAction({ type: 'update', table: 'customers', data: { ...data, id } });
+        incrPending();
+    }
+}
+
+export async function deleteCustomer(id: string): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('customers').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+        await deleteItem('customers', id);
+    } else {
+        await deleteItem('customers', id);
+        await addPendingAction({ type: 'delete', table: 'customers', data: { id } });
+        incrPending();
+    }
+}
+
+// ─── Mesas ───────────────────────────────────────────
+
+export async function fetchMesas(userId: string): Promise<CachedTable[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase
+            .from('mesas')
+            .select('*')
+            .eq('user_id', userId);
+
+        if (!error && data) {
+            const pending = await getPendingActions();
+            const pendingIds = new Set(
+                pending.filter((a: any) => a.table === 'mesas').map((a: any) => a.data.id)
+            );
+            
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            if (toSave.length > 0) {
+                await saveAll('mesas', toSave);
+            }
+            return data as CachedTable[];
+        }
+    }
+    return await getAll<CachedTable>('mesas');
+}
+
+export async function fetchMesaById(id: string): Promise<any> {
+    if (getMode() === 'cloud') {
+        const { data: mesa, error: mesaError } = await supabase.from('mesas').select('*').eq('id', id).single();
+        if (mesaError) throw mesaError;
+        await saveItem('mesas', mesa);
+
+        const { data: sessions } = await supabase.from('mesa_sessions').select('*').eq('mesa_id', id).eq('status', 'open');
+        if (sessions && sessions.length > 0) {
+            await saveAll('mesa_sessions', sessions);
+            const sessionIds = sessions.map(s => s.id);
+            const { data: items } = await supabase.from('mesa_session_items').select('*').in('session_id', sessionIds);
+            if (items) await saveAll('mesa_session_items', items);
+        }
+        return mesa;
+    }
+    return await getItem<CachedTable>('mesas', id);
+}
+
+export async function fetchMesaSessions(userId: string): Promise<any[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase
+            .from('mesa_sessions')
+            .select('*')
+            .eq('user_id', userId)
+            .is('closed_at', null);
+
+        if (!error && data) {
+            await saveAll('mesa_sessions', data);
+            return data;
+        }
+    }
+    return getAll('mesa_sessions');
+}
+
+export async function fetchMesaSessionItems(userId: string): Promise<any[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase
+            .from('mesa_session_items')
+            .select('*, mesa_sessions!inner(user_id)')
+            .eq('mesa_sessions.user_id', userId);
+
+        if (!error && data) {
+            await saveAll('mesa_session_items', data);
+            return data;
+        }
+    }
+    return getAll('mesa_session_items');
+}
+
+export async function createMesa(data: Record<string, unknown>): Promise<void> {
+    const id = data.id as string || crypto.randomUUID();
+    const record = { ...data, id };
+
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('mesas').insert(record);
+        if (error) throw new Error(error.message);
+        await saveItem('mesas', record as unknown as CachedTable);
+    } else {
+        await saveItem('mesas', record as unknown as CachedTable);
+        await addPendingAction({ type: 'create', table: 'mesas', data: record });
+        incrPending();
+    }
+}
+
+export async function updateMesa(id: string, data: Record<string, unknown>): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('mesas').update(data).eq('id', id);
+        if (error) throw new Error(error.message);
+        const existing = await getItem<any>('mesas', id);
+        if (existing) {
+            await saveItem('mesas', { ...existing, ...data } as CachedTable);
+        }
+    } else {
+        const existing = await getItem<any>('mesas', id);
+        if (existing) {
+            await saveItem('mesas', { ...existing, ...data } as CachedTable);
+        }
+        await addPendingAction({ type: 'update', table: 'mesas', data: { ...data, id } });
+        incrPending();
+    }
+}
+
+export async function deleteMesa(id: string): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('mesas').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+        await deleteItem('mesas', id);
+    } else {
+        await deleteItem('mesas', id);
+        await addPendingAction({ type: 'delete', table: 'mesas', data: { id } });
+        incrPending();
+    }
+}
+
+// ─── Employees ───────────────────────────────────────
+
+export async function fetchEmployeesCached(userId: string): Promise<CachedEmployee[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('user_id', userId);
+
+        if (!error && data) {
+            const pending = await getPendingActions();
+            const pendingIds = new Set(
+                pending.filter((a: any) => a.table === 'employees').map((a: any) => a.data.id)
+            );
+            
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            if (toSave.length > 0) {
+                await saveAll('employees', toSave);
+            }
+            return data as CachedEmployee[];
+        }
+        console.warn('[dataAccess] Supabase fetch failed, falling back to local:', error?.message);
+    }
+    return getAll('employees');
+}
+
+export async function createEmployee(data: Record<string, unknown>): Promise<void> {
+    const id = data.id as string || crypto.randomUUID();
+    const record = { ...data, id };
+
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('employees').insert(record);
+        if (error) throw new Error(error.message);
+        await saveItem('employees', record as unknown as CachedEmployee);
+    } else {
+        await saveItem('employees', record as unknown as CachedEmployee);
+        await addPendingAction({ type: 'create', table: 'employees', data: record });
+        incrPending();
+    }
+}
+
+export async function updateEmployee(id: string, data: Record<string, unknown>): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('employees').update(data).eq('id', id);
+        if (error) throw new Error(error.message);
+        const existing = await getItem<any>('employees', id);
+        if (existing) {
+            await saveItem('employees', { ...existing, ...data } as CachedEmployee);
+        }
+    } else {
+        const existing = await getItem<any>('employees', id);
+        if (existing) {
+            await saveItem('employees', { ...existing, ...data } as CachedEmployee);
+        }
+        await addPendingAction({ type: 'update', table: 'employees', data: { ...data, id } });
+        incrPending();
+    }
+}
+
+export async function deleteEmployee(id: string): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('employees').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+        await deleteItem('employees', id);
+    } else {
+        await deleteItem('employees', id);
+        await addPendingAction({ type: 'delete', table: 'employees', data: { id } });
+        incrPending();
+    }
+}
+
+// ─── Loyalty Rewards ─────────────────────────────────
+
+export async function fetchLoyaltyRewards(userId: string): Promise<CachedLoyaltyReward[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase.from('loyalty_rewards').select('*').eq('user_id', userId);
+        if (!error && data) {
+            const pending = await getPendingActions();
+            const pendingIds = new Set(pending.filter((a: any) => a.table === 'loyalty_rewards').map((a: any) => a.data.id));
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            if (toSave.length > 0) await saveAll('loyalty_rewards', toSave);
+            return data as CachedLoyaltyReward[];
+        }
+    }
+    return getAll('loyalty_rewards');
+}
+
+export async function saveLoyaltyReward(data: Record<string, unknown>): Promise<void> {
+    const id = data.id as string || crypto.randomUUID();
+    const record = { ...data, id };
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('loyalty_rewards').upsert(record);
+        if (error) throw new Error(error.message);
+        await saveItem('loyalty_rewards', record as unknown as CachedLoyaltyReward);
+    } else {
+        await saveItem('loyalty_rewards', record as unknown as CachedLoyaltyReward);
+        await addPendingAction({ type: record.id ? 'update' : 'create', table: 'loyalty_rewards', data: record });
+        incrPending();
+    }
+}
+
+export async function deleteLoyaltyReward(id: string): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('loyalty_rewards').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+        await deleteItem('loyalty_rewards', id);
+    } else {
+        await deleteItem('loyalty_rewards', id);
+        await addPendingAction({ type: 'delete', table: 'loyalty_rewards', data: { id } });
+        incrPending();
+    }
+}
+
+// ─── Loyalty Settings ────────────────────────────────
+
+export async function fetchLoyaltySettings(userId: string): Promise<CachedLoyaltySettings | null> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase.from('loyalty_settings').select('*').eq('user_id', userId).single();
+        if (!error && data) {
+            await saveItem('loyalty_settings', data as CachedLoyaltySettings);
+            return data as CachedLoyaltySettings;
+        }
+    }
+    const local = await getAll<CachedLoyaltySettings>('loyalty_settings');
+    return local.find(s => s.user_id === userId) || null;
+}
+
+export async function saveLoyaltySettings(data: Record<string, unknown>): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('loyalty_settings').upsert(data);
+        if (error) throw new Error(error.message);
+        await saveItem('loyalty_settings', data as unknown as CachedLoyaltySettings);
+    } else {
+        await saveItem('loyalty_settings', data as unknown as CachedLoyaltySettings);
+        await addPendingAction({ type: 'update', table: 'loyalty_settings', data });
+        incrPending();
+    }
+}
+
+// ─── Coupons ─────────────────────────────────────────
+
+export async function fetchCoupons(userId: string): Promise<CachedCoupon[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase.from('coupons').select('*').eq('user_id', userId);
+        if (!error && data) {
+            const pending = await getPendingActions();
+            const pendingIds = new Set(pending.filter((a: any) => a.table === 'coupons').map((a: any) => a.data.id));
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            if (toSave.length > 0) await saveAll('coupons', toSave);
+            return data as CachedCoupon[];
+        }
+    }
+    return getAll('coupons');
+}
+
+export async function saveCoupon(data: Record<string, unknown>): Promise<void> {
+    const id = data.id as string || crypto.randomUUID();
+    const record = { ...data, id };
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('coupons').upsert(record);
+        if (error) throw new Error(error.message);
+        await saveItem('coupons', record as unknown as CachedCoupon);
+    } else {
+        await saveItem('coupons', record as unknown as CachedCoupon);
+        await addPendingAction({ type: record.id ? 'update' : 'create', table: 'coupons', data: record });
+        incrPending();
+    }
+}
+
+export async function deleteCoupon(id: string): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('coupons').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+        await deleteItem('coupons', id);
+    } else {
+        await deleteItem('coupons', id);
+        await addPendingAction({ type: 'delete', table: 'coupons', data: { id } });
+        incrPending();
+    }
+}
+
+// ─── App Settings ────────────────────────────────────
+
+export async function fetchAppSettings(userId: string): Promise<CachedAppSetting | null> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase.from('app_settings').select('*').eq('user_id', userId).single();
+        if (!error && data) {
+            await saveItem('app_settings', data as CachedAppSetting);
+            return data as CachedAppSetting;
+        }
+    }
+    const local = await getAll<CachedAppSetting>('app_settings');
+    return local.find(s => s.user_id === userId) || null;
+}
+
+export async function saveAppSettings(data: Record<string, unknown>): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('app_settings').upsert(data);
+        if (error) throw new Error(error.message);
+        await saveItem('app_settings', data as unknown as CachedAppSetting);
+    } else {
+        await saveItem('app_settings', data as unknown as CachedAppSetting);
+        await addPendingAction({ type: 'update', table: 'app_settings', data });
+        incrPending();
+    }
+}
+
+// ─── Product Addons ──────────────────────────────────
+
+export async function fetchProductAddons(userId: string): Promise<CachedProductAddon[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase.from('product_addons').select('*').eq('user_id', userId);
+        if (!error && data) {
+            await saveAll('product_addons', data);
+            return data as CachedProductAddon[];
+        }
+    }
+    return getAll('product_addons');
+}
+
+export async function fetchAddonGroups(userId: string): Promise<CachedAddonGroup[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase.from('addon_groups').select('*').eq('user_id', userId);
+        if (!error && data) {
+            await saveAll('addon_groups', data);
+            return data as CachedAddonGroup[];
+        }
+    }
+    return getAll('addon_groups');
+}
+
+export async function fetchProductAddonGroups(userId: string): Promise<CachedProductAddonGroup[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase.from('product_addon_groups').select('*');
+        // Note: product_addon_groups might not have user_id, so we link via items
+        // For simplicity, we fetch all and let the client filter if needed, 
+        // but usually these are scoped by what's available.
+        if (!error && data) {
+            await saveAll('product_addon_groups', data);
+            return data as CachedProductAddonGroup[];
+        }
+    }
+    return getAll('product_addon_groups');
+}
+
+export async function fetchAddonGroupItems(userId: string): Promise<CachedAddonGroupItem[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase.from('addon_group_items').select('*');
+        if (!error && data) {
+            await saveAll('addon_group_items', data);
+            return data as CachedAddonGroupItem[];
+        }
+    }
+    return getAll('addon_group_items');
+}
+
+// ─── Action Logs ──────────────────────────────────────
+
+export async function fetchActionLogs(userId: string, limit = 50, offset = 0, filters?: any): Promise<{ data: CachedActionLog[], count: number }> {
+    if (getMode() === 'cloud') {
+        let query = supabase
+            .from('action_logs')
+            .select('*', { count: 'exact' })
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false })
+            .range(offset, offset + limit - 1);
+        
+        if (filters?.action) query = query.eq('action_type', filters.action);
+        if (filters?.entity) query = query.eq('entity_type', filters.entity);
+        if (filters?.from) query = query.gte('created_at', filters.from);
+        if (filters?.to) query = query.lte('created_at', filters.to);
+
+        const { data, error, count } = await query;
+
+        if (!error && data) {
+            // We don't necessarily want to cache ALL historical logs locally to save space
+            // but we can save the most recent chunk
+            if (offset === 0) {
+                await saveAll('action_logs', data);
+            }
+            return { data: data as CachedActionLog[], count: count || 0 };
+        }
+    }
+
+    // Local fallback
+    const all = await getAll<CachedActionLog>('action_logs');
+    let filtered = all.filter(l => l.user_id === userId);
+    if (filters?.action) filtered = filtered.filter(l => l.action_type === filters.action);
+    if (filters?.entity) filtered = filtered.filter(l => l.entity_type === filters.entity);
+    if (filters?.from) filtered = filtered.filter(l => new Date(l.created_at) >= new Date(filters.from));
+    if (filters?.to) filtered = filtered.filter(l => new Date(l.created_at) <= new Date(filters.to));
+    
+    filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    return {
+        data: filtered.slice(offset, offset + limit),
+        count: filtered.length
+    };
+}
+
+export async function addActionLogDAL(record: any): Promise<void> {
+    // Optimization: Logs are always saved locally immediately
+    // If online AND mode is cloud, we ALSO try Supabase
+    // But logs are secondary, so we don't necessarily WAIT if it's slow
+    
+    await saveItem('action_logs', record);
+
+    // Sanitize: only send valid DB columns to prevent 400 errors
+    const sanitized = {
+        id: record.id,
+        user_id: record.user_id,
+        action_type: record.action_type,
+        entity_type: record.entity_type,
+        entity_id: record.entity_id || null,
+        entity_name: record.entity_name || null,
+        description: record.description,
+        metadata: record.metadata || null,
+        ip_address: record.ip_address || null,
+        user_agent: record.user_agent || null,
+        created_at: record.created_at,
+    };
+
+    if (getMode() === 'cloud') {
+        supabase.from('action_logs').insert(sanitized).then(({error}) => {
+            if (error) console.warn('[dataAccess] Background log sync failed:', error.message);
+        });
+    } else {
+        // Queue for sync later
+        await addPendingAction({ type: 'create', table: 'action_logs', data: sanitized });
+        incrPending();
+    }
+}
+
+export async function clearActionLogsDAL(userId: string, olderThan?: string): Promise<void> {
+    if (getMode() === 'cloud') {
+        let query = supabase.from('action_logs').delete().eq('user_id', userId);
+        if (olderThan) query = query.lt('created_at', olderThan);
+        const { error } = await query;
+        if (error) throw new Error(error.message);
+    }
+
+    // Local cleanup
+    let localQuery = db.action_logs.where('user_id').equals(userId);
+    if (olderThan) {
+        await localQuery.and(l => new Date(l.created_at) < new Date(olderThan)).delete();
+    } else {
+        await localQuery.delete();
+    }
+
+    if (getMode() !== 'cloud') {
+        await addPendingAction({ 
+            type: olderThan ? 'clear_logs' : 'delete_all', 
+            table: 'action_logs', 
+            data: { userId, olderThan } 
+        });
+        incrPending();
+    }
+}
+
+// ─── Cash Flow ────────────────────────────────────────
+
+export async function fetchCashFlow(userId: string, from?: string, to?: string): Promise<CachedCashFlow[]> {
+    if (getMode() === 'cloud') {
+        let query = supabase
+            .from('cash_flow')
+            .select('*')
+            .eq('user_id', userId)
+            .order('transaction_date', { ascending: false });
+        
+        if (from) query = query.gte('transaction_date', from);
+        if (to) query = query.lte('transaction_date', to);
+
+        const { data, error } = await query;
+
+        if (!error && data) {
+            const pending = await getPendingActions();
+            const pendingIds = new Set(pending.filter((a: any) => a.table === 'cash_flow').map((a: any) => a.data.id));
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            if (toSave.length > 0) await saveAll('cash_flow', toSave);
+            return data as CachedCashFlow[];
+        }
+    }
+
+    const all = await getAll<CachedCashFlow>('cash_flow');
+    let filtered = all.filter(c => c.user_id === userId);
+    if (from) filtered = filtered.filter(c => c.transaction_date >= from);
+    if (to) filtered = filtered.filter(c => c.transaction_date <= to);
+    filtered.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
+    return filtered;
+}
+
+export async function createCashFlowEntry(data: any): Promise<void> {
+    const id = data.id || crypto.randomUUID();
+    const record = { ...data, id };
+
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('cash_flow').insert(record);
+        if (error) throw new Error(error.message);
+        await saveItem('cash_flow', record);
+    } else {
+        await saveItem('cash_flow', record);
+        await addPendingAction({ type: 'create', table: 'cash_flow', data: record });
+        incrPending();
+    }
+}
+
+export async function deleteCashFlowEntry(id: string): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('cash_flow').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+        await deleteItem('cash_flow', id);
+    } else {
+        await deleteItem('cash_flow', id);
+        await addPendingAction({ type: 'delete', table: 'cash_flow', data: { id } });
+        incrPending();
+    }
+}
+
+export async function updateProductAddonGroups(productId: string, groupIds: string[]) {
+    // 1. Local update
+    await db.transaction('rw', db.product_addon_groups, async () => {
+        await db.product_addon_groups.where('product_id').equals(productId).delete();
+        if (groupIds.length > 0) {
+            await db.product_addon_groups.bulkAdd(groupIds.map(groupId => ({
+                id: crypto.randomUUID(),
+                product_id: productId,
+                group_id: groupId,
+                created_at: new Date().toISOString()
+            })));
+        }
+    });
+
+    // 2. Queue sync actions
+    await addPendingAction({
+        table: 'product_addon_groups',
+        type: 'replace_relationships', // Custom action handled by offlineSync
+        data: { productId, groupIds }
+    });
+}
+
+// ─── Bills ────────────────────────────────────────────
+
+export async function fetchBills(userId: string): Promise<CachedBill[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase
+            .from('bills')
+            .select('*')
+            .eq('user_id', userId)
+            .order('due_date', { ascending: true });
+
+        if (!error && data) {
+            const pending = await getPendingActions();
+            const pendingIds = new Set(pending.filter((a: any) => a.table === 'bills').map((a: any) => a.data.id));
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            if (toSave.length > 0) await saveAll('bills', toSave);
+            return data as CachedBill[];
+        }
+    }
+
+    const all = await getAll<CachedBill>('bills');
+    return all.filter(b => b.user_id === userId).sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+}
+
+export async function createBillDAL(data: any): Promise<void> {
+    const id = data.id || crypto.randomUUID();
+    const record = { ...data, id };
+
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('bills').insert(record);
+        if (error) throw new Error(error.message);
+        await saveItem('bills', record);
+    } else {
+        await saveItem('bills', record);
+        await addPendingAction({ type: 'create', table: 'bills', data: record });
+        incrPending();
+    }
+}
+
+export async function updateBillDAL(id: string, data: any): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('bills').update(data).eq('id', id);
+        if (error) throw new Error(error.message);
+        const existing = await getItem<CachedBill>('bills', id);
+        if (existing) await saveItem('bills', { ...existing, ...data });
+    } else {
+        const existing = await getItem<CachedBill>('bills', id);
+        if (existing) await saveItem('bills', { ...existing, ...data });
+        await addPendingAction({ type: 'update', table: 'bills', data: { id, ...data } });
+        incrPending();
+    }
+}
+
+export async function deleteBillDAL(id: string): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('bills').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+        await deleteItem('bills', id);
+    } else {
+        await deleteItem('bills', id);
+        await addPendingAction({ type: 'delete', table: 'bills', data: { id } });
+        incrPending();
+    }
+}
+
+export async function markBillPaidDAL(
+    bill: CachedBill, 
+    userId: string, 
+    paymentDate: string,
+    nextDueDate?: string
+): Promise<void> {
+    // 1. Update current bill
+    const updateData = { status: 'paid', payment_date: paymentDate };
+    await updateBillDAL(bill.id, updateData);
+
+    // 2. Create cash flow entry
+    const cashFlowData = {
+        user_id: userId,
+        type: bill.type === 'payable' ? 'expense' : 'income',
+        category: bill.category,
+        description: bill.description,
+        amount: bill.amount,
+        transaction_date: paymentDate,
+        reference_type: 'bill',
+        reference_id: bill.id
+    };
+    await createCashFlowEntry(cashFlowData);
+
+    // 3. Handle recurrence
+    if (nextDueDate) {
+        const recurringData = {
+            user_id: userId,
+            type: bill.type,
+            description: bill.description,
+            category: bill.category,
+            amount: bill.amount,
+            due_date: nextDueDate,
+            supplier_customer: bill.supplier_customer,
+            notes: bill.notes,
+            status: 'pending',
+            recurrence: bill.recurrence,
+            recurrence_end_date: bill.recurrence_end_date
+        };
+        await createBillDAL(recurringData);
+    }
+}
+
+// ─── Bill Categories ──────────────────────────────────
+
+export async function fetchBillCategories(userId: string): Promise<CachedBillCategory[]> {
+    if (getMode() === 'cloud') {
+        const { data, error } = await supabase
+            .from('bill_categories')
+            .select('*')
+            .eq('user_id', userId);
+
+        if (!error && data) {
+            const pending = await getPendingActions();
+            const pendingIds = new Set(pending.filter((a: any) => a.table === 'bill_categories').map((a: any) => a.data.id));
+            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            if (toSave.length > 0) await saveAll('bill_categories', toSave);
+            return data as CachedBillCategory[];
+        }
+    }
+
+    return (await getAll<CachedBillCategory>('bill_categories')).filter(c => c.user_id === userId);
+}
+
+export async function createBillCategoryDAL(data: any): Promise<void> {
+    // Prevent duplicates based on name/type/user_id constraint
+    const existing = await getAll<CachedBillCategory>('bill_categories');
+    const duplicate = existing.find(c => 
+        c.user_id === data.user_id && 
+        c.name.toLowerCase() === data.name.toLowerCase() && 
+        c.type === data.type
+    );
+
+    if (duplicate) {
+        console.warn(`[DAL] Bill category already exists: ${data.name} (${data.type})`);
+        return;
+    }
+
+    const id = data.id || crypto.randomUUID();
+    const record = { ...data, id };
+
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('bill_categories').insert(record);
+        if (error) throw new Error(error.message);
+        await saveItem('bill_categories', record);
+    } else {
+        await saveItem('bill_categories', record);
+        await addPendingAction({ type: 'create', table: 'bill_categories', data: record });
+        incrPending();
+    }
+}
+
+export async function deleteBillCategoryDAL(id: string): Promise<void> {
+    if (getMode() === 'cloud') {
+        const { error } = await supabase.from('bill_categories').delete().eq('id', id);
+        if (error) throw new Error(error.message);
+        await deleteItem('bill_categories', id);
+    } else {
+        await deleteItem('bill_categories', id);
+        await addPendingAction({ type: 'delete', table: 'bill_categories', data: { id } });
         incrPending();
     }
 }

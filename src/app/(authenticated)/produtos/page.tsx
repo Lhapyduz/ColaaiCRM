@@ -37,11 +37,13 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
+import { getDb } from '@/lib/db';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
-import { useProductsCache, useCategoriesCache } from '@/hooks/useDataCache';
+import { useProductsCache, useCategoriesCache, useAddonsCache } from '@/hooks/useDataCache';
 import { revalidateStoreMenu } from '@/app/actions/menu';
 import * as dataAccess from '@/lib/dataAccess';
+import type { CachedProductAddonGroup } from '@/types/db';
 
 interface Category {
     id: string;
@@ -193,6 +195,11 @@ export default function ProdutosPage() {
         loading: categoriesLoading
     } = useCategoriesCache();
 
+    const {
+        addonGroups: cachedAddonGroups,
+        loading: addonsLoading
+    } = useAddonsCache();
+
     const [categories, setCategories] = useState<Category[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -209,8 +216,8 @@ export default function ProdutosPage() {
     }, [cachedCategories]);
 
     useEffect(() => {
-        setLoading(productsLoading || categoriesLoading);
-    }, [productsLoading, categoriesLoading]);
+        setLoading(productsLoading || categoriesLoading || addonsLoading);
+    }, [productsLoading, categoriesLoading, addonsLoading]);
 
     const [showProductModal, setShowProductModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -258,19 +265,8 @@ export default function ProdutosPage() {
     }, [isDragging]);
 
     useEffect(() => {
-        // useProductsCache e useCategoriesCache já lidam com produtos e categorias.
-        // Precisamos carregar os addon_groups separadamente, pois não estão no cache.
-        if (user) {
-            supabase
-                .from('addon_groups')
-                .select('id, name, description, required')
-                .eq('user_id', user.id)
-                .order('name')
-                .then(({ data }) => {
-                    if (data) setAddonGroups(data);
-                });
-        }
-    }, [user]);
+        if (cachedAddonGroups) setAddonGroups(cachedAddonGroups);
+    }, [cachedAddonGroups]);
 
 
 
@@ -328,8 +324,17 @@ export default function ProdutosPage() {
                 promo_value: (product.promo_value ?? 0).toString(),
                 promo_type: (product.promo_type as 'value' | 'percentage') ?? 'percentage'
             });
-            const { data } = await supabase.from('product_addon_groups').select('group_id').eq('product_id', product.id);
-            setSelectedAddonGroups(data?.map(g => g.group_id) || []);
+            const productGroups = (cachedProducts as any)?.find((p: any) => p.id === product.id)?.addon_groups || [];
+            // Actually, the cache hook might not have joined these in the products list yet if we only updated db.ts
+            // But we have useAddonsCache which provides addonGroups and their associations.
+            // Let's use the raw product_addon_groups from the useAddonsCache result.
+            const selectedIds = (cachedAddonGroups as any)?.filter((g: any) => g.productId === product.id).map((g: any) => g.id) || [];
+            // Wait, useAddonsCache's getProductAddons returns joined data.
+            // For the modal, we need selected IDs.
+            // I'll just use the Dexie database directly if needed, or better, the dataAccess.
+            const db = getDb();
+            const selections = await db.product_addon_groups.where('product_id').equals(product.id).toArray();
+            setSelectedAddonGroups(selections.map((s: CachedProductAddonGroup) => s.group_id));
         } else {
             setEditingProduct(null);
             setProductForm({
@@ -380,14 +385,9 @@ export default function ProdutosPage() {
                 productId = (productData as any).id || crypto.randomUUID();
                 await dataAccess.createProduct({ ...productData, id: productId, display_order: maxOrder + 1 });
             }
-            // For addon groups, still using direct supabase for now as it's secondary metadata
-            // but we could expand dataAccess if needed.
-            await supabase.from('product_addon_groups').delete().eq('product_id', productId);
-            if (selectedAddonGroups.length > 0) {
-                await supabase.from('product_addon_groups').insert(selectedAddonGroups.map(groupId => ({ product_id: productId, group_id: groupId })));
-            }
+            // Use the new DAL implementation for offline-first relationship updates
+            await dataAccess.updateProductAddonGroups(productId, selectedAddonGroups);
             toast.success(editingProduct ? 'Produto atualizado!' : 'Produto criado!');
-            refetchProducts(); // Invalida o cache
             revalidateStoreMenu();
             closeProductModal();
         } catch (error) {
@@ -410,7 +410,6 @@ export default function ProdutosPage() {
             }
             await dataAccess.deleteProduct(id);
             toast.success('Produto excluído!');
-            refetchProducts(); // Invalida o cache
             revalidateStoreMenu();
         } catch (error) {
             console.error('Error deleting product:', error);
@@ -421,7 +420,6 @@ export default function ProdutosPage() {
     const toggleAvailability = async (product: Product) => {
         try {
             await dataAccess.updateProduct(product.id, { available: !product.available });
-            refetchProducts(); // Invalida o cache
             revalidateStoreMenu();
         } catch (error) {
             console.error('Error toggling availability:', error);

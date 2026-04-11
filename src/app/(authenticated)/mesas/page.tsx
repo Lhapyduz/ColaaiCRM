@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, PlusCircle, Combine, Map, Filter, Clock, Loader2, X } from 'lucide-react';
-import { MesaWithActiveSession, getMesas, updateMesa, deleteMesa, createMesa, unirMesas, separarMesa } from '@/lib/services/mesas';
+import { MesaWithActiveSession, unirMesas, separarMesa } from '@/lib/services/mesas';
+import { createMesa, updateMesa, deleteMesa } from '@/lib/dataAccess';
+import { useMesasCache } from '@/hooks/useDataCache';
 import { MesaCard } from '@/components/mesas/MesaCard';
 import { MesaEditModal, AddMesaModal, MergeConfirmModal } from '@/components/mesas/MesaModals';
 import { useToast } from '@/components/ui/Toast';
@@ -13,8 +15,10 @@ export default function MesasPage() {
     const router = useRouter();
     const toast = useToast();
 
-    const [mesas, setMesas] = useState<MesaWithActiveSession[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { mesas: rawMesas, loading } = useMesasCache();
+    // Type casting here safely because we know useMesasCache now merges active_session locally
+    const mesas = rawMesas as unknown as MesaWithActiveSession[];
+
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'todas' | 'livre' | 'ocupada' | 'fechando' | 'suja'>('todas');
 
@@ -25,22 +29,6 @@ export default function MesasPage() {
     const [targetMesaId, setTargetMesaId] = useState<string | null>(null);
     const [mesaToEdit, setMesaToEdit] = useState<MesaWithActiveSession | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
-
-    useEffect(() => {
-        carregarMesas();
-    }, []);
-
-    const carregarMesas = async () => {
-        try {
-            setLoading(true);
-            const data = await getMesas();
-            setMesas(data);
-        } catch (error) {
-            console.error('Erro:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const toggleConfiguring = () => {
         setIsConfiguring(!isConfiguring);
@@ -83,21 +71,18 @@ export default function MesasPage() {
 
     const handleSaveMesa = async (numero: number, capacidade: number) => {
         if (mesaToEdit) {
-            await updateMesa(mesaToEdit.id, numero, capacidade);
-            carregarMesas();
+            await updateMesa(mesaToEdit.id, { numero_mesa: numero, capacidade });
             toast.success("Mesa atualizada!");
         }
     };
 
     const handleDeleteMesa = async (id: string) => {
         await deleteMesa(id);
-        carregarMesas();
         toast.success("Mesa excluída com sucesso.");
     };
 
     const handleCreateMesaExt = async (numero: number, capacidade: number) => {
-        await createMesa(numero, capacidade);
-        carregarMesas();
+        await createMesa({ numero_mesa: numero, capacidade, ativa: true });
         toast.success("Mesa adicionada!");
     };
 
@@ -108,7 +93,6 @@ export default function MesasPage() {
             setSourceMesaId(null);
             setTargetMesaId(null);
             setIsMerging(false);
-            carregarMesas();
         } catch (err) {
             console.error(err);
             toast.error("Erro ao unir mesas");
@@ -307,7 +291,6 @@ export default function MesasPage() {
                         await separarMesa(sessionId);
                         toast.success("Mesa liberada com sucesso!");
                         setMesaToEdit(null);
-                        carregarMesas();
                     } catch (e) {
                         const err = e as Error;
                         toast.error(err.message || "Erro ao liberar mesa");

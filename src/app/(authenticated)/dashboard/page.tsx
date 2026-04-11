@@ -18,10 +18,10 @@ import { GiCookingPot } from 'react-icons/gi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { StatusBadge, type OrderStatus } from '@/components/ui/StatusBadge';
-import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
+import { useOrdersCache } from '@/hooks/useDataCache';
+import type { CachedOrder } from '@/types/db';
 import { formatCurrency, formatRelativeTime } from '@/hooks/useFormatters';
 import { predictRemainingToday, getConfidenceLabel } from '@/lib/salesPrediction';
 import { cn } from '@/lib/utils';
@@ -60,140 +60,85 @@ interface Prediction {
 }
 
 export default function DashboardPage() {
-    const { user, userSettings } = useAuth();
+    const { userSettings } = useAuth();
     const { canAccess } = useSubscription();
-    const [stats, setStats] = useState<Stats>({
-        totalOrders: 0,
-        totalRevenue: 0,
-        pendingOrders: 0,
-        pendingDeliveries: 0,
-        yesterdayRevenue: 0,
-        yesterdayOrders: 0
-    });
-    const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [prediction, setPrediction] = useState<Prediction | null>(null);
+    const { orders: rawOrders, loading } = useOrdersCache();
 
     const appName = userSettings?.app_name || 'Cola Aí';
-    const toast = useToast();
 
-    const fetchDashboardData = useCallback(async () => {
-        if (!user) return;
+    const { stats, recentOrders, historicalData } = useMemo(() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        thirtyDaysAgo.setHours(0, 0, 0, 0);
 
-        try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+        const todayOrders = rawOrders.filter(o => o.created_at && o.created_at.startsWith(todayStr));
+        const yesterdayOrders = rawOrders.filter(o => o.created_at && o.created_at.startsWith(yesterdayStr) && o.status !== 'cancelled');
+        const historicalRecentOrders = rawOrders.filter(o => o.created_at && new Date(o.created_at) >= thirtyDaysAgo && o.status !== 'cancelled');
 
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
+        const totalRevenue = todayOrders
+            .filter(o => o.payment_status === 'paid')
+            .reduce((sum, o) => sum + o.total, 0);
 
-            const thirtyDaysAgo = new Date(today);
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const pendingOrders = todayOrders.filter(
+            o => o.status === 'pending' || o.status === 'preparing'
+        ).length;
 
-            const { data: orders } = await supabase
-                .from('orders')
-                .select('id, order_number, customer_name, total, status, created_at, payment_status, is_delivery')
-                .eq('user_id', user.id)
-                .gte('created_at', today.toISOString())
-                .order('created_at', { ascending: false });
+        const pendingDeliveries = todayOrders.filter(
+            o => o.status === 'delivering' || (o.status === 'ready' && o.is_delivery)
+        ).length;
 
-            const { data: yesterdayOrders } = await supabase
-                .from('orders')
-                .select('total, payment_status, status')
-                .eq('user_id', user.id)
-                .gte('created_at', yesterday.toISOString())
-                .lt('created_at', today.toISOString())
-                .neq('status', 'cancelled');
+        const yesterdayRevenue = yesterdayOrders
+            .filter(o => o.payment_status === 'paid')
+            .reduce((sum, o) => sum + o.total, 0);
 
-            const { data: historicalOrders } = await supabase
-                .from('orders')
-                .select('created_at, total, payment_status')
-                .eq('user_id', user.id)
-                .gte('created_at', thirtyDaysAgo.toISOString())
-                .neq('status', 'cancelled');
-
-            if (orders) {
-                const totalRevenue = orders
-                    .filter(o => o.payment_status === 'paid')
-                    .reduce((sum, o) => sum + o.total, 0);
-
-                const pendingOrders = orders.filter(
-                    o => o.status === 'pending' || o.status === 'preparing'
-                ).length;
-
-                const pendingDeliveries = orders.filter(
-                    o => o.status === 'delivering' || (o.status === 'ready' && o.is_delivery)
-                ).length;
-
-                const yesterdayRevenue = yesterdayOrders
-                    ?.filter(o => o.payment_status === 'paid')
-                    ?.reduce((sum, o) => sum + o.total, 0) || 0;
-
-                setStats({
-                    totalOrders: orders.length,
-                    totalRevenue,
-                    pendingOrders,
-                    pendingDeliveries,
-                    yesterdayRevenue,
-                    yesterdayOrders: yesterdayOrders?.length || 0
-                });
-
-                setRecentOrders(orders.slice(0, 5));
+        // Daily data for predictions
+        const dailyRecord: Record<string, { revenue: number; orders: number }> = {};
+        historicalRecentOrders.forEach(order => {
+            if (!order.created_at) return;
+            const date = order.created_at.split('T')[0];
+            if (!dailyRecord[date]) {
+                dailyRecord[date] = { revenue: 0, orders: 0 };
             }
-
-            if (historicalOrders && historicalOrders.length > 0) {
-                const dailyData: Record<string, { revenue: number; orders: number }> = {};
-
-                historicalOrders.forEach(order => {
-                    const date = new Date(order.created_at).toISOString().split('T')[0];
-                    if (!dailyData[date]) {
-                        dailyData[date] = { revenue: 0, orders: 0 };
-                    }
-                    if (order.payment_status === 'paid') {
-                        dailyData[date].revenue += order.total;
-                    }
-                    dailyData[date].orders++;
-                });
-
-                const historicalData: HistoricalData[] = Object.entries(dailyData).map(([date, data]) => ({
-                    date,
-                    dayOfWeek: new Date(date + 'T12:00:00').getDay(),
-                    revenue: data.revenue,
-                    orders: data.orders
-                }));
-
-                const pred = predictRemainingToday(
-                    historicalData,
-                    orders?.filter(o => o.payment_status === 'paid').reduce((sum, o) => sum + o.total, 0) || 0,
-                    orders?.length || 0
-                );
-
-                setPrediction(pred);
+            if (order.payment_status === 'paid') {
+                dailyRecord[date].revenue += order.total;
             }
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-            toast.error('Erro ao carregar dados do dashboard');
-        } finally {
-            setLoading(false);
-        }
-    }, [user, toast]);
+            dailyRecord[date].orders++;
+        });
 
-    useEffect(() => {
-        if (user) {
-            fetchDashboardData();
+        const historicalDataArr: HistoricalData[] = Object.entries(dailyRecord).map(([date, data]) => ({
+            date,
+            dayOfWeek: new Date(date + 'T12:00:00').getDay(),
+            revenue: data.revenue,
+            orders: data.orders
+        }));
 
-            // Polling a cada 30 segundos em vez de Realtime
-            // Economia: ~90% das mensagens Realtime do Supabase
-            const pollingInterval = setInterval(() => {
-                fetchDashboardData();
-            }, 30000); // 30 segundos
+        return {
+            stats: {
+                totalOrders: todayOrders.length,
+                totalRevenue,
+                pendingOrders,
+                pendingDeliveries,
+                yesterdayRevenue,
+                yesterdayOrders: yesterdayOrders.length
+            },
+            recentOrders: todayOrders.slice(0, 5),
+            historicalData: historicalDataArr
+        };
+    }, [rawOrders]);
 
-            return () => {
-                clearInterval(pollingInterval);
-            };
-        }
-    }, [user, fetchDashboardData]);
-
+    const prediction = useMemo(() => {
+        if (historicalData.length === 0) return null;
+        return predictRemainingToday(
+            historicalData,
+            stats.totalRevenue,
+            stats.totalOrders
+        );
+    }, [historicalData, stats.totalRevenue, stats.totalOrders]);
 
     const revenueChange = useMemo(() => {
         if (stats.yesterdayRevenue === 0) return stats.totalRevenue > 0 ? 100 : 0;
@@ -382,7 +327,7 @@ export default function DashboardPage() {
                                             {formatCurrency(order.total)}
                                         </span>
                                         <span className="flex items-center gap-1 text-sm text-text-muted">
-                                            <FiClock /> {formatRelativeTime(order.created_at)}
+                                            <FiClock /> {formatRelativeTime(order.created_at || new Date().toISOString())}
                                         </span>
                                     </div>
                                 </Link>

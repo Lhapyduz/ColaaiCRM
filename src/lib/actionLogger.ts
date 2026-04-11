@@ -42,6 +42,14 @@ export interface LogActionParams {
 }
 
 /**
+ * Helper to check if a string is a valid UUID
+ */
+function isValidUUID(uuid: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+}
+
+/**
  * Log a user action to the database
  */
 export async function logAction(params: LogActionParams): Promise<void> {
@@ -49,20 +57,38 @@ export async function logAction(params: LogActionParams): Promise<void> {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        await supabase.from('action_logs').insert({
+        const { addActionLogDAL } = await import('./dataAccess');
+        
+        let entity_id = null;
+        let metadata = params.metadata || {};
+
+        if (params.entityId) {
+            if (isValidUUID(params.entityId)) {
+                entity_id = params.entityId;
+            } else {
+                // If it's not a UUID, don't pass it to the DB but preserve it in metadata
+                metadata = { ...metadata, original_entity_id: params.entityId };
+                console.warn(`[AuditLog] Invalid UUID provided for entityId: ${params.entityId}. Log ID: ${params.actionType}/${params.entityType}`);
+            }
+        }
+
+        await addActionLogDAL({
+            id: crypto.randomUUID(),
             user_id: user.id,
             action_type: params.actionType,
             entity_type: params.entityType,
-            entity_id: params.entityId || null,
+            entity_id,
             entity_name: params.entityName || null,
             description: params.description,
-            metadata: params.metadata || {}
+            metadata,
+            created_at: new Date().toISOString()
         });
     } catch (error) {
         // Silent fail - don't interrupt user flow for logging errors
         console.error('Error logging action:', error);
     }
 }
+
 
 /**
  * Log order creation
