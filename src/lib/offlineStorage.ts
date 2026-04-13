@@ -160,18 +160,31 @@ export function isOnline(): boolean {
 }
 
 /**
- * Robust connectivity check (pings Supabase)
- * This helps bypass false positives from navigator.onLine caused by blockers.
+ * Robust connectivity check (lightweight — no DB query, no egress cost)
+ * Uses a HEAD request to the Supabase REST root instead of querying a table.
  */
 export async function checkConnectivity(): Promise<boolean> {
     if (!isOnline()) return false;
     try {
-        // Use a lightweight request to check if we can reach Supabase
-        const { error, status } = await supabase.from('products').select('id', { count: 'exact', head: true }).limit(1);
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (!supabaseUrl) return true; // Can't check, assume online
+        
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        
+        const res = await fetch(`${supabaseUrl}/rest/v1/`, {
+            method: 'HEAD',
+            signal: controller.signal,
+            headers: {
+                'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            },
+        });
+        clearTimeout(timeout);
+        
         // Status 0 means network failure/blocked by client
-        if (status === 0) return false;
+        if (res.status === 0) return false;
         // 503 Service Unavailable
-        if (status === 503) return false;
+        if (res.status === 503) return false;
         return true;
     } catch {
         return false;
@@ -193,7 +206,7 @@ export function onNetworkChange(callback: (online: boolean) => void): () => void
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Also periodic check
+    // Periodic check every 60s (reduced from 30s)
     const interval = setInterval(async () => {
         if (navigator.onLine) {
             const reallyOnline = await checkConnectivity();
@@ -201,7 +214,7 @@ export function onNetworkChange(callback: (online: boolean) => void): () => void
         } else {
             callback(false);
         }
-    }, 30000);
+    }, 60000);
 
     return () => {
         window.removeEventListener('online', handleOnline);

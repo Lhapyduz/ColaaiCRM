@@ -385,7 +385,8 @@ export function useMesasCache() {
     const mesas = useLiveQuery(async () => {
         if (!user || typeof window === 'undefined') return [];
         try {
-            const mesasData = await db.mesas.where('user_id').equals(user.id).toArray();
+            const mesasData = (await db.mesas.where('user_id').equals(user.id).toArray())
+                .filter(m => m.ativa !== false);
             
             // Robust check for open sessions: closed_at is falsy AND status is not 'livre'
             const sessionsData = await db.mesa_sessions.where('user_id').equals(user.id)

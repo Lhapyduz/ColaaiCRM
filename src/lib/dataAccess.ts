@@ -49,7 +49,7 @@ export async function fetchProducts(userId: string): Promise<CachedProduct[]> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('products')
-            .select('*')
+            .select('id,user_id,name,price,description,image_url,category_id,available,display_order,promo_enabled,promo_value,promo_type,created_at')
             .eq('user_id', userId);
 
         if (!error && data) {
@@ -152,7 +152,7 @@ export async function fetchCategories(userId: string): Promise<CachedCategory[]>
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('categories')
-            .select('*')
+            .select('id,user_id,name,icon,color,display_order,created_at')
             .eq('user_id', userId);
 
         if (!error && data) {
@@ -251,7 +251,7 @@ export async function fetchOrders(userId: string, options: { limit?: number; dat
     if (getMode() === 'cloud') {
         let query = supabase
             .from('orders')
-            .select('*, order_items(*, order_item_addons(*))')
+            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity,created_at))')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
@@ -420,7 +420,7 @@ export async function fetchOrderById(id: string): Promise<any> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('orders')
-            .select('*, order_items(*, order_item_addons(*))')
+            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity,created_at))')
             .eq('id', id)
             .single();
 
@@ -511,7 +511,7 @@ export async function confirmOrderPayment(order: CachedOrder, userId: string): P
         
         let customer: CachedClient | null = null;
         if (getMode() === 'cloud') {
-            const { data } = await supabase.from('customers').select('*').eq('user_id', userId).eq('phone', cleanPhone).single();
+            const { data } = await supabase.from('customers').select('id,user_id,name,email,phone,total_points,total_spent,total_orders,created_at').eq('user_id', userId).eq('phone', cleanPhone).single();
             customer = data;
         } else {
             const customers = await getAll<CachedClient>('customers');
@@ -575,8 +575,9 @@ export async function fetchCustomers(userId: string): Promise<CachedClient[]> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('customers')
-            .select('*')
-            .eq('user_id', userId);
+            .select('id,user_id,name,email,phone,total_points,total_spent,total_orders,created_at')
+            .eq('user_id', userId)
+            .limit(500);
 
         if (!error && data) {
             const pending = await getPendingActions();
@@ -646,8 +647,9 @@ export async function fetchMesas(userId: string): Promise<CachedTable[]> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('mesas')
-            .select('*')
-            .eq('user_id', userId);
+            .select('id,user_id,numero_mesa,capacidade,ativa,created_at')
+            .eq('user_id', userId)
+            .eq('ativa', true);
 
         if (!error && data) {
             const pending = await getPendingActions();
@@ -667,15 +669,15 @@ export async function fetchMesas(userId: string): Promise<CachedTable[]> {
 
 export async function fetchMesaById(id: string): Promise<any> {
     if (getMode() === 'cloud') {
-        const { data: mesa, error: mesaError } = await supabase.from('mesas').select('*').eq('id', id).single();
+        const { data: mesa, error: mesaError } = await supabase.from('mesas').select('id,user_id,numero_mesa,capacidade,ativa,created_at').eq('id', id).single();
         if (mesaError) throw mesaError;
         await saveItem('mesas', mesa);
 
-        const { data: sessions } = await supabase.from('mesa_sessions').select('*').eq('mesa_id', id).eq('status', 'open');
+        const { data: sessions } = await supabase.from('mesa_sessions').select('id,mesa_id,user_id,garcom_id,garcom,status,opened_at,closed_at,total,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final').eq('mesa_id', id).eq('status', 'open');
         if (sessions && sessions.length > 0) {
             await saveAll('mesa_sessions', sessions);
             const sessionIds = sessions.map(s => s.id);
-            const { data: items } = await supabase.from('mesa_session_items').select('*').in('session_id', sessionIds);
+            const { data: items } = await supabase.from('mesa_session_items').select('id,session_id,product_id,product_name,quantity,unit_price,total,notes,status,created_at,order_id,enviado_cozinha').in('session_id', sessionIds);
             if (items) await saveAll('mesa_session_items', items);
         }
         return mesa;
@@ -687,7 +689,7 @@ export async function fetchMesaSessions(userId: string): Promise<any[]> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('mesa_sessions')
-            .select('*')
+            .select('id,mesa_id,user_id,garcom_id,garcom,status,opened_at,closed_at,total,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final')
             .eq('user_id', userId)
             .is('closed_at', null);
 
@@ -703,7 +705,7 @@ export async function fetchMesaSessionItems(userId: string): Promise<any[]> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('mesa_session_items')
-            .select('*, mesa_sessions!inner(user_id)')
+            .select('id,session_id,product_id,product_name,quantity,unit_price,total,notes,status,created_at,order_id,enviado_cozinha, mesa_sessions!inner(user_id)')
             .eq('mesa_sessions.user_id', userId);
 
         if (!error && data) {
@@ -715,13 +717,35 @@ export async function fetchMesaSessionItems(userId: string): Promise<any[]> {
 }
 
 export async function createMesa(data: Record<string, unknown>): Promise<void> {
+    const userRes = await supabase.auth.getUser();
+    if (!userRes.data.user) throw new Error("Usuário não autenticado");
+    const userId = userRes.data.user.id;
+
     const id = data.id as string || crypto.randomUUID();
-    const record = { ...data, id };
+    const record = { ...data, id, user_id: userId };
 
     if (getMode() === 'cloud') {
-        const { error } = await supabase.from('mesas').insert(record);
-        if (error) throw new Error(error.message);
-        await saveItem('mesas', record as unknown as CachedTable);
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        const res = await fetch('/api/mesas', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(record),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Erro ao criar mesa' }));
+            throw new Error(err.error || 'Erro ao criar mesa');
+        }
+        const { data: created } = await res.json();
+        // Non-blocking local cache update
+        try {
+            await saveItem('mesas', (created || record) as unknown as CachedTable);
+        } catch (cacheErr) {
+            console.warn('[createMesa] Falha ao salvar no cache local:', cacheErr);
+        }
     } else {
         await saveItem('mesas', record as unknown as CachedTable);
         await addPendingAction({ type: 'create', table: 'mesas', data: record });
@@ -731,30 +755,63 @@ export async function createMesa(data: Record<string, unknown>): Promise<void> {
 
 export async function updateMesa(id: string, data: Record<string, unknown>): Promise<void> {
     if (getMode() === 'cloud') {
-        const { error } = await supabase.from('mesas').update(data).eq('id', id);
-        if (error) throw new Error(error.message);
-        const existing = await getItem<any>('mesas', id);
-        if (existing) {
-            await saveItem('mesas', { ...existing, ...data } as CachedTable);
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        const res = await fetch('/api/mesas', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({ id, ...data }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Erro ao atualizar mesa' }));
+            throw new Error(err.error || 'Erro ao atualizar mesa');
+        }
+        // Non-blocking local cache update
+        try {
+            const existing = await getItem<any>('mesas', id);
+            if (existing) {
+                await saveItem('mesas', { ...existing, ...data } as CachedTable);
+            }
+        } catch (cacheErr) {
+            console.warn('[updateMesa] Falha ao atualizar cache local:', cacheErr);
         }
     } else {
         const existing = await getItem<any>('mesas', id);
         if (existing) {
             await saveItem('mesas', { ...existing, ...data } as CachedTable);
         }
-        await addPendingAction({ type: 'update', table: 'mesas', data: { ...data, id } });
+        await addPendingAction({ type: 'update', table: 'mesas', data: { ...data, id, user_id: existing?.user_id } });
         incrPending();
     }
 }
 
 export async function deleteMesa(id: string): Promise<void> {
     if (getMode() === 'cloud') {
-        const { error } = await supabase.from('mesas').delete().eq('id', id);
-        if (error) throw new Error(error.message);
-        await deleteItem('mesas', id);
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        const res = await fetch(`/api/mesas?id=${id}`, {
+            method: 'DELETE',
+            headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Erro ao excluir mesa' }));
+            throw new Error(err.error || 'Erro ao excluir mesa');
+        }
+        // Non-blocking local cache update
+        try {
+            await deleteItem('mesas', id);
+        } catch (cacheErr) {
+            console.warn('[deleteMesa] Falha ao excluir do cache local:', cacheErr);
+        }
     } else {
+        const existing = await getItem<any>('mesas', id);
         await deleteItem('mesas', id);
-        await addPendingAction({ type: 'delete', table: 'mesas', data: { id } });
+        await addPendingAction({ type: 'delete', table: 'mesas', data: { id, user_id: existing?.user_id } });
         incrPending();
     }
 }
@@ -765,8 +822,9 @@ export async function fetchEmployeesCached(userId: string): Promise<CachedEmploy
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('employees')
-            .select('*')
-            .eq('user_id', userId);
+            .select('id,user_id,name,role,phone,email,pin_code,is_active,salary,hire_date,created_at,is_fixed,permissions,hourly_rate,salario_fixo')
+            .eq('user_id', userId)
+            .limit(100);
 
         if (!error && data) {
             const pending = await getPendingActions();
@@ -834,7 +892,7 @@ export async function deleteEmployee(id: string): Promise<void> {
 
 export async function fetchLoyaltyRewards(userId: string): Promise<CachedLoyaltyReward[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('loyalty_rewards').select('*').eq('user_id', userId);
+        const { data, error } = await supabase.from('loyalty_rewards').select('id,user_id,name,description,points_cost,reward_type,reward_value,min_order_value,is_active,created_at').eq('user_id', userId);
         if (!error && data) {
             const pending = await getPendingActions();
             const pendingIds = new Set(pending.filter((a: any) => a.table === 'loyalty_rewards').map((a: any) => a.data.id));
@@ -876,7 +934,7 @@ export async function deleteLoyaltyReward(id: string): Promise<void> {
 
 export async function fetchLoyaltySettings(userId: string): Promise<CachedLoyaltySettings | null> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('loyalty_settings').select('*').eq('user_id', userId).single();
+        const { data, error } = await supabase.from('loyalty_settings').select('id,user_id,points_per_real,min_points_to_redeem,points_expiry_days,tier_bronze_min,tier_silver_min,tier_gold_min,tier_platinum_min,silver_multiplier,gold_multiplier,platinum_multiplier,is_active,updated_at').eq('user_id', userId).single();
         if (!error && data) {
             await saveItem('loyalty_settings', data as CachedLoyaltySettings);
             return data as CachedLoyaltySettings;
@@ -902,7 +960,7 @@ export async function saveLoyaltySettings(data: Record<string, unknown>): Promis
 
 export async function fetchCoupons(userId: string): Promise<CachedCoupon[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('coupons').select('*').eq('user_id', userId);
+        const { data, error } = await supabase.from('coupons').select('id,user_id,code,description,discount_type,discount_value,min_order_value,max_discount,usage_limit,usage_count,valid_from,valid_until,active,first_order_only,created_at').eq('user_id', userId);
         if (!error && data) {
             const pending = await getPendingActions();
             const pendingIds = new Set(pending.filter((a: any) => a.table === 'coupons').map((a: any) => a.data.id));
@@ -944,7 +1002,7 @@ export async function deleteCoupon(id: string): Promise<void> {
 
 export async function fetchAppSettings(userId: string): Promise<CachedAppSetting | null> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('app_settings').select('*').eq('user_id', userId).single();
+        const { data, error } = await supabase.from('app_settings').select('id,user_id,loyalty_enabled,coupons_enabled,updated_at').eq('user_id', userId).single();
         if (!error && data) {
             await saveItem('app_settings', data as CachedAppSetting);
             return data as CachedAppSetting;
@@ -970,7 +1028,7 @@ export async function saveAppSettings(data: Record<string, unknown>): Promise<vo
 
 export async function fetchProductAddons(userId: string): Promise<CachedProductAddon[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('product_addons').select('*').eq('user_id', userId);
+        const { data, error } = await supabase.from('product_addons').select('id,user_id,name,price,available,created_at').eq('user_id', userId);
         if (!error && data) {
             await saveAll('product_addons', data);
             return data as CachedProductAddon[];
@@ -981,7 +1039,7 @@ export async function fetchProductAddons(userId: string): Promise<CachedProductA
 
 export async function fetchAddonGroups(userId: string): Promise<CachedAddonGroup[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('addon_groups').select('*').eq('user_id', userId);
+        const { data, error } = await supabase.from('addon_groups').select('id,user_id,name,description,required,max_selection,created_at').eq('user_id', userId);
         if (!error && data) {
             await saveAll('addon_groups', data);
             return data as CachedAddonGroup[];
@@ -992,12 +1050,14 @@ export async function fetchAddonGroups(userId: string): Promise<CachedAddonGroup
 
 export async function fetchProductAddonGroups(userId: string): Promise<CachedProductAddonGroup[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('product_addon_groups').select('*');
-        // Note: product_addon_groups might not have user_id, so we link via items
-        // For simplicity, we fetch all and let the client filter if needed, 
-        // but usually these are scoped by what's available.
+        // Scope by user's products to avoid fetching all rows globally
+        const { data: userProducts } = await supabase.from('products').select('id').eq('user_id', userId).limit(200);
+        const productIds = userProducts?.map(p => p.id) || [];
+        if (productIds.length === 0) return [];
+        
+        const { data, error } = await supabase.from('product_addon_groups').select('id,product_id,group_id').in('product_id', productIds.slice(0, 100));
         if (!error && data) {
-            await saveAll('product_addon_groups', data);
+            try { await saveAll('product_addon_groups', data); } catch(e) { console.warn('[dataAccess] cache product_addon_groups failed:', e); }
             return data as CachedProductAddonGroup[];
         }
     }
@@ -1006,9 +1066,14 @@ export async function fetchProductAddonGroups(userId: string): Promise<CachedPro
 
 export async function fetchAddonGroupItems(userId: string): Promise<CachedAddonGroupItem[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('addon_group_items').select('*');
+        // Scope by user's addon groups to avoid fetching all rows globally
+        const { data: userGroups } = await supabase.from('addon_groups').select('id').eq('user_id', userId).limit(100);
+        const groupIds = userGroups?.map(g => g.id) || [];
+        if (groupIds.length === 0) return [];
+        
+        const { data, error } = await supabase.from('addon_group_items').select('id,group_id,addon_id').in('group_id', groupIds.slice(0, 100));
         if (!error && data) {
-            await saveAll('addon_group_items', data);
+            try { await saveAll('addon_group_items', data); } catch(e) { console.warn('[dataAccess] cache addon_group_items failed:', e); }
             return data as CachedAddonGroupItem[];
         }
     }
@@ -1124,7 +1189,7 @@ export async function fetchCashFlow(userId: string, from?: string, to?: string):
     if (getMode() === 'cloud') {
         let query = supabase
             .from('cash_flow')
-            .select('*')
+            .select('id,user_id,type,category,description,amount,payment_method,transaction_date,created_at')
             .eq('user_id', userId)
             .order('transaction_date', { ascending: false });
         
@@ -1205,9 +1270,10 @@ export async function fetchBills(userId: string): Promise<CachedBill[]> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('bills')
-            .select('*')
+            .select('id,user_id,type,description,category,amount,due_date,payment_date,status,supplier_customer,notes,recurrence,recurrence_end_date,created_at')
             .eq('user_id', userId)
-            .order('due_date', { ascending: true });
+            .order('due_date', { ascending: true })
+            .limit(200);
 
         if (!error && data) {
             const pending = await getPendingActions();
@@ -1311,7 +1377,7 @@ export async function fetchBillCategories(userId: string): Promise<CachedBillCat
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('bill_categories')
-            .select('*')
+            .select('id,user_id,name,type,icon,color,created_at')
             .eq('user_id', userId);
 
         if (!error && data) {

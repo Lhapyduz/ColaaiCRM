@@ -53,54 +53,54 @@ export async function cacheDataForOffline(userId: string, force = false): Promis
         // Cache products
         const { data: products } = await supabase
             .from('products')
-            .select('*')
+            .select('id,user_id,name,price,description,image_url,category_id,available,display_order,promo_enabled,promo_value,promo_type,created_at')
             .eq('user_id', userId);
-        if (products) await saveAll('products', products);
+        if (products) try { await saveAll('products', products); } catch(e) { console.warn('[Offline] cache products failed:', e); }
 
         // Cache categories
         const { data: categories } = await supabase
             .from('categories')
-            .select('*')
+            .select('id,user_id,name,icon,color,display_order,created_at')
             .eq('user_id', userId);
-        if (categories) await saveAll('categories', categories);
+        if (categories) try { await saveAll('categories', categories); } catch(e) { console.warn('[Offline] cache categories failed:', e); }
 
-        // Cache recent orders (last 30 — reduced for egress optimization)
+        // Cache recent orders (last 15 — reduced for egress optimization)
         const { data: orders } = await supabase
             .from('orders')
-            .select('*, order_items(*)')
+            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at)')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
-            .limit(30);
-        if (orders) await saveAll('orders', orders);
+            .limit(15);
+        if (orders) try { await saveAll('orders', orders); } catch(e) { console.warn('[Offline] cache orders failed:', e); }
 
         const [rCustomers, rMesas, rEmployees, rMesaSessions] = await Promise.all([
-            supabase.from('customers').select('*').eq('user_id', userId),
-            supabase.from('mesas').select('*').eq('user_id', userId),
-            supabase.from('employees').select('*').eq('user_id', userId),
-            supabase.from('mesa_sessions').select('*').eq('user_id', userId).is('closed_at', null),
+            supabase.from('customers').select('id,user_id,name,email,phone,points,total_orders,total_spent,created_at').eq('user_id', userId).limit(500),
+            supabase.from('mesas').select('id,user_id,numero_mesa,capacidade,ativa,created_at').eq('user_id', userId).eq('ativa', true),
+            supabase.from('employees').select('id,user_id,name,role,phone,email,pin_code,is_active,salary,hire_date,created_at,is_fixed').eq('user_id', userId).limit(100),
+            supabase.from('mesa_sessions').select('id,mesa_id,user_id,garcom_id,garcom,status,opened_at,closed_at,total,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final').eq('user_id', userId).is('closed_at', null),
         ]);
 
-        if (rCustomers.data?.length) await saveAll('customers', rCustomers.data);
-        if (rMesas.data?.length) await saveAll('mesas', rMesas.data);
-        if (rEmployees.data?.length) await saveAll('employees', rEmployees.data);
+        if (rCustomers.data?.length) try { await saveAll('customers', rCustomers.data); } catch(e) { console.warn('[Offline] cache customers failed:', e); }
+        if (rMesas.data?.length) try { await saveAll('mesas', rMesas.data); } catch(e) { console.warn('[Offline] cache mesas failed:', e); }
+        if (rEmployees.data?.length) try { await saveAll('employees', rEmployees.data); } catch(e) { console.warn('[Offline] cache employees failed:', e); }
         
         if (rMesaSessions.data?.length) {
-            await saveAll('mesa_sessions', rMesaSessions.data);
+            try { await saveAll('mesa_sessions', rMesaSessions.data); } catch(e) { console.warn('[Offline] cache mesa_sessions failed:', e); }
             const sessionIds = rMesaSessions.data.map(s => s.id);
-            const rSessionItems = await supabase.from('mesa_session_items').select('*').in('session_id', sessionIds);
+            const rSessionItems = await supabase.from('mesa_session_items').select('id,session_id,product_id,product_name,quantity,unit_price,total,notes,status,created_at,order_id,enviado_cozinha').in('session_id', sessionIds);
             if (rSessionItems.data?.length) {
-                await saveAll('mesa_session_items', rSessionItems.data);
+                try { await saveAll('mesa_session_items', rSessionItems.data); } catch(e) { console.warn('[Offline] cache mesa_session_items failed:', e); }
             }
         }
 
-        // Cache recent cash flow (reduced from 100 to 50 for egress)
+        // Cache recent cash flow (reduced to 30 for egress)
         const { data: cashFlow } = await supabase
             .from('cash_flow')
-            .select('*')
+            .select('id,user_id,type,category,description,amount,payment_method,transaction_date,created_at')
             .eq('user_id', userId)
             .order('transaction_date', { ascending: false })
-            .limit(50);
-        if (cashFlow) await saveAll('cash_flow', cashFlow);
+            .limit(30);
+        if (cashFlow) try { await saveAll('cash_flow', cashFlow); } catch(e) { console.warn('[Offline] cache cash_flow failed:', e); }
 
         // Cache recent action logs (reduced from 50 to 20 for egress)
         const { data: logs } = await supabase
@@ -109,44 +109,52 @@ export async function cacheDataForOffline(userId: string, force = false): Promis
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(20);
-        if (logs) await saveAll('action_logs', logs);
+        if (logs) try { await saveAll('action_logs', logs); } catch(e) { console.warn('[Offline] cache action_logs failed:', e); }
 
         // Cache bill categories
         const { data: billCats } = await supabase
             .from('bill_categories')
-            .select('*')
+            .select('id,user_id,name,type,icon,color,created_at')
             .eq('user_id', userId);
-        if (billCats) await saveAll('bill_categories', billCats);
+        if (billCats) try { await saveAll('bill_categories', billCats); } catch(e) { console.warn('[Offline] cache bill_categories failed:', e); }
 
-        // Cache recent bills (reduced from 100 to 50 for egress)
+        // Cache recent bills (reduced to 30 for egress)
         const { data: bills } = await supabase
             .from('bills')
-            .select('*')
+            .select('id,user_id,title,amount,due_date,status,category_id,recurrence,payment_method,notes,paid_at,created_at')
             .eq('user_id', userId)
             .order('due_date', { ascending: false })
-            .limit(50);
-        if (bills) await saveAll('bills', bills);
+            .limit(30);
+        if (bills) try { await saveAll('bills', bills); } catch(e) { console.warn('[Offline] cache bills failed:', e); }
 
         // Cache Addons and Loyalty
-        const [rAddons, rAddonGroups, rProductAddonGroups, rAddonGroupItems, rLoyaltyRewards, rLoyaltySettings, rCoupons, rAppSettings] = await Promise.all([
-            supabase.from('product_addons').select('*').eq('user_id', userId),
-            supabase.from('addon_groups').select('*').eq('user_id', userId),
-            supabase.from('product_addon_groups').select('*'), // Link-only table
-            supabase.from('addon_group_items').select('*'), // Link-only table
-            supabase.from('loyalty_rewards').select('*').eq('user_id', userId),
-            supabase.from('loyalty_settings').select('*').eq('user_id', userId),
-            supabase.from('coupons').select('*').eq('user_id', userId),
-            supabase.from('app_settings').select('*').eq('user_id', userId),
+        const [rAddons, rAddonGroups, rLoyaltyRewards, rLoyaltySettings, rCoupons, rAppSettings] = await Promise.all([
+            supabase.from('product_addons').select('id,user_id,name,price,available,created_at').eq('user_id', userId),
+            supabase.from('addon_groups').select('id,user_id,name,description,required,max_selection,created_at').eq('user_id', userId),
+            supabase.from('loyalty_rewards').select('id,user_id,name,description,points_cost,reward_type,reward_value,min_order_value,is_active,created_at').eq('user_id', userId),
+            supabase.from('loyalty_settings').select('id,user_id,points_per_real,min_points_to_redeem,points_expiry_days,tier_bronze_min,tier_silver_min,tier_gold_min,tier_platinum_min,silver_multiplier,gold_multiplier,platinum_multiplier,is_active,updated_at').eq('user_id', userId),
+            supabase.from('coupons').select('id,user_id,code,description,discount_type,discount_value,min_order_value,max_discount,usage_limit,usage_count,valid_from,valid_until,active,first_order_only,created_at').eq('user_id', userId),
+            supabase.from('app_settings').select('id,user_id,loyalty_enabled,coupons_enabled,updated_at').eq('user_id', userId),
         ]);
 
-        if (rAddons.data) await saveAll('product_addons', rAddons.data);
-        if (rAddonGroups.data) await saveAll('addon_groups', rAddonGroups.data);
-        if (rProductAddonGroups.data) await saveAll('product_addon_groups', rProductAddonGroups.data);
-        if (rAddonGroupItems.data) await saveAll('addon_group_items', rAddonGroupItems.data);
-        if (rLoyaltyRewards.data) await saveAll('loyalty_rewards', rLoyaltyRewards.data); // Corrected table name
-        if (rLoyaltySettings.data) await saveAll('loyalty_settings', rLoyaltySettings.data);
-        if (rCoupons.data) await saveAll('coupons', rCoupons.data);
-        if (rAppSettings.data) await saveAll('app_settings', rAppSettings.data);
+        if (rAddons.data) try { await saveAll('product_addons', rAddons.data); } catch(e) { console.warn('[Offline] cache product_addons failed:', e); }
+        if (rAddonGroups.data) try { await saveAll('addon_groups', rAddonGroups.data); } catch(e) { console.warn('[Offline] cache addon_groups failed:', e); }
+        if (rLoyaltyRewards.data) try { await saveAll('loyalty_rewards', rLoyaltyRewards.data); } catch(e) { console.warn('[Offline] cache loyalty_rewards failed:', e); }
+        if (rLoyaltySettings.data) try { await saveAll('loyalty_settings', rLoyaltySettings.data); } catch(e) { console.warn('[Offline] cache loyalty_settings failed:', e); }
+        if (rCoupons.data) try { await saveAll('coupons', rCoupons.data); } catch(e) { console.warn('[Offline] cache coupons failed:', e); }
+        if (rAppSettings.data) try { await saveAll('app_settings', rAppSettings.data); } catch(e) { console.warn('[Offline] cache app_settings failed:', e); }
+
+        // Cache link tables scoped by user's products/groups (avoid fetching ALL rows)
+        const productIds = products?.map(p => p.id) || [];
+        const groupIds = rAddonGroups.data?.map(g => g.id) || [];
+        if (productIds.length > 0) {
+            const { data: pag } = await supabase.from('product_addon_groups').select('id,product_id,group_id').in('product_id', productIds.slice(0, 100));
+            if (pag) try { await saveAll('product_addon_groups', pag); } catch(e) { console.warn('[Offline] cache product_addon_groups failed:', e); }
+        }
+        if (groupIds.length > 0) {
+            const { data: agi } = await supabase.from('addon_group_items').select('id,group_id,addon_id').in('group_id', groupIds.slice(0, 100));
+            if (agi) try { await saveAll('addon_group_items', agi); } catch(e) { console.warn('[Offline] cache addon_group_items failed:', e); }
+        }
 
         console.log('[Offline] Data cached successfully');
     } catch (error) {
@@ -351,6 +359,22 @@ export async function syncPendingActions(): Promise<SyncResult> {
                     }));
                 }
 
+                // Resilience for orders: strip nested join data (order_items, order_item_addons)
+                if (table === 'orders') {
+                    records = records.map(r => {
+                        const { order_items, order_item_addons, ...clean } = r as any;
+                        return clean;
+                    });
+                }
+
+                // Resilience for mesas: strip nested join data (mesa_sessions)
+                if (table === 'mesas') {
+                    records = records.map(r => {
+                        const { mesa_sessions, ...clean } = r as any;
+                        return clean;
+                    });
+                }
+
                 const { error } = await supabase
                     .from(table)
                     .upsert(records, { onConflict: 'id' });
@@ -493,11 +517,11 @@ export async function getProductsOfflineFirst(userId: string): Promise<CachedPro
     if (isOnline()) {
         const { data, error } = await supabase
             .from('products')
-            .select('*')
+            .select('id,user_id,name,price,description,image_url,category_id,available,display_order,promo_enabled,promo_value,promo_type,created_at')
             .eq('user_id', userId);
 
         if (!error && data) {
-            await saveAll('products', data);
+            try { await saveAll('products', data); } catch(e) { console.warn('[Offline] cache products failed:', e); }
             return data as CachedProduct[];
         }
     }
@@ -512,11 +536,11 @@ export async function getCategoriesOfflineFirst(userId: string): Promise<CachedC
     if (isOnline()) {
         const { data, error } = await supabase
             .from('categories')
-            .select('*')
+            .select('id,user_id,name,icon,color,display_order,created_at')
             .eq('user_id', userId);
 
         if (!error && data) {
-            await saveAll('categories', data);
+            try { await saveAll('categories', data); } catch(e) { console.warn('[Offline] cache categories failed:', e); }
             return data as CachedCategory[];
         }
     }
@@ -531,13 +555,13 @@ export async function getOrdersOfflineFirst(userId: string): Promise<CachedOrder
     if (isOnline()) {
         const { data, error } = await supabase
             .from('orders')
-            .select('*, order_items(*)')
+            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at)')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
-            .limit(50);
+            .limit(15);
 
         if (!error && data) {
-            await saveAll('orders', data);
+            try { await saveAll('orders', data); } catch(e) { console.warn('[Offline] cache orders failed:', e); }
             return data as CachedOrder[];
         }
     }
@@ -549,11 +573,17 @@ export async function getOrdersOfflineFirst(userId: string): Promise<CachedOrder
  * Clear all offline caches
  */
 export async function clearOfflineCache(): Promise<void> {
-    await clearStore('products');
-    await clearStore('categories');
-    await clearStore('orders');
-    await clearStore('userSettings');
-    await clearStore('pendingActions');
+    const stores: import('@/types/db').StoreName[] = [
+        'products', 'categories', 'orders', 'order_items', 'order_item_addons',
+        'customers', 'mesas', 'employees', 'mesa_sessions', 'mesa_session_items',
+        'loyalty_rewards', 'loyalty_settings', 'coupons', 'app_settings',
+        'product_addons', 'addon_groups', 'product_addon_groups', 'addon_group_items',
+        'action_logs', 'cash_flow', 'bills', 'bill_categories',
+        'userSettings', 'pendingActions',
+    ];
+    for (const store of stores) {
+        try { await clearStore(store); } catch(e) { console.warn(`[Offline] clear ${store} failed:`, e); }
+    }
 }
 
 /**

@@ -178,10 +178,12 @@ export class LigeirinhoDB extends Dexie {
 // ────────────────────────────────────────────
 
 let _db: LigeirinhoDB | null = null;
+let _resetting = false;
 
 /**
  * Retorna a instância singleton do Dexie.
  * No client-side, inicializa se necessário.
+ * Adds cross-browser resilience handlers for Safari/Firefox.
  */
 export function getDb(): LigeirinhoDB {
     if (typeof window === 'undefined') {
@@ -189,8 +191,35 @@ export function getDb(): LigeirinhoDB {
     }
     if (!_db) {
         _db = new LigeirinhoDB();
+        
+        // Cross-browser resilience: handle version conflicts
+        _db.on('blocked', () => {
+            console.warn('[db] Database upgrade blocked — another tab may be open. Closing...');
+            _db?.close();
+        });
+        
+        _db.on('versionchange', () => {
+            console.warn('[db] Database version changed in another tab. Closing for upgrade...');
+            _db?.close();
+            _db = null;
+        });
     }
     return _db;
+}
+
+/**
+ * Check if an error is a database schema/version error that needs a reset.
+ */
+function isSchemaError(err: unknown): boolean {
+    if (!err) return false;
+    const msg = String(err);
+    return (
+        msg.includes('VersionError') ||
+        msg.includes('UpgradeError') ||
+        msg.includes('NotFoundError') ||
+        msg.includes('No such table') ||
+        msg.includes('version change transaction was aborted')
+    );
 }
 
 /**
@@ -198,14 +227,25 @@ export function getDb(): LigeirinhoDB {
  * Usa um Proxy para inicialização preguiçosa (lazy) e segura, evitando
  * erros de "getDb is not a function" durante o carregamento de módulos circulares
  * ou carregamento precoce no Turbopack/Next.js.
+ * 
+ * Auto-recovers from schema errors by resetting the database.
  */
 export const db = new Proxy({} as LigeirinhoDB, {
     get(_, prop) {
         if (typeof window === 'undefined') {
             return null;
         }
-        const instance = getDb();
-        return (instance as any)[prop];
+        try {
+            const instance = getDb();
+            return (instance as any)[prop];
+        } catch (err) {
+            if (isSchemaError(err) && !_resetting) {
+                console.error('[db] Schema error detected, auto-resetting:', err);
+                _resetting = true;
+                resetDatabase();
+            }
+            return null;
+        }
     }
 });
 
@@ -221,15 +261,18 @@ export async function resetDatabase() {
         // Se houver uma instância aberta, fecha ela
         if (_db) {
             _db.close();
+            _db = null;
         }
         
         // Deleta o banco pelo nome (mais robusto)
         await Dexie.delete('ligeirinho-offline-dexie');
         
         console.log('[db] Banco de dados deletado com sucesso. Recarregando página...');
+        _resetting = false;
         window.location.reload();
     } catch (err) {
         console.error('[db] Erro ao resetar banco de dados:', err);
+        _resetting = false;
         // Fallback: tenta apagar via IndexedDB API pura se o Dexie falhar
         const req = window.indexedDB.deleteDatabase('ligeirinho-offline-dexie');
         req.onsuccess = () => window.location.reload();
