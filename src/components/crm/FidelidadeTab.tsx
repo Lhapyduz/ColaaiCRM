@@ -9,6 +9,7 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { db } from '@/lib/db';
 import { cn } from '@/lib/utils';
 import { 
     useCustomersCache, 
@@ -257,20 +258,17 @@ export function FidelidadeTab() {
                     <h2 className="text-lg font-semibold mb-6 pb-4 border-b border-border">Configurações do Programa</h2>
                     <div className="grid grid-cols-3 gap-4 mb-6 max-md:grid-cols-1">
                         <div><label className="block text-sm text-text-secondary mb-2">Pontos por R$ 1,00 gasto</label><Input type="number" value={rawSettings.points_per_real} onChange={(e) => {
-                            import('@/lib/db').then(({ getDb }) => {
-                                const db = getDb();
+                            import('@/lib/db').then(() => {
                                 db.loyalty_settings.update(rawSettings.id, { points_per_real: parseFloat(e.target.value) || 0 });
                             });
                         }} min={0} step={0.1} /></div>
                         <div><label className="block text-sm text-text-secondary mb-2">Mínimo de pontos para resgatar</label><Input type="number" value={rawSettings.min_points_to_redeem} onChange={(e) => {
-                            import('@/lib/db').then(({ getDb }) => {
-                                const db = getDb();
+                            import('@/lib/db').then(() => {
                                 db.loyalty_settings.update(rawSettings.id, { min_points_to_redeem: parseInt(e.target.value) || 0 });
                             });
                         }} min={0} /></div>
                         <div><label className="block text-sm text-text-secondary mb-2">Expiração de pontos (dias)</label><Input type="number" value={rawSettings.points_expiry_days} onChange={(e) => {
-                            import('@/lib/db').then(({ getDb }) => {
-                                const db = getDb();
+                            import('@/lib/db').then(() => {
                                 db.loyalty_settings.update(rawSettings.id, { points_expiry_days: parseInt(e.target.value) || 365 });
                             });
                         }} min={30} /></div>
@@ -283,8 +281,7 @@ export function FidelidadeTab() {
                             <span className="text-2xl">🥈</span>
                             <div className="text-sm font-medium mt-1">Silver</div>
                             <Input type="number" className="mt-1 text-center text-sm" value={rawSettings.tier_silver_min} onChange={(e) => {
-                                import('@/lib/db').then(({ getDb }) => {
-                                    const db = getDb();
+                                import('@/lib/db').then(() => {
                                     db.loyalty_settings.update(rawSettings.id, { tier_silver_min: parseInt(e.target.value) || 0 });
                                 });
                             }} />
@@ -295,8 +292,7 @@ export function FidelidadeTab() {
                             <span className="text-2xl">🥇</span>
                             <div className="text-sm font-medium mt-1">Gold</div>
                             <Input type="number" className="mt-1 text-center text-sm" value={rawSettings.tier_gold_min} onChange={(e) => {
-                                import('@/lib/db').then(({ getDb }) => {
-                                    const db = getDb();
+                                import('@/lib/db').then(() => {
                                     db.loyalty_settings.update(rawSettings.id, { tier_gold_min: parseInt(e.target.value) || 0 });
                                 });
                             }} />
@@ -307,8 +303,7 @@ export function FidelidadeTab() {
                             <span className="text-2xl">💎</span>
                             <div className="text-sm font-medium mt-1">Platinum</div>
                             <Input type="number" className="mt-1 text-center text-sm" value={rawSettings.tier_platinum_min} onChange={(e) => {
-                                import('@/lib/db').then(({ getDb }) => {
-                                    const db = getDb();
+                                import('@/lib/db').then(() => {
                                     db.loyalty_settings.update(rawSettings.id, { tier_platinum_min: parseInt(e.target.value) || 0 });
                                 });
                             }} />

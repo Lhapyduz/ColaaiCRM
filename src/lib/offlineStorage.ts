@@ -1,7 +1,7 @@
 // Offline Storage Utility
 // Uses Dexie wrapper for IndexedDB to store data for offline access
 
-import { getDb, db } from './db';
+import { db } from './db';
 import { supabase } from './supabase';
 import type {
     CachedProduct, CachedCategory, CachedOrder, CachedUserSetting, 
@@ -16,15 +16,18 @@ import type {
 export type { StoreName };
 
 /**
- * Initialize IndexedDB database
+ * Initialize IndexedDB database (Legacy wrapper - now uses Proxy)
  */
 export async function initOfflineDB() {
-    try {
-        return getDb();
-    } catch (err) {
-        console.error('[offlineStorage] Failed to initialize DB:', err);
-        throw err;
-    }
+    return db;
+}
+
+/**
+ * Get the underlying Dexie instance
+ */
+export function getDexieInstance() {
+    if (typeof window === 'undefined') return undefined as any;
+    return db;
 }
 
 /**

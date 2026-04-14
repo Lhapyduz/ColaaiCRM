@@ -37,7 +37,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/lib/supabase';
-import { getDb } from '@/lib/db';
+import { db } from '@/lib/db';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import { useProductsCache, useCategoriesCache, useAddonsCache } from '@/hooks/useDataCache';
@@ -332,7 +332,6 @@ export default function ProdutosPage() {
             // Wait, useAddonsCache's getProductAddons returns joined data.
             // For the modal, we need selected IDs.
             // I'll just use the Dexie database directly if needed, or better, the dataAccess.
-            const db = getDb();
             const selections = await db.product_addon_groups.where('product_id').equals(product.id).toArray();
             setSelectedAddonGroups(selections.map((s: CachedProductAddonGroup) => s.group_id));
         } else {

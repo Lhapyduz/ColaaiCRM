@@ -69,3 +69,8 @@ ehthumbs.db
 
 # App specific
 app-path-routes-manifest.json
+
+# AI Agent and internal tools
+antigravity/
+testsprite_tests/
+.temp_ag_kit/

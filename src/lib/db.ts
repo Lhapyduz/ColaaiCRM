@@ -13,6 +13,93 @@ import type {
 // Database Dexie com tipagem forte
 // ────────────────────────────────────────────
 
+// Core singleton instance
+let _db: LigeirinhoDB | null = null;
+let _resetting = false;
+
+/**
+ * Check if an error is a database schema/version error that needs a reset.
+ */
+function _isSchemaError(err: unknown): boolean {
+    if (!err) return false;
+    const msg = String(err);
+    return (
+        msg.includes('VersionError') ||
+        msg.includes('UpgradeError') ||
+        msg.includes('NotFoundError') ||
+        msg.includes('No such table') ||
+        msg.includes('version change transaction was aborted')
+    );
+}
+
+/**
+ * Internal init — creates/returns the singleton.
+ */
+function _initDb(): LigeirinhoDB {
+    if (typeof window === 'undefined') {
+        // Return a mock object for SSR to avoid "db is undefined" errors during compilation
+        return {} as any;
+    }
+    if (!_db) {
+        try {
+            _db = new LigeirinhoDB();
+            
+            // Cross-browser resilience: handle version conflicts
+            _db.on('blocked', () => {
+                console.warn('[db] Database upgrade blocked — another tab may be open. Closing...');
+                _db?.close();
+            });
+            
+            _db.on('versionchange', () => {
+                console.warn('[db] Database version changed in another tab. Closing for upgrade...');
+                _db?.close();
+                _db = null;
+            });
+        } catch (err) {
+            console.error('[db] Failed to instantiate Dexie:', err);
+            throw err;
+        }
+    }
+    return _db;
+}
+
+/**
+ * Primary database interface.
+ * Uses a Proxy for lazy initialization and cross-browser error recovery.
+ */
+export const db: LigeirinhoDB = new Proxy({} as LigeirinhoDB, {
+    get(_, prop) {
+        if (typeof window === 'undefined') return undefined;
+        
+        try {
+            const instance = _initDb();
+            const value = (instance as any)[prop];
+            
+            // If it's a function (like .table() or .transaction()), bind it to the instance
+            if (typeof value === 'function') {
+                return value.bind(instance);
+            }
+            return value;
+        } catch (err) {
+            if (_isSchemaError(err) && !_resetting) {
+                console.error('[db] Schema error detected, auto-resetting:', err);
+                _resetting = true;
+                resetDatabase();
+            }
+            console.error(`[db] Proxy access error for property "${String(prop)}":`, err);
+            return undefined;
+        }
+    }
+});
+
+/**
+ * Public getter (Legacy/Internal) — returns the singleton directly.
+ * Prefer using the 'db' export instead.
+ */
+export function getDb(): LigeirinhoDB {
+    return _initDb();
+}
+
 export class LigeirinhoDB extends Dexie {
     products!: Table<CachedProduct, string>;
     categories!: Table<CachedCategory, string>;
@@ -172,83 +259,6 @@ export class LigeirinhoDB extends Dexie {
     }
 }
 
-
-// ────────────────────────────────────────────
-// Lazy singleton — SSR-safe
-// ────────────────────────────────────────────
-
-let _db: LigeirinhoDB | null = null;
-let _resetting = false;
-
-/**
- * Retorna a instância singleton do Dexie.
- * No client-side, inicializa se necessário.
- * Adds cross-browser resilience handlers for Safari/Firefox.
- */
-export function getDb(): LigeirinhoDB {
-    if (typeof window === 'undefined') {
-        throw new Error('[db] getDb() chamado no servidor.');
-    }
-    if (!_db) {
-        _db = new LigeirinhoDB();
-        
-        // Cross-browser resilience: handle version conflicts
-        _db.on('blocked', () => {
-            console.warn('[db] Database upgrade blocked — another tab may be open. Closing...');
-            _db?.close();
-        });
-        
-        _db.on('versionchange', () => {
-            console.warn('[db] Database version changed in another tab. Closing for upgrade...');
-            _db?.close();
-            _db = null;
-        });
-    }
-    return _db;
-}
-
-/**
- * Check if an error is a database schema/version error that needs a reset.
- */
-function isSchemaError(err: unknown): boolean {
-    if (!err) return false;
-    const msg = String(err);
-    return (
-        msg.includes('VersionError') ||
-        msg.includes('UpgradeError') ||
-        msg.includes('NotFoundError') ||
-        msg.includes('No such table') ||
-        msg.includes('version change transaction was aborted')
-    );
-}
-
-/**
- * Instância direta para importações mais simples.
- * Usa um Proxy para inicialização preguiçosa (lazy) e segura, evitando
- * erros de "getDb is not a function" durante o carregamento de módulos circulares
- * ou carregamento precoce no Turbopack/Next.js.
- * 
- * Auto-recovers from schema errors by resetting the database.
- */
-export const db = new Proxy({} as LigeirinhoDB, {
-    get(_, prop) {
-        if (typeof window === 'undefined') {
-            return null;
-        }
-        try {
-            const instance = getDb();
-            return (instance as any)[prop];
-        } catch (err) {
-            if (isSchemaError(err) && !_resetting) {
-                console.error('[db] Schema error detected, auto-resetting:', err);
-                _resetting = true;
-                resetDatabase();
-            }
-            return null;
-        }
-    }
-});
-
 /**
  * Utilitário para resetar o banco de dados em caso de erro crítico de esquema.
  * Usa Dexie.delete diretamente para garantir que o banco seja apagado mesmo se houver erro de instância.
@@ -280,9 +290,27 @@ export async function resetDatabase() {
     }
 }
 
+/**
+ * Limpa todas as ações pendentes (útil quando ficam travadas/stale).
+ */
+export async function clearPendingActions() {
+    if (typeof window === 'undefined') return;
+    try {
+        const count = await db.pendingActions.count();
+        await db.pendingActions.clear();
+        console.log(`[db] ${count} pending actions cleared.`);
+        return count;
+    } catch (err) {
+        console.error('[db] Error clearing pending actions:', err);
+        return 0;
+    }
+}
+
 // Exposição global para acesso via console (útil para suporte e debug)
 if (typeof window !== 'undefined') {
     (window as any).resetDatabase = resetDatabase;
     (window as any).getDb = getDb;
+    (window as any).clearPendingActions = clearPendingActions;
 }
+
 

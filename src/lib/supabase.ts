@@ -142,6 +142,11 @@ export type Database = {
                     total: number;
                     notes: string | null;
                     is_delivery: boolean;
+                    discount_amount: number | null;
+                    coupon_id: string | null;
+                    coupon_code: string | null;
+                    user_slug: string | null;
+                    rating_token: string | null;
                     created_at: string;
                     updated_at: string;
                 };
@@ -160,6 +165,11 @@ export type Database = {
                     total: number;
                     notes?: string | null;
                     is_delivery?: boolean;
+                    discount_amount?: number | null;
+                    coupon_id?: string | null;
+                    coupon_code?: string | null;
+                    user_slug?: string | null;
+                    rating_token?: string | null;
                     created_at?: string;
                     updated_at?: string;
                 };
@@ -178,6 +188,11 @@ export type Database = {
                     total?: number;
                     notes?: string | null;
                     is_delivery?: boolean;
+                    discount_amount?: number | null;
+                    coupon_id?: string | null;
+                    coupon_code?: string | null;
+                    user_slug?: string | null;
+                    rating_token?: string | null;
                     created_at?: string;
                     updated_at?: string;
                 };
@@ -304,6 +319,7 @@ export type Database = {
                     preco_total: number;
                     observacao: string | null;
                     enviado_cozinha: boolean;
+                    order_id: string | null;
                     created_at: string;
                 };
                 Insert: {
@@ -316,6 +332,7 @@ export type Database = {
                     preco_total: number;
                     observacao?: string | null;
                     enviado_cozinha?: boolean;
+                    order_id?: string | null;
                     created_at?: string;
                 };
                 Update: {
@@ -328,6 +345,7 @@ export type Database = {
                     preco_total?: number;
                     observacao?: string | null;
                     enviado_cozinha?: boolean;
+                    order_id?: string | null;
                     created_at?: string;
                 };
             };

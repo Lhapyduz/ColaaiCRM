@@ -338,7 +338,7 @@ export default function NovoPedidoPage() {
             // Use local Dexie as primary source of truth for order numbers to support offline creation
             try {
                 const module = await import('@/lib/db');
-                const db = module.getDb();
+                const db = module.db;
                 const lastOrder = await db.orders
                     .where('user_id')
                     .equals(user.id)

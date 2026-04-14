@@ -1,5 +1,5 @@
 import { supabase, Database } from '../supabase';
-import { getDb } from '@/lib/db';
+import { db } from '@/lib/db';
 import { getMode, incrPending } from '@/lib/dataAccess';
 import { saveItem, getItem, deleteItem, addPendingAction } from '@/lib/offlineStorage';
 import type { CachedMesaSession, CachedMesaSessionItem, CachedOrder, CachedTable, CachedEmployee } from '@/types/db';
@@ -274,7 +274,7 @@ export async function fecharMesaSessao(
         const session = await getItem<any>('mesa_sessions', sessionId);
         if (!session) throw new Error("Sessão não encontrada no cache local");
         
-        const db = getDb();
+        const instance = db;
         const items = await db.mesa_session_items.where('session_id').equals(sessionId).toArray();
         const mesas = await db.mesas.where('id').equals(session.mesa_id).toArray();
         const mesa = mesas[0];
@@ -511,7 +511,7 @@ export async function fecharMesaSessao(
  */
 export async function desagruparTodas(numeroMesa: number) {
     if (getMode() !== 'cloud') {
-        const db = getDb();
+        const instance = db;
         const tableNumberStr = String(numeroMesa).padStart(2, '0');
         const groupedString = `[Unida c/ Mesa ${tableNumberStr}]`;
         const grouped = await db.mesa_sessions.where('garcom').equals(groupedString).toArray();
@@ -599,7 +599,7 @@ export async function confirmarItensMesa(
 
     if (getMode() !== 'cloud') {
         const module = await import('@/lib/db');
-        const db = module.getDb();
+        const db = module.db;
         
         const lastOrder = await db.orders
             .where('user_id').equals(userId)
@@ -737,7 +737,7 @@ export async function unirMesas(sourceMesaId: string, targetMesaId: string, garc
     }
 
     if (getMode() !== 'cloud') {
-        const db = getDb();
+        const instance = db;
         const sourceMesa = await db.mesas.get(sourceMesaId);
         const targetMesa = await db.mesas.get(targetMesaId);
         

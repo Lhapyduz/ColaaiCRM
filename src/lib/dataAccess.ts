@@ -5,9 +5,11 @@
 // ─────────────────────────────────────────────────────
 
 import { supabase } from './supabase';
-import { addPendingAction, saveAll, saveItem, getAll, getItem, deleteItem, getPendingActions } from './offlineStorage';
 import { db } from './db';
 import { useStorageStore } from '@/stores/useStorageStore';
+import { 
+    addPendingAction, saveAll, saveItem, getAll, getItem, deleteItem, getPendingActions 
+} from './offlineStorage';
 import type {
     CachedProduct,
     CachedCategory,
@@ -251,7 +253,7 @@ export async function fetchOrders(userId: string, options: { limit?: number; dat
     if (getMode() === 'cloud') {
         let query = supabase
             .from('orders')
-            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity,created_at))')
+            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,discount_amount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity))')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
@@ -420,7 +422,7 @@ export async function fetchOrderById(id: string): Promise<any> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('orders')
-            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity,created_at))')
+            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity))')
             .eq('id', id)
             .single();
 

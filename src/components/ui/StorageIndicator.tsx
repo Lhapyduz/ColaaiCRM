@@ -90,6 +90,21 @@ export function StorageIndicator() {
                             <FiRefreshCw className={cn(isSyncing && 'animate-spin')} />
                             {isSyncing ? 'Sincronizando...' : 'Sincronizar para Nuvem'}
                         </button>
+                        {hasPending && (
+                            <button
+                                onClick={async () => {
+                                    if (confirm(`Tem certeza que deseja descartar ${pendingCount} ações pendentes? Dados não sincronizados serão perdidos.`)) {
+                                        const { clearPendingActions } = await import('@/lib/db');
+                                        await clearPendingActions();
+                                        window.location.reload();
+                                    }
+                                }}
+                                className="w-full flex items-center justify-center gap-2 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium transition-all hover:bg-red-500/20 border border-red-500/20"
+                            >
+                                <FiAlertCircle className="text-sm" />
+                                Limpar Pendentes ({pendingCount})
+                            </button>
+                        )}
                     </div>
                 </div>
             )}

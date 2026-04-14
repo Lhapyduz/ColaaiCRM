@@ -3,7 +3,7 @@
  * Helper functions for managing local database sync state and recovery.
  */
 
-import { getDb } from './db';
+import { db } from './db';
 import { syncPendingActions, cacheDataForOffline } from './offlineSync';
 import { useStorageStore } from '@/stores/useStorageStore';
 
@@ -49,10 +49,10 @@ export async function forceSyncRefresh(userId: string) {
  */
 export async function sanitizePendingActions() {
     console.log('[SyncUtil] Sanitizing pending actions...');
-    const db = getDb();
+    const instance = db;
     
     try {
-        const pending = await db.pendingActions.toArray();
+        const pending = await instance.pendingActions.toArray();
         const invalidIds: string[] = [];
 
         for (const action of pending) {
@@ -64,11 +64,11 @@ export async function sanitizePendingActions() {
         }
 
         if (invalidIds.length > 0) {
-            await db.pendingActions.bulkDelete(invalidIds);
+            await instance.pendingActions.bulkDelete(invalidIds);
             console.log(`[SyncUtil] Removed ${invalidIds.length} invalid actions.`);
             
             // Re-calculate store count
-            const remaining = await db.pendingActions.count();
+            const remaining = await instance.pendingActions.count();
             useStorageStore.setState({ pendingChangesCount: remaining });
         } else {
             console.log('[SyncUtil] No invalid actions found.');
