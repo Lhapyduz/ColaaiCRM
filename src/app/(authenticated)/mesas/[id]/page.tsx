@@ -112,7 +112,7 @@ export default function MesaDetailsPage() {
 
     if (!mesa) {
         return (
-            <div className="max-w-[800px] mx-auto">
+            <div className="max-w-[1400px] mx-auto">
                 <div className="flex items-center gap-4 mb-6">
                     <button
                         className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-tertiary text-text-secondary hover:bg-primary hover:text-white transition-all cursor-pointer"
@@ -133,7 +133,7 @@ export default function MesaDetailsPage() {
 
     if (isMerged && activeSession) {
         return (
-            <div className="max-w-[800px] mx-auto p-4 md:p-6 animate-fadeIn">
+            <div className="max-w-[1400px] mx-auto p-4 md:p-6 animate-fadeIn">
                 <div className="flex items-center gap-4 mb-6">
                     <button
                         className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-tertiary text-text-secondary hover:bg-primary hover:text-white transition-all cursor-pointer"

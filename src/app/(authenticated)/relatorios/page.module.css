@@ -209,7 +209,7 @@
     margin-bottom: 24px;
 }
 
-.cardHeader h2 {
+.cardHeaderTitle {
     font-size: 1.125rem;
     font-weight: 600;
     display: flex;
@@ -293,11 +293,11 @@
     color: var(--text-muted);
 }
 
-.noData span {
+.noDataIcon {
     font-size: 3rem;
 }
 
-.noData p {
+.noDataText {
     font-size: 0.9rem;
 }
 
@@ -462,7 +462,7 @@
     margin-bottom: 16px;
 }
 
-.cardHeaderMini h3 {
+.cardHeaderTitleMini {
     font-size: 1rem;
     font-weight: 600;
     display: flex;
@@ -751,7 +751,7 @@
     font-size: 0.875rem;
 }
 
-.chartTooltip p {
+.chartTooltipText {
     margin: 4px 0;
     font-size: 0.8rem;
 }

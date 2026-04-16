@@ -114,8 +114,8 @@ export default function FuncionariosPage() {
     };
 
     return (
-        <div className="max-w-[1200px] mx-auto">
-            <div className="flex justify-between items-start mb-6 gap-5 max-md:flex-col">
+        <div className="max-w-[1400px] mx-auto">
+            <div className="flex justify-between items-start mb-8 gap-5 max-md:flex-col">
                 <div><h1 className="text-[2rem] font-bold mb-2">Funcionários</h1><p className="text-text-secondary">Gerencie sua equipe ({regularEmployees.length}/{getLimit('employees') === Infinity ? '∞' : getLimit('employees')}){fixedEmployees.length > 0 && <span className="opacity-70 ml-2">+ {fixedEmployees.length} fixo(s)</span>}</p></div>
                 <Button leftIcon={<FiPlus />} onClick={handleAddClick}>Novo Funcionário</Button>
             </div>

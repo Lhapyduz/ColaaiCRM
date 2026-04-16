@@ -613,7 +613,7 @@ export default function RelatoriosPage() {
                 <div className={styles.chartTooltip}>
                     <p className={styles.tooltipLabel}>{label}</p>
                     {payload.map((entry, index) => (
-                        <p key={index} style={{ color: entry.color }}>
+                        <p key={index} className={styles.chartTooltipText} style={{ color: entry.color }}>
                             {entry.name}: {entry.name.includes('receita') || entry.name === 'atual' ? formatCurrency(entry.value) : entry.value}
                         </p>
                     ))}
@@ -636,15 +636,15 @@ export default function RelatoriosPage() {
     }
 
     return (
-        <div className={styles.container}>
+        <div className="max-w-[1400px] mx-auto">
             {/* Header */}
-            <div className={styles.header}>
+            <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
                 <div>
-                    <h1 className={styles.title}>Relatórios</h1>
+                    <h1 className="text-[2rem] font-bold mb-2">Relatórios</h1>
                     <p className={styles.subtitle}>Análise detalhada do desempenho do seu negócio</p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className={styles.headerActions}>
                     {canAccess('exportPdf') && isClient && (
                         <Button leftIcon={<FiFileText />} onClick={handleExportCSV} variant="outline">
                             Exportar CSV
@@ -850,7 +850,7 @@ export default function RelatoriosPage() {
                     {/* Interactive Sales Chart */}
                     <Card className={styles.chartCard}>
                         <div className={styles.cardHeader}>
-                            <h2><FiBarChart2 /> Vendas por Dia</h2>
+                            <h2 className={styles.cardHeaderTitle}><FiBarChart2 /> Vendas por Dia</h2>
                             <div className={styles.chartLegend}>
                                 <span className={styles.legendItem}>
                                     <span className={styles.legendDot} style={{ background: '#ff6b35' }}></span>
@@ -913,8 +913,8 @@ export default function RelatoriosPage() {
                                 </ResponsiveContainer>
                             ) : (
                                 <div className={styles.noData}>
-                                    <span>📊</span>
-                                    <p>Nenhuma venda no período selecionado</p>
+                                    <span className={styles.noDataIcon}>📊</span>
+                                    <p className={styles.noDataText}>Nenhuma venda no período selecionado</p>
                                 </div>
                             )}
                         </div>
@@ -925,7 +925,7 @@ export default function RelatoriosPage() {
                         {/* Payment Methods Pie Chart */}
                         <Card className={styles.sectionCard}>
                             <div className={styles.cardHeader}>
-                                <h2><BsCash /> Formas de Pagamento</h2>
+                                <h2 className={styles.cardHeaderTitle}><BsCash /> Formas de Pagamento</h2>
                             </div>
                             <div className={styles.pieChartContainer}>
                                 {paymentData.length > 0 ? (
@@ -974,7 +974,7 @@ export default function RelatoriosPage() {
                         {/* Hourly Orders Bar Chart */}
                         <Card className={styles.sectionCard}>
                             <div className={styles.cardHeader}>
-                                <h2><FiClock /> Pedidos por Hora</h2>
+                                <h2 className={styles.cardHeaderTitle}><FiClock /> Pedidos por Hora</h2>
                             </div>
                             <div className={styles.chartContainer}>
                                 <ResponsiveContainer width="100%" height={250}>
@@ -1016,7 +1016,7 @@ export default function RelatoriosPage() {
                     {/* Top Products Bar Chart */}
                     <Card className={styles.chartCard}>
                         <div className={styles.cardHeader}>
-                            <h2><FiPackage /> Top 5 Produtos Mais Vendidos</h2>
+                            <h2 className={styles.cardHeaderTitle}><FiPackage /> Top 5 Produtos Mais Vendidos</h2>
                         </div>
                         <div className={styles.chartContainer}>
                             {topProductsData.length > 0 ? (
@@ -1060,8 +1060,8 @@ export default function RelatoriosPage() {
                                 </ResponsiveContainer>
                             ) : (
                                 <div className={styles.noData}>
-                                    <span>📦</span>
-                                    <p>Nenhum produto vendido no período</p>
+                                    <span className={styles.noDataIcon}>📦</span>
+                                    <p className={styles.noDataText}>Nenhum produto vendido no período</p>
                                 </div>
                             )}
                         </div>
@@ -1072,7 +1072,7 @@ export default function RelatoriosPage() {
                         {/* Categories */}
                         <Card className={styles.miniCard}>
                             <div className={styles.cardHeaderMini}>
-                                <h3><FiPieChart /> Categorias</h3>
+                                <h3 className={styles.cardHeaderTitleMini}><FiPieChart /> Categorias</h3>
                             </div>
                             <div className={styles.categoryGrid}>
                                 {stats.byCategory.length > 0 ? (
@@ -1101,7 +1101,7 @@ export default function RelatoriosPage() {
                         {/* Status Distribution */}
                         <Card className={styles.miniCard}>
                             <div className={styles.cardHeaderMini}>
-                                <h3><FiUsers /> Status dos Pedidos</h3>
+                                <h3 className={styles.cardHeaderTitleMini}><FiUsers /> Status dos Pedidos</h3>
                             </div>
                             <div className={styles.statusList}>
                                 {Object.entries(stats.byStatus).length > 0 ? (
@@ -1123,7 +1123,7 @@ export default function RelatoriosPage() {
                         {/* Peak Hours */}
                         <Card className={styles.miniCard}>
                             <div className={styles.cardHeaderMini}>
-                                <h3><FiClock /> Horários de Pico</h3>
+                                <h3 className={styles.cardHeaderTitleMini}><FiClock /> Horários de Pico</h3>
                             </div>
                             <div className={styles.peakList}>
                                 {getPeakHours().length > 0 ? (
@@ -1148,7 +1148,7 @@ export default function RelatoriosPage() {
                     {/* Period Comparison Summary */}
                     <Card className={styles.comparisonCard}>
                         <div className={styles.cardHeader}>
-                            <h2><FiActivity /> Comparativo de Períodos</h2>
+                            <h2 className={styles.cardHeaderTitle}><FiActivity /> Comparativo de Períodos</h2>
                         </div>
                         <div className={styles.comparisonGrid}>
                             <div className={styles.comparisonItem}>

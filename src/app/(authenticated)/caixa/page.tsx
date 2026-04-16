@@ -62,8 +62,8 @@ export default function CaixaPage() {
     const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
     return (
-        <div className="max-w-[900px] mx-auto">
-            <div className="flex items-start justify-between mb-4 gap-5 max-md:flex-col">
+        <div className="max-w-[1400px] mx-auto">
+            <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
                 <div>
                     <h1 className="text-[2rem] font-bold mb-2">Caixa</h1>
                     <p className="text-text-secondary">Resumo financeiro do dia</p>

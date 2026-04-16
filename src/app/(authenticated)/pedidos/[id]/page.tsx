@@ -67,13 +67,13 @@ export default function OrderDetailsPage() {
     const handlePrintCustomer = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printCustomerReceipt(order as any, appName); } finally { setPrinting(false); } };
     const handlePrintKitchen = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printKitchenTicket(order as any); } finally { setPrinting(false); } };
     
-    if (loading && !order) return <div className="max-w-[800px] mx-auto"><div className="h-[200px] bg-bg-tertiary rounded-xl animate-pulse mb-4" /><div className="h-[300px] bg-bg-tertiary rounded-xl animate-pulse" /></div>;
+    if (loading && !order) return <div className="max-w-[1400px] mx-auto"><div className="h-[200px] bg-bg-tertiary rounded-xl animate-pulse mb-4" /><div className="h-[300px] bg-bg-tertiary rounded-xl animate-pulse" /></div>;
     if (cacheError) return <div className="max-w-[800px] mx-auto p-8 text-center"><p className="text-error mb-4">Erro ao carregar pedido.</p><Button onClick={() => router.push('/pedidos')}>Voltar para Pedidos</Button></div>;
     if (!order) return <div className="max-w-[800px] mx-auto p-8 text-center"><p className="text-text-secondary mb-4">Pedido não encontrado.</p><Button onClick={() => router.push('/pedidos')}>Voltar para Pedidos</Button></div>;
 
     
     return (
-        <div className="max-w-[800px] mx-auto">
+        <div className="max-w-[1400px] mx-auto">
             {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
                     <button className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-tertiary text-text-secondary hover:bg-primary hover:text-white transition-all" onClick={() => router.back()}><FiArrowLeft size={20} /></button>

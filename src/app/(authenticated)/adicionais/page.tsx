@@ -135,7 +135,7 @@ export default function AdicionaisPage() {
     const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
-        <div className="max-w-[1200px] mx-auto">
+        <div className="max-w-[1400px] mx-auto">
             {/* Header */}
             <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
                 <div>

@@ -1,0 +1,45 @@
+{
+  "mcpServers": {
+    "supabase-mcp-server": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "YOUR_SUPABASE_TOKEN"
+      ],
+      "env": {}
+    },
+    "stripe": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@stripe/mcp",
+        "--tools=all",
+        "--api-key=YOUR_STRIPE_KEY"
+      ],
+      "env": {}
+    },
+    "cloudflare-observability": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://observability.mcp.cloudflare.com/mcp"
+      ]
+    },
+    "cloudflare-bindings": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://bindings.mcp.cloudflare.com/mcp"
+      ],
+      "disabled": true
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "chrome-devtools-mcp@latest"
+      ]
+    }
+  }
+}

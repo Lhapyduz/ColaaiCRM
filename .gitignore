@@ -71,6 +71,15 @@ ehthumbs.db
 app-path-routes-manifest.json
 
 # AI Agent and internal tools
-antigravity/
+antigravity/skills/
+antigravity/brain/
+antigravity/browser_recordings/
+antigravity/conversations/
+antigravity/context_state/
+antigravity/html_artifacts/
+antigravity/playground/
+antigravity/logs/
+antigravity/implicit/
+antigravity/knowledge/
 testsprite_tests/
 .temp_ag_kit/

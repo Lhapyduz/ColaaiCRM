@@ -77,9 +77,9 @@ export default function HistoricoPage() {
     const entityTypes: EntityType[] = ['order', 'product', 'category', 'customer', 'coupon', 'ingredient', 'reward', 'addon', 'settings', 'report'];
 
     return (
-        <div className="max-w-[1200px] mx-auto">
+        <div className="max-w-[1400px] mx-auto">
             {/* Header */}
-            <div className="flex justify-between items-start mb-6 gap-5 flex-wrap">
+            <div className="flex justify-between items-start mb-8 gap-5 flex-wrap">
                 <div className="w-full md:w-auto"><h1 className="text-[2rem] font-bold mb-2">Histórico de Ações</h1><p className="text-text-secondary">{totalCount} {totalCount === 1 ? 'registro encontrado' : 'registros encontrados'}</p></div>
                 <div className="flex w-full md:w-auto gap-2 flex-wrap">
                     <Button variant="outline" className="flex-1 md:flex-none" leftIcon={<FiRefreshCw />} onClick={() => refetch()}>Atualizar</Button>

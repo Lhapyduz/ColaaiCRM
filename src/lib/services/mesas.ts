@@ -223,7 +223,15 @@ export async function addSessionItem(
             throw itemError;
         }
 
-        await saveItem('mesa_session_items', newItem as unknown as CachedMesaSessionItem);
+        const mappedItem = {
+            ...newItem,
+            quantity: newItem.quantidade,
+            unit_price: newItem.preco_unitario,
+            total: newItem.preco_total,
+            notes: newItem.observacao,
+            status: null
+        };
+        await saveItem('mesa_session_items', mappedItem as unknown as CachedMesaSessionItem);
 
         // Após adicionar item, buscar sessão para atualizar o valor parcial
         const { data: sessionData, error: sessionFetchError } = await supabase
@@ -245,7 +253,15 @@ export async function addSessionItem(
 
         return newItem;
     } else {
-        await saveItem('mesa_session_items', itemToInsert as unknown as CachedMesaSessionItem);
+        const mappedLocal = {
+            ...itemToInsert,
+            quantity: itemToInsert.quantidade,
+            unit_price: itemToInsert.preco_unitario,
+            total: itemToInsert.preco_total,
+            notes: itemToInsert.observacao,
+            status: null
+        };
+        await saveItem('mesa_session_items', mappedLocal as unknown as CachedMesaSessionItem);
         await addPendingAction({ type: 'create', table: 'mesa_session_items', data: itemToInsert });
         
         const existingSession = await getItem<any>('mesa_sessions', sessionId);
@@ -689,14 +705,14 @@ export async function confirmarItensMesa(
     }
 
     // 2. Transcrever Itens para o Ticket
-    const orderItems = itemsToConfirm.map((item) => ({
+    const orderItems = itemsToConfirm.map((item: any) => ({
         order_id: newOrder.id,
         product_id: item.product_id,
-        product_name: item.product_name, // Obrigatório em order_items
-        quantity: item.quantidade,
-        unit_price: item.preco_unitario,
-        total: item.preco_total, // Era total_price (erro)
-        notes: item.observacao,
+        product_name: item.product_name,
+        quantity: item.quantity || item.quantidade,
+        unit_price: item.unit_price || item.preco_unitario,
+        total: item.total || item.preco_total,
+        notes: item.notes || item.observacao,
     }));
 
     const { error: itemsError } = await supabase
@@ -721,6 +737,12 @@ export async function confirmarItensMesa(
                 order_id: newOrder.id // Vincula o item ao ticket da cozinha
             })
             .eq('id', itemId);
+
+        // Atualiza cache local imediatamente para refletir na UI local-first
+        await db.mesa_session_items.update(itemId, {
+            enviado_cozinha: true,
+            order_id: newOrder.id
+        });
     }
 
     return newOrder;

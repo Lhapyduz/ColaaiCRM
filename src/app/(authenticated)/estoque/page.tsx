@@ -112,9 +112,9 @@ export default function EstoquePage() {
     }
 
     return (
-        <div className="max-w-[1200px] mx-auto">
+        <div className="max-w-[1400px] mx-auto">
             {/* Header */}
-            <div className="flex items-start justify-between mb-6 gap-5 max-md:flex-col">
+            <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
                 <div><h1 className="text-[2rem] font-bold mb-2">Estoque</h1><p className="text-text-secondary">Controle seus ingredientes e suprimentos</p></div>
                 <Button leftIcon={<FiPlus />} onClick={openAddModal}>Novo Ingrediente</Button>
             </div>

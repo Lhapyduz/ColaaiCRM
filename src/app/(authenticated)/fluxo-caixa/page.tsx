@@ -193,8 +193,8 @@ export default function FluxoCaixaPage() {
     };
 
     return (
-        <div className="max-w-[1200px] mx-auto">
-            <div className="flex justify-between items-start mb-6">
+        <div className="max-w-[1400px] mx-auto">
+            <div className="flex justify-between items-start mb-8">
                 <div>
                     <h1 className="text-[2rem] font-bold mb-2">Fluxo de Caixa</h1>
                     <p className="text-text-secondary">Acompanhe entradas e saídas</p>

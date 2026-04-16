@@ -33,7 +33,7 @@ export interface CachedOrderItem {
     unit_price: number;
     total: number;
     notes: string | null;
-    created_at: string | null;
+    created_at?: string | null;
     order_item_addons?: CachedOrderItemAddon[];
 }
 
@@ -44,7 +44,7 @@ export interface CachedOrderItemAddon {
     addon_name: string;
     addon_price: number;
     quantity: number;
-    created_at: string | null;
+    created_at?: string | null;
 }
 
 export interface CachedOrder {
@@ -187,6 +187,7 @@ export interface CachedMesaSessionItem {
     created_at: string | null;
     order_id?: string | null;
     enviado_cozinha?: boolean;
+    orders?: { status: string } | null;
 }
 
 export interface CachedLoyaltyReward {

@@ -197,7 +197,7 @@ export default function CategoriasPage() {
     };
 
     return (
-        <div className="max-w-[1000px] mx-auto overscroll-contain">
+        <div className="max-w-[1400px] mx-auto overscroll-contain">
             <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
                 <div>
                     <h1 className="text-[2rem] font-bold mb-2">Categorias</h1>

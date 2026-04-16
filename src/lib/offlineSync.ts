@@ -67,17 +67,17 @@ export async function cacheDataForOffline(userId: string, force = false): Promis
         // Cache recent orders (last 15 — reduced for egress optimization)
         const { data: orders } = await supabase
             .from('orders')
-            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at)')
+            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes)')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(15);
         if (orders) try { await saveAll('orders', orders); } catch(e) { console.warn('[Offline] cache orders failed:', e); }
 
         const [rCustomers, rMesas, rEmployees, rMesaSessions] = await Promise.all([
-            supabase.from('customers').select('id,user_id,name,email,phone,points,total_orders,total_spent,created_at').eq('user_id', userId).limit(500),
+            supabase.from('customers').select('id,user_id,name,email,phone,total_points,total_orders,total_spent,created_at').eq('user_id', userId).limit(500),
             supabase.from('mesas').select('id,user_id,numero_mesa,capacidade,ativa,created_at').eq('user_id', userId).eq('ativa', true),
-            supabase.from('employees').select('id,user_id,name,role,phone,email,pin_code,is_active,salary,hire_date,created_at,is_fixed').eq('user_id', userId).limit(100),
-            supabase.from('mesa_sessions').select('id,mesa_id,user_id,garcom_id,garcom,status,opened_at,closed_at,total,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final').eq('user_id', userId).is('closed_at', null),
+            supabase.from('employees').select('id,user_id,name,role,phone,email,pin_code,is_active,created_at,is_fixed').eq('user_id', userId).limit(100),
+            supabase.from('mesa_sessions').select('id,mesa_id,user_id,garcom,status,opened_at,closed_at,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final').eq('user_id', userId).is('closed_at', null),
         ]);
 
         if (rCustomers.data?.length) try { await saveAll('customers', rCustomers.data); } catch(e) { console.warn('[Offline] cache customers failed:', e); }
@@ -87,9 +87,19 @@ export async function cacheDataForOffline(userId: string, force = false): Promis
         if (rMesaSessions.data?.length) {
             try { await saveAll('mesa_sessions', rMesaSessions.data); } catch(e) { console.warn('[Offline] cache mesa_sessions failed:', e); }
             const sessionIds = rMesaSessions.data.map(s => s.id);
-            const rSessionItems = await supabase.from('mesa_session_items').select('id,session_id,product_id,product_name,quantity,unit_price,total,notes,status,created_at,order_id,enviado_cozinha').in('session_id', sessionIds);
+            const rSessionItems = await supabase.from('mesa_session_items')
+                .select('id,session_id,product_id,product_name,quantidade,preco_unitario,preco_total,observacao,created_at,order_id,enviado_cozinha')
+                .in('session_id', sessionIds);
             if (rSessionItems.data?.length) {
-                try { await saveAll('mesa_session_items', rSessionItems.data); } catch(e) { console.warn('[Offline] cache mesa_session_items failed:', e); }
+                const mappedItems = rSessionItems.data.map((item: any) => ({
+                    ...item,
+                    quantity: item.quantidade,
+                    unit_price: item.preco_unitario,
+                    total: item.preco_total,
+                    notes: item.observacao,
+                    status: null
+                }));
+                try { await saveAll('mesa_session_items', mappedItems); } catch(e) { console.warn('[Offline] cache mesa_session_items failed:', e); }
             }
         }
 
@@ -555,7 +565,7 @@ export async function getOrdersOfflineFirst(userId: string): Promise<CachedOrder
     if (isOnline()) {
         const { data, error } = await supabase
             .from('orders')
-            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at)')
+            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes)')
             .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(15);

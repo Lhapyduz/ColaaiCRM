@@ -233,8 +233,8 @@ export default function ContasPage() {
     };
 
     return (
-        <div className="max-w-[1200px] mx-auto">
-            <div className="flex justify-between items-start mb-6 max-md:flex-col max-md:gap-4">
+        <div className="max-w-[1400px] mx-auto">
+            <div className="flex justify-between items-start mb-8 gap-5 max-md:flex-col">
                 <div><h1 className="text-[2rem] font-bold mb-2">Contas a Pagar/Receber</h1><p className="text-text-secondary">Gerencie suas obrigações financeiras</p></div>
                 <Button leftIcon={<FiPlus />} onClick={() => { resetForm(); setShowModal(true); }}>Nova Conta</Button>
             </div>
@@ -377,7 +377,7 @@ export default function ContasPage() {
 
                         {/* Existing Categories */}
                         {categories.length > 0 && (
-                            <div className="mb-6">
+                            <div className="mb-8">
                                 <label className="block text-[0.8125rem] font-medium text-text-secondary mb-2">Categorias Existentes</label>
                                 <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto bg-bg-tertiary rounded-md p-2">
                                     {categories.map(cat => (

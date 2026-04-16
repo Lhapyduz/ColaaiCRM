@@ -13,9 +13,9 @@ export default function ClientesPage() {
     const [activeTab, setActiveTab] = useState<TabType>('crm');
 
     return (
-        <div className="max-w-[1200px] mx-auto p-6 max-md:p-4">
+        <div className="max-w-[1400px] mx-auto">
             {/* Header unificado */}
-            <div className="mb-6">
+            <div className="mb-8">
                 <h1 className="text-[2rem] font-bold mb-2">Clientes & Engajamento</h1>
                 <p className="text-text-secondary">
                     Gerencie a base de clientes, histórico de pedidos, fidelidade e cupons.

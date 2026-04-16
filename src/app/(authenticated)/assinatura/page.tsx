@@ -99,7 +99,7 @@ const AssinaturaPage = () => {
     };
 
     return (
-        <div className="max-w-[1200px] mx-auto">
+        <div className="max-w-[1400px] mx-auto">
             <div className="text-center mb-8"><h1 className="text-[2rem] font-bold mb-2">Planos e Assinatura</h1><p className="text-text-secondary">Escolha o plano ideal para o seu negócio crescer</p></div>
 
             {subscription && (

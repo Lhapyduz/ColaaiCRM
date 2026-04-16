@@ -253,7 +253,7 @@ export async function fetchOrders(userId: string, options: { limit?: number; dat
     if (getMode() === 'cloud') {
         let query = supabase
             .from('orders')
-            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,discount_amount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity))')
+            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,discount_amount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity))')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
@@ -422,7 +422,7 @@ export async function fetchOrderById(id: string): Promise<any> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('orders')
-            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,created_at,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity))')
+            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity))')
             .eq('id', id)
             .single();
 
@@ -675,12 +675,24 @@ export async function fetchMesaById(id: string): Promise<any> {
         if (mesaError) throw mesaError;
         await saveItem('mesas', mesa);
 
-        const { data: sessions } = await supabase.from('mesa_sessions').select('id,mesa_id,user_id,garcom_id,garcom,status,opened_at,closed_at,total,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final').eq('mesa_id', id).eq('status', 'open');
+        const { data: sessions } = await supabase.from('mesa_sessions').select('id,mesa_id,user_id,garcom,status,opened_at,closed_at,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final').eq('mesa_id', id).is('closed_at', null);
         if (sessions && sessions.length > 0) {
             await saveAll('mesa_sessions', sessions);
             const sessionIds = sessions.map(s => s.id);
-            const { data: items } = await supabase.from('mesa_session_items').select('id,session_id,product_id,product_name,quantity,unit_price,total,notes,status,created_at,order_id,enviado_cozinha').in('session_id', sessionIds);
-            if (items) await saveAll('mesa_session_items', items);
+            const { data: items } = await supabase.from('mesa_session_items')
+                .select('id,session_id,product_id,product_name,quantidade,preco_unitario,preco_total,observacao,created_at,order_id,enviado_cozinha')
+                .in('session_id', sessionIds);
+            if (items) {
+                const mappedItems = items.map((item: any) => ({
+                    ...item,
+                    quantity: item.quantidade,
+                    unit_price: item.preco_unitario,
+                    total: item.preco_total,
+                    notes: item.observacao,
+                    orders: item.orders
+                }));
+                await saveAll('mesa_session_items', mappedItems);
+            }
         }
         return mesa;
     }
@@ -691,7 +703,7 @@ export async function fetchMesaSessions(userId: string): Promise<any[]> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('mesa_sessions')
-            .select('id,mesa_id,user_id,garcom_id,garcom,status,opened_at,closed_at,total,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final')
+            .select('id,mesa_id,user_id,garcom,status,opened_at,closed_at,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final')
             .eq('user_id', userId)
             .is('closed_at', null);
 
@@ -707,12 +719,20 @@ export async function fetchMesaSessionItems(userId: string): Promise<any[]> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('mesa_session_items')
-            .select('id,session_id,product_id,product_name,quantity,unit_price,total,notes,status,created_at,order_id,enviado_cozinha, mesa_sessions!inner(user_id)')
+            .select('id,session_id,product_id,product_name,quantidade,preco_unitario,preco_total,observacao,created_at,order_id,enviado_cozinha, mesa_sessions!inner(user_id)')
             .eq('mesa_sessions.user_id', userId);
 
         if (!error && data) {
-            await saveAll('mesa_session_items', data);
-            return data;
+            const mappedItems = data.map((item: any) => ({
+                ...item,
+                quantity: item.quantidade,
+                unit_price: item.preco_unitario,
+                total: item.preco_total,
+                notes: item.observacao,
+                status: null
+            }));
+            await saveAll('mesa_session_items', mappedItems);
+            return mappedItems;
         }
     }
     return getAll('mesa_session_items');
@@ -824,7 +844,7 @@ export async function fetchEmployeesCached(userId: string): Promise<CachedEmploy
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('employees')
-            .select('id,user_id,name,role,phone,email,pin_code,is_active,salary,hire_date,created_at,is_fixed,permissions,hourly_rate,salario_fixo')
+            .select('id,user_id,name,role,phone,email,pin_code,is_active,created_at,is_fixed,permissions,hourly_rate,salario_fixo')
             .eq('user_id', userId)
             .limit(100);
 

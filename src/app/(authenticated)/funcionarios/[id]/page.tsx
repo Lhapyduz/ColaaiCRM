@@ -81,7 +81,7 @@ export default function EmployeeProfile({ params }: { params: Promise<{ id: stri
     const comissoesAcumuladas = metrics?.monthlyTotal || 320.00;
 
     return (
-        <div className="w-full max-w-6xl mx-auto p-6 space-y-6 text-sm">
+        <div className="w-full max-w-[1400px] mx-auto space-y-6 text-sm">
             {/* Header */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-2">
                 <div className="flex items-center gap-4">

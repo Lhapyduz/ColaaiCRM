@@ -426,9 +426,9 @@ export default function ProdutosPage() {
     };
 
     return (
-        <div className="max-w-[1200px] mx-auto overscroll-contain">
+        <div className="max-w-[1400px] mx-auto overscroll-contain">
             {/* Header */}
-            <div className="flex items-start justify-between mb-6 gap-5 max-md:flex-col">
+            <div className="flex items-start justify-between mb-8 gap-5 max-md:flex-col">
                 <div>
                     <h1 className="text-[2rem] font-bold mb-2">Produtos</h1>
                     <p className="text-text-secondary">Gerencie seu cardápio (arraste para reordenar)</p>

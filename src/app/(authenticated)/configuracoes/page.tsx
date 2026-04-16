@@ -321,16 +321,16 @@ function ConfiguracoesContent() {
         switch (activeTab) {
             case 'geral':
                 return (
-                    <div className={styles.tabContent}>
-                        <div className={styles.sectionHeader}><h2>Informações do Negócio</h2><p>Configure as informações básicas do seu estabelecimento</p></div>
-                        <div className={styles.formGrid}>
-                            <div className={styles.formGroup}><label>Nome do Negócio</label><Input value={appName} onChange={(e) => { setAppName(e.target.value); previewSettings({ app_name: e.target.value }); }} placeholder="Nome do seu negócio" /><span className={styles.hint}>Este nome aparece no topo da sidebar</span></div>
-                            <div className={styles.formGroup}><label>Slogan da Loja</label><Input value={slogan} onChange={(e) => { setSlogan(e.target.value); previewSettings({ slogan: e.target.value }); }} placeholder="A melhor experiência gastronômica, entregue na sua porta." /><span className={styles.hint}>Aparece logo abaixo do nome no cardápio online</span></div>
-                            <div className={styles.formGroup}><label><FaWhatsapp style={{ marginRight: '8px', color: '#25D366' }} />WhatsApp</label><Input value={formatWhatsApp(whatsappNumber)} onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))} placeholder="(11) 99999-9999" maxLength={16} /><span className={styles.hint}>Usado para receber pedidos via WhatsApp</span></div>
+                    <div className="p-6 sm:p-8">
+                        <div className="mb-7 pb-5 border-b border-border"><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Informações do Negócio</h2><p className="text-sm text-text-muted">Configure as informações básicas do seu estabelecimento</p></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Nome do Negócio</label><Input value={appName} onChange={(e) => { setAppName(e.target.value); previewSettings({ app_name: e.target.value }); }} placeholder="Nome do seu negócio" /><span className="block text-[13px] text-text-muted mt-2">Este nome aparece no topo da sidebar</span></div>
+                            <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Slogan da Loja</label><Input value={slogan} onChange={(e) => { setSlogan(e.target.value); previewSettings({ slogan: e.target.value }); }} placeholder="A melhor experiência gastronômica, entregue na sua porta." /><span className="block text-[13px] text-text-muted mt-2">Aparece logo abaixo do nome no cardápio online</span></div>
+                            <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5"><FaWhatsapp style={{ marginRight: '8px', color: '#25D366' }} />WhatsApp</label><Input value={formatWhatsApp(whatsappNumber)} onChange={(e) => setWhatsappNumber(e.target.value.replace(/\D/g, ''))} placeholder="(11) 99999-9999" maxLength={16} /><span className="block text-[13px] text-text-muted mt-2">Usado para receber pedidos via WhatsApp</span></div>
                         </div>
-                        <div className={styles.formGroup}><label>Logo do Negócio</label><div className={styles.logoUpload}><div className={styles.currentLogo}>{userSettings?.logo_url ? <div className="relative w-full h-full"><Image src={userSettings.logo_url} alt="Logo" fill className="object-contain" sizes="100px" /></div> : <span className={styles.logoEmoji}>🌭</span>}</div><div className={styles.logoActions}><input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} hidden /><Button variant="outline" leftIcon={<FiUpload />} onClick={() => fileInputRef.current?.click()} isLoading={uploading}>{userSettings?.logo_url ? 'Trocar' : 'Carregar'}</Button>{userSettings?.logo_url && <Button variant="danger" leftIcon={<FiTrash2 />} onClick={handleRemoveLogo}>Remover</Button>}</div></div></div>
+                        <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Logo do Negócio</label><div className="flex flex-col md:flex-row items-start md:items-center gap-5"><div className="w-20 h-20 rounded-xl bg-bg-tertiary border-2 border-border flex items-center justify-center overflow-hidden shrink-0">{userSettings?.logo_url ? <div className="relative w-full h-full"><Image src={userSettings.logo_url} alt="Logo" fill className="object-contain" sizes="100px" /></div> : <span className="text-5xl">🌭</span>}</div><div className="flex gap-3"><input ref={fileInputRef} type="file" accept="image/*" onChange={handleLogoUpload} hidden /><Button variant="outline" leftIcon={<FiUpload />} onClick={() => fileInputRef.current?.click()} isLoading={uploading}>{userSettings?.logo_url ? 'Trocar' : 'Carregar'}</Button>{userSettings?.logo_url && <Button variant="danger" leftIcon={<FiTrash2 />} onClick={handleRemoveLogo}>Remover</Button>}</div></div></div>
 
-                        <div className={styles.sectionHeader} style={{ marginTop: '2rem' }}><h2>Taxa de Serviço (Mesas)</h2><p>Configure a taxa de serviço cobrada nos pedidos de Mesas</p></div>
+                        <div className="mb-7 pb-5 border-b border-border" style={{ marginTop: '2rem' }}><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Taxa de Serviço (Mesas)</h2><p className="text-sm text-text-muted">Configure a taxa de serviço cobrada nos pedidos de Mesas</p></div>
                         <div className="bg-bg-tertiary border border-border p-4 rounded-xl flex flex-col gap-6 shadow-sm">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -365,9 +365,9 @@ function ConfiguracoesContent() {
                             )}
                         </div>
 
-                        <div className={styles.sectionHeader} style={{ marginTop: '2rem' }}><h2>Notificações</h2><p>Gerencie os alertas e avisos do sistema</p></div>
-                        <div className={styles.formGroup}>
-                            <label>Notificações Push no Computador/Celular</label>
+                        <div className="mb-7 pb-5 border-b border-border" style={{ marginTop: '2rem' }}><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Notificações</h2><p className="text-sm text-text-muted">Gerencie os alertas e avisos do sistema</p></div>
+                        <div className="mb-6">
+                            <label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Notificações Push no Computador/Celular</label>
                             <div className="bg-bg-tertiary border border-border p-4 rounded-xl flex flex-col items-start gap-4">
                                 <p className="text-sm text-text-secondary m-0">Ative para receber avisos em tempo real e com som sempre que um novo pedido chegar.</p>
                                 <div className="w-full sm:w-auto">
@@ -376,21 +376,21 @@ function ConfiguracoesContent() {
                             </div>
                         </div>
 
-                        <div className={styles.saveSection}><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={handleSave} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Alterações'}</Button></div>
+                        <div className="pt-6 border-t border-border mt-2"><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={handleSave} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Alterações'}</Button></div>
                     </div>
                 );
             case 'aparencia':
                 return (
-                    <div className={styles.tabContent}>
-                        <div className={styles.sectionHeader}><h2>Personalização Visual</h2><p>Customize as cores do seu aplicativo</p></div>
-                        <div className={styles.formGroup}><label>Temas Prontos</label><div className={styles.colorPresets}>{colorPresets.map((preset) => (<button key={preset.name} className={`${styles.presetBtn} ${primaryColor === preset.primary ? styles.active : ''}`} onClick={() => applyPreset(preset)} title={preset.name}><span className={styles.presetColor} style={{ background: preset.primary }} /><span className={styles.presetName}>{preset.name}</span></button>))}</div></div>
-                        <div className={styles.formGroup}><label>Cores Personalizadas</label><div className={styles.customColors}>
-                            <div className={styles.colorPicker}><span>Cor Principal</span><div className={styles.colorInput}><input type="color" value={primaryColor} onChange={(e) => { setPrimaryColor(e.target.value); previewSettings({ primary_color: e.target.value }); }} /><span>{primaryColor}</span></div></div>
-                            <div className={styles.colorPicker}><span>Cor Secundária</span><div className={styles.colorInput}><input type="color" value={secondaryColor} onChange={(e) => { setSecondaryColor(e.target.value); previewSettings({ secondary_color: e.target.value }); }} /><span>{secondaryColor}</span></div></div>
-                            <div className={styles.colorPicker}><span>Cor da Sidebar</span><div className={styles.colorInput}><input type="color" value={sidebarColor} onChange={(e) => { setSidebarColor(e.target.value); previewSettings({ sidebar_color: e.target.value }); }} /><span>{sidebarColor}</span></div></div>
+                    <div className="p-6 sm:p-8">
+                        <div className="mb-7 pb-5 border-b border-border"><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Personalização Visual</h2><p className="text-sm text-text-muted">Customize as cores do seu aplicativo</p></div>
+                        <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Temas Prontos</label><div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">{colorPresets.map((preset) => (<button key={preset.name} className={`flex items-center gap-2.5 px-3 py-3 bg-bg-tertiary border-2 border-border rounded-md cursor-pointer transition-all hover:border-border-light group ${primaryColor === preset.primary ? "!border-primary !bg-primary/10" : ""}`} onClick={() => applyPreset(preset)} title={preset.name}><span className="w-6 h-6 rounded-full shrink-0" style={{ background: preset.primary }} /><span className={`text-sm ${primaryColor === preset.primary ? "text-text-primary" : "text-text-secondary"}`}>{preset.name}</span></button>))}</div></div>
+                        <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Cores Personalizadas</label><div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="flex flex-col"><span className="block text-[13px] text-text-muted mb-2">Cor Principal</span><div className="flex items-center gap-3 px-3.5 py-2.5 bg-bg-tertiary border border-border rounded-md"><input type="color" value={primaryColor} onChange={(e) => { setPrimaryColor(e.target.value); previewSettings({ primary_color: e.target.value }); }} /><span className="font-mono text-sm text-text-secondary uppercase">{primaryColor}</span></div></div>
+                            <div className="flex flex-col"><span className="block text-[13px] text-text-muted mb-2">Cor Secundária</span><div className="flex items-center gap-3 px-3.5 py-2.5 bg-bg-tertiary border border-border rounded-md"><input type="color" value={secondaryColor} onChange={(e) => { setSecondaryColor(e.target.value); previewSettings({ secondary_color: e.target.value }); }} /><span className="font-mono text-sm text-text-secondary uppercase">{secondaryColor}</span></div></div>
+                            <div className="flex flex-col"><span className="block text-[13px] text-text-muted mb-2">Cor da Sidebar</span><div className="flex items-center gap-3 px-3.5 py-2.5 bg-bg-tertiary border border-border rounded-md"><input type="color" value={sidebarColor} onChange={(e) => { setSidebarColor(e.target.value); previewSettings({ sidebar_color: e.target.value }); }} /><span className="font-mono text-sm text-text-secondary uppercase">{sidebarColor}</span></div></div>
                         </div></div>
-                        <div className={styles.formGroup}><label>Prévia</label><div className={styles.preview}><div className={styles.previewSidebar} style={{ background: sidebarColor }}><div className={styles.previewLogo} style={{ background: `${primaryColor}20` }}>{userSettings?.logo_url ? <div className="relative w-full h-full"><Image src={userSettings.logo_url} alt="" fill className="object-contain" sizes="40px" /></div> : <span>🌭</span>}</div><div className={styles.previewName} style={{ color: primaryColor }}>{appName}</div></div><div className={styles.previewContent}><div className={styles.previewButton} style={{ background: primaryColor }}>Exemplo de Botão</div></div></div></div>
-                        <div className={styles.saveSection}><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={handleSave} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Alterações'}</Button></div>
+                        <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Prévia</label><div className="flex bg-bg-primary border border-border rounded-xl overflow-hidden h-40"><div className="w-20 p-4 flex flex-col items-center gap-2" style={{ background: sidebarColor }}><div className="w-12 h-12 rounded-md flex items-center justify-center overflow-hidden" style={{ background: `${primaryColor}20` }}>{userSettings?.logo_url ? <div className="relative w-full h-full"><Image src={userSettings.logo_url} alt="" fill className="object-contain" sizes="40px" /></div> : <span>🌭</span>}</div><div className="text-[10px] font-bold text-center" style={{ color: primaryColor }}>{appName}</div></div><div className="flex-1 p-6 flex items-center justify-center"><div className="px-6 py-3 rounded-md text-white font-medium text-sm" style={{ background: primaryColor }}>Exemplo de Botão</div></div></div></div>
+                        <div className="pt-6 border-t border-border mt-2"><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={handleSave} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Alterações'}</Button></div>
                     </div>
                 );
             case 'cardapio':
@@ -402,11 +402,11 @@ function ConfiguracoesContent() {
                         </div>
 
                         {!canAccess('digitalMenu') ? (
-                            <div className={styles.blockedFeature}>
-                                <FiLock className={styles.blockedIcon} />
-                                <h3>Recurso não disponível no seu plano</h3>
-                                <p>O Cardápio Online está disponível nos planos Avançado e Profissional.</p>
-                                <a href="/assinatura" className={styles.upgradeLink}>Fazer Upgrade</a>
+                            <div className="flex flex-col items-center justify-center text-center py-16 px-6 bg-bg-tertiary rounded-xl border-2 border-dashed border-border">
+                                <FiLock className="text-5xl text-text-muted mb-4" />
+                                <h3 className="text-lg font-semibold text-text-primary mt-4 mb-2">Recurso não disponível no seu plano</h3>
+                                <p className="text-sm text-text-muted">O Cardápio Online está disponível nos planos Avançado e Profissional.</p>
+                                <a href="/assinatura" className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white font-semibold text-[15px] rounded-md transition-all hover:bg-primary-dark hover:-translate-y-0.5">Fazer Upgrade</a>
                             </div>
                         ) : (
                             <>
@@ -623,34 +623,34 @@ function ConfiguracoesContent() {
                 );
             case 'pagamento':
                 return (
-                    <div className={styles.tabContent}>
-                        <div className={styles.sectionHeader}><h2>Pagamento PIX</h2><p>Configure sua chave PIX para receber pagamentos</p></div>
-                        <div className={styles.formGroup}><label>Tipo de Chave PIX</label><div className={styles.pixKeyTypes}>{[{ value: 'cpf', label: 'CPF' }, { value: 'cnpj', label: 'CNPJ' }, { value: 'email', label: 'E-mail' }, { value: 'phone', label: 'Telefone' }, { value: 'random', label: 'Aleatória' }].map((type) => (<button key={type.value} className={`${styles.keyTypeBtn} ${pixKeyType === type.value ? styles.active : ''}`} onClick={() => setPixKeyType(type.value as typeof pixKeyType)} type="button">{type.label}</button>))}</div></div>
-                        <div className={styles.formGrid}><div className={styles.formGroup}><label>Chave PIX</label><Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder={pixKeyType === 'cpf' ? '000.000.000-00' : pixKeyType === 'cnpj' ? '00.000.000/0000-00' : pixKeyType === 'email' ? 'email@exemplo.com' : pixKeyType === 'phone' ? '+5511999999999' : 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'} /><span className={styles.hint}>Esta chave será usada para gerar QR Codes PIX nos pedidos</span></div><div className={styles.formGroup}><label>Cidade do Estabelecimento</label><Input value={merchantCity} onChange={(e) => setMerchantCity(e.target.value)} placeholder="São Paulo" maxLength={15} /><span className={styles.hint}>Cidade que aparecerá no comprovante PIX (máx. 15 caracteres)</span></div></div>
-                        <div className={styles.saveSection}><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={handleSave} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Alterações'}</Button></div>
+                    <div className="p-6 sm:p-8">
+                        <div className="mb-7 pb-5 border-b border-border"><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Pagamento PIX</h2><p className="text-sm text-text-muted">Configure sua chave PIX para receber pagamentos</p></div>
+                        <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Tipo de Chave PIX</label><div className="flex flex-wrap gap-2 text-sm">{[{ value: 'cpf', label: 'CPF' }, { value: 'cnpj', label: 'CNPJ' }, { value: 'email', label: 'E-mail' }, { value: 'phone', label: 'Telefone' }, { value: 'random', label: 'Aleatória' }].map((type) => (<button key={type.value} className={`px-4 py-3 bg-bg-tertiary border-2 border-border rounded-md text-text-secondary font-medium cursor-pointer transition-all hover:border-border-light hover:text-text-primary ${pixKeyType === type.value ? "!border-[#32BCAD] !bg-[#32BCAD]/10 !text-[#32BCAD]" : ""}`} onClick={() => setPixKeyType(type.value as typeof pixKeyType)} type="button">{type.label}</button>))}</div></div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"><div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Chave PIX</label><Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder={pixKeyType === 'cpf' ? '000.000.000-00' : pixKeyType === 'cnpj' ? '00.000.000/0000-00' : pixKeyType === 'email' ? 'email@exemplo.com' : pixKeyType === 'phone' ? '+5511999999999' : 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'} /><span className="block text-[13px] text-text-muted mt-2">Esta chave será usada para gerar QR Codes PIX nos pedidos</span></div><div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Cidade do Estabelecimento</label><Input value={merchantCity} onChange={(e) => setMerchantCity(e.target.value)} placeholder="São Paulo" maxLength={15} /><span className="block text-[13px] text-text-muted mt-2">Cidade que aparecerá no comprovante PIX (máx. 15 caracteres)</span></div></div>
+                        <div className="pt-6 border-t border-border mt-2"><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={handleSave} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Alterações'}</Button></div>
                     </div>
                 );
             case 'menu':
                 return (
-                    <div className={styles.tabContent}>
-                        <div className={styles.sectionHeader}><h2>Visibilidade do Menu</h2><p>Escolha quais itens aparecem no menu lateral</p></div>
-                        <div className={styles.menuActions}><Button variant="outline" onClick={hideUnavailableFeatures} leftIcon={<FiEyeOff />}>Ocultar Itens Fora do Plano</Button><Button variant="outline" onClick={() => setHiddenSidebarItems([])} leftIcon={<FiEye />}>Mostrar Todos</Button></div>
-                        <div className={styles.sidebarItemsGrid}>{SIDEBAR_MENU_ITEMS.map((item) => { const isHidden = hiddenSidebarItems.includes(item.href); const isAvailable = canAccess(item.feature); return (<label key={item.href} className={`${styles.sidebarItemOption} ${isHidden ? styles.hidden : ''} ${!isAvailable ? styles.unavailable : ''}`}><input type="checkbox" checked={!isHidden} onChange={() => toggleSidebarItem(item.href)} /><span className={styles.sidebarItemLabel}>{isHidden ? <FiEyeOff size={14} /> : <FiEye size={14} />}{item.label}</span>{!isAvailable && (<span className={styles.planBadge}><FiLock size={10} /> Upgrade</span>)}</label>); })}</div>
-                        <div className={styles.saveSection}><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={saveSidebarVisibility} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Visibilidade'}</Button></div>
+                    <div className="p-6 sm:p-8">
+                        <div className="mb-7 pb-5 border-b border-border"><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Visibilidade do Menu</h2><p className="text-sm text-text-muted">Escolha quais itens aparecem no menu lateral</p></div>
+                        <div className="flex flex-col md:flex-row gap-3 mb-6"><Button variant="outline" onClick={hideUnavailableFeatures} leftIcon={<FiEyeOff />}>Ocultar Itens Fora do Plano</Button><Button variant="outline" onClick={() => setHiddenSidebarItems([])} leftIcon={<FiEye />}>Mostrar Todos</Button></div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 mb-6">{SIDEBAR_MENU_ITEMS.map((item) => { const isHidden = hiddenSidebarItems.includes(item.href); const isAvailable = canAccess(item.feature); return (<label key={item.href} className={`flex items-center gap-2.5 px-3.5 py-3 bg-bg-tertiary border-2 border-border rounded-md cursor-pointer transition-all text-sm hover:border-border-light ${isHidden ? "opacity-60 bg-bg-secondary" : ""} ${!isAvailable ? "border-dashed" : ""}`}><input type="checkbox" checked={!isHidden} onChange={() => toggleSidebarItem(item.href)} /><span className={`flex items-center gap-1.5 flex-1 ${isHidden ? "text-text-muted" : "text-text-primary"}`}>{isHidden ? <FiEyeOff size={14} /> : <FiEye size={14} />}{item.label}</span>{!isAvailable && (<span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 bg-yellow-500/15 text-yellow-500 rounded font-semibold whitespace-nowrap"><FiLock size={10} /> Upgrade</span>)}</label>); })}</div>
+                        <div className="pt-6 border-t border-border mt-2"><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={saveSidebarVisibility} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Visibilidade'}</Button></div>
                     </div>
                 );
             case 'avaliacoes':
                 const ratings = ratingTab === 'store' ? storeRatings : productRatings;
                 return (
-                    <div className={styles.tabContent}>
-                        <div className={styles.sectionHeader}><h2>Avaliações</h2><p>Gerencie as avaliações recebidas</p></div>
+                    <div className="p-6 sm:p-8">
+                        <div className="mb-7 pb-5 border-b border-border"><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Avaliações</h2><p className="text-sm text-text-muted">Gerencie as avaliações recebidas</p></div>
                         <div className="flex gap-4 mb-6">
                             <button onClick={() => setRatingTab('store')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${ratingTab === 'store' ? 'bg-primary text-white' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}>Loja ({storeRatings.length})</button>
                             <button onClick={() => setRatingTab('product')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${ratingTab === 'product' ? 'bg-primary text-white' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'}`}>Produtos ({productRatings.length})</button>
                         </div>
                         <div className="space-y-4">
                             {ratings.length === 0 ? (
-                                <div className="text-center py-12 text-text-muted"><FiStar size={48} className="mx-auto mb-4 opacity-50" /><p>Nenhuma avaliação recebida ainda.</p></div>
+                                <div className="text-center py-12 text-text-muted"><FiStar size={48} className="mx-auto mb-4 opacity-50" /><p className="text-sm text-text-muted">Nenhuma avaliação recebida ainda.</p></div>
                             ) : (
                                 ratings.map((rating) => (
                                     <div key={rating.id} className="bg-bg-card border border-white/5 rounded-xl p-5 shadow-sm">
@@ -701,23 +701,23 @@ function ConfiguracoesContent() {
                 const accessLinks = [{ id: 'cozinha', title: 'Cozinha', icon: '👨‍🍳', description: 'Funcionários da cozinha podem visualizar e gerenciar pedidos pendentes', url: accessToken ? `${baseUrl}/acesso/${accessToken}/cozinha` : null }, { id: 'entregas', title: 'Entregas', icon: '🚚', description: 'Entregadores podem visualizar pedidos prontos para entrega', url: accessToken ? `${baseUrl}/acesso/${accessToken}/entregas` : null }];
                 const copyAccessLink = (url: string, id: string) => { navigator.clipboard.writeText(url); setCopiedLink(id); setTimeout(() => setCopiedLink(null), 2000); };
                 return (
-                    <div className={styles.tabContent}>
-                        <div className={styles.sectionHeader}><h2>Links de Acesso</h2><p>Compartilhe links com funcionários para acessar páginas específicas com PIN</p></div>
-                        {!accessToken ? (<div className={styles.blockedFeature}><FiLink className={styles.blockedIcon} /><h3>Carregando...</h3><p>Aguarde enquanto geramos seus links de acesso</p></div>) : (<div className={styles.accessLinksGrid}>{accessLinks.map((link) => (<div key={link.id} className={styles.accessLinkCard}><div className={styles.accessLinkHeader}><span className={styles.accessLinkIcon}>{link.icon}</span><h3>{link.title}</h3></div><p className={styles.accessLinkDesc}>{link.description}</p>{link.url && (<><div className={styles.accessLinkUrl}><code>{link.url}</code></div><div className={styles.accessLinkActions}><Button variant="outline" size="sm" leftIcon={copiedLink === link.id ? <FiCheck /> : <FiCopy />} onClick={() => copyAccessLink(link.url!, link.id)}>{copiedLink === link.id ? 'Copiado!' : 'Copiar Link'}</Button><Button variant="outline" size="sm" leftIcon={<FiLink />} onClick={() => window.open(link.url!, '_blank')}>Abrir</Button></div></>)}</div>))}</div>)}
-                        <div className={styles.formGroup} style={{ marginTop: '24px' }}><div className={styles.hint}><strong>Como funciona:</strong><br />1. Copie o link desejado<br />2. Envie para o funcionário (WhatsApp, etc)<br />3. Funcionário acessa e digita seu PIN de 4 dígitos<br />4. Funcionário terá acesso apenas à página específica</div></div>
+                    <div className="p-6 sm:p-8">
+                        <div className="mb-7 pb-5 border-b border-border"><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Links de Acesso</h2><p className="text-sm text-text-muted">Compartilhe links com funcionários para acessar páginas específicas com PIN</p></div>
+                        {!accessToken ? (<div className="flex flex-col items-center justify-center text-center py-16 px-6 bg-bg-tertiary rounded-xl border-2 border-dashed border-border"><FiLink className="text-5xl text-text-muted mb-4" /><h3 className="text-lg font-semibold text-text-primary mt-4 mb-2">Carregando...</h3><p className="text-sm text-text-muted">Aguarde enquanto geramos seus links de acesso</p></div>) : (<div className="grid grid-cols-1 md:grid-cols-2 gap-5">{accessLinks.map((link) => (<div key={link.id} className="p-6 bg-bg-tertiary rounded-xl border border-border"><div className="flex items-center gap-3 mb-3"><span className="text-3xl">{link.icon}</span><h3 className="text-lg font-semibold text-text-primary m-0">{link.title}</h3></div><p className="text-sm text-text-secondary mb-4 leading-relaxed">{link.description}</p>{link.url && (<><div className="p-3 bg-bg-secondary rounded-md mb-4 overflow-x-auto"><code className="text-xs text-text-muted break-all">{link.url}</code></div><div className="flex gap-2"><Button variant="outline" size="sm" leftIcon={copiedLink === link.id ? <FiCheck /> : <FiCopy />} onClick={() => copyAccessLink(link.url!, link.id)}>{copiedLink === link.id ? 'Copiado!' : 'Copiar Link'}</Button><Button variant="outline" size="sm" leftIcon={<FiLink />} onClick={() => window.open(link.url!, '_blank')}>Abrir</Button></div></>)}</div>))}</div>)}
+                        <div className="mb-6" style={{ marginTop: '24px' }}><div className="block text-[13px] text-text-muted mt-2"><strong>Como funciona:</strong><br />1. Copie o link desejado<br />2. Envie para o funcionário (WhatsApp, etc)<br />3. Funcionário acessa e digita seu PIN de 4 dígitos<br />4. Funcionário terá acesso apenas à página específica</div></div>
                     </div>
                 );
             case 'conta':
                 return (
-                    <div className={styles.tabContent}>
-                        <div className={styles.sectionHeader}><h2>Minha Conta</h2><p>Informações da sua conta</p></div>
-                        <div className={styles.accountInfo}><div className={styles.infoRow}><span className={styles.infoLabel}>Email</span><span className={styles.infoValue}>{user?.email}</span></div><div className={styles.infoRow}><span className={styles.infoLabel}>Membro desde</span><span className={styles.infoValue}>{user?.created_at && new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(user.created_at))}</span></div></div>
-                        <div className={styles.dangerZone}><h3>Sair da Conta</h3><p>Você será desconectado do sistema</p><Button variant="danger" onClick={signOut}>Sair</Button></div>
+                    <div className="p-6 sm:p-8">
+                        <div className="mb-7 pb-5 border-b border-border"><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Minha Conta</h2><p className="text-sm text-text-muted">Informações da sua conta</p></div>
+                        <div className="flex flex-col mb-8 bg-bg-tertiary rounded-md overflow-hidden"><div className="flex justify-between p-4 md:px-5 border-b border-border last:border-b-0"><span className="text-text-secondary">Email</span><span className="font-medium">{user?.email}</span></div><div className="flex justify-between p-4 md:px-5 border-b border-border last:border-b-0"><span className="text-text-secondary">Membro desde</span><span className="font-medium">{user?.created_at && new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(user.created_at))}</span></div></div>
+                        <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-md"><h3 className="text-base font-semibold mb-1">Sair da Conta</h3><p className="text-sm text-text-muted">Você será desconectado do sistema</p><Button variant="danger" onClick={signOut}>Sair</Button></div>
                     </div>
                 );
             case 'suporte':
                 return (
-                    <div className={styles.tabContent}>
+                    <div className="p-6 sm:p-8">
                         <SupportTab />
                     </div>
                 );
@@ -726,11 +726,11 @@ function ConfiguracoesContent() {
     };
 
     return (
-        <div className={styles.container}>
-            <div className={styles.header}><h1 className={styles.title}>Configurações</h1><p className={styles.subtitle}>Personalize seu aplicativo</p></div>
-            <div className={styles.settingsLayout}>
-                <div className={styles.tabsSidebar}>{TABS.map((tab) => (<button key={tab.id} className={`${styles.tabButton} ${activeTab === tab.id ? styles.active : ''}`} onClick={() => { if (tab.id === 'atalhos') { setShowHelp(true); } else { setActiveTab(tab.id); } }}><tab.icon /><span>{tab.label}</span></button>))}</div>
-                <Card className={styles.settingsCard}>{renderTabContent()}</Card>
+        <div className="max-w-[1400px] mx-auto">
+            <div className="mb-8"><h1 className="text-3xl font-bold mb-2">Configurações</h1><p className="text-text-secondary">Personalize seu aplicativo</p></div>
+            <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6 items-start">
+                <div className="flex md:flex-col gap-2 md:gap-1 bg-bg-card rounded-xl p-3 border border-border sticky top-6 overflow-x-auto md:overflow-visible">{TABS.map((tab) => (<button key={tab.id} className={`flex items-center gap-3 px-4 py-3 bg-transparent border border-transparent md:border-none rounded-lg text-text-secondary text-[15px] font-medium cursor-pointer transition-all text-left hover:bg-bg-tertiary hover:text-text-primary whitespace-nowrap min-w-max md:min-w-0 ${activeTab === tab.id ? "!bg-primary/10 !text-primary" : ""}`} onClick={() => { if (tab.id === 'atalhos') { setShowHelp(true); } else { setActiveTab(tab.id); } }}><tab.icon /><span>{tab.label}</span></button>))}</div>
+                <Card className="p-0 overflow-hidden">{renderTabContent()}</Card>
             </div>
         </div>
     );
