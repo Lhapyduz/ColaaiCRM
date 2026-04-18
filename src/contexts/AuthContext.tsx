@@ -5,6 +5,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import { User, Session, PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { isOnline, getAll, saveItem } from '@/lib/offlineStorage';
+import { clearAllCache } from '@/hooks/useDataCache';
 
 interface UserSettings {
 // ...
@@ -291,6 +292,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signOut = async () => {
         await supabase.auth.signOut();
         setUserSettings(null);
+        // Clear all local cached data to prevent cross-user data leakage
+        clearAllCache();
+        try {
+            if (typeof window !== 'undefined') {
+                // Delete the entire Dexie/IndexedDB database
+                const Dexie = (await import('dexie')).default;
+                await Dexie.delete('ligeirinho-offline-dexie');
+            }
+        } catch (e) {
+            console.warn('[Auth] Failed to clear IndexedDB on logout:', e);
+        }
         // Redirect to login page after logout
         window.location.href = '/login';
     };

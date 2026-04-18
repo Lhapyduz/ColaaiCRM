@@ -28,6 +28,12 @@ function MainLayoutContent({ children }: MainLayoutProps) {
 
     return (
         <div className="flex min-h-screen">
+            <a 
+                href="#main-content" 
+                className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-dropdown focus:px-4 focus:py-2 focus:bg-primary focus:text-white focus:rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all"
+            >
+                Pular para o conteúdo
+            </a>
             <Sidebar />
             <div className="flex-1 flex flex-col min-w-0">
                 {showSafetyBanner && (
@@ -42,18 +48,22 @@ function MainLayoutContent({ children }: MainLayoutProps) {
                         <button 
                             onClick={() => setShowSafetyBanner(false)}
                             className="text-text-muted hover:text-text-primary transition-colors p-1"
+                            aria-label="Fechar aviso de instabilidade"
                         >
                             ✕
                         </button>
                     </div>
                 )}
-                <main className={cn(
-                    "relative flex-1 p-6 bg-bg-primary will-change-[margin-left]",
-                    // Only enable transitions after hydration to prevent FOUC
-                    isHydrated ? "transition-[margin-left] duration-normal" : "",
-                    "max-md:ml-0 max-md:pt-20 max-md:px-4 max-md:pb-4",
-                    collapsed ? "ml-sidebar-collapsed" : "ml-sidebar"
-                )}>
+                <main 
+                    id="main-content"
+                    className={cn(
+                        "relative flex-1 p-6 bg-bg-primary will-change-[margin-left]",
+                        // Only enable transitions after hydration to prevent FOUC
+                        isHydrated ? "transition-[margin-left] duration-normal" : "",
+                        "max-md:ml-0 max-md:pt-20 max-md:px-4 max-md:pb-4",
+                        collapsed ? "ml-sidebar-collapsed" : "ml-sidebar"
+                    )}
+                >
                     <RouteGuard pathname={pathname}>
                         {children}
                     </RouteGuard>
@@ -108,10 +118,10 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
     if (loading && !loadingTimedOut) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-bg-primary">
+            <div className="flex items-center justify-center min-h-screen bg-bg-primary" role="status" aria-live="polite">
                 <div className="flex flex-col items-center gap-4">
-                    <span className="text-[4rem] animate-bounce">🌭</span>
-                    <p className="text-text-secondary text-lg">Carregando...</p>
+                    <span className="text-[4rem] animate-bounce" aria-hidden="true">🌭</span>
+                    <p className="text-text-secondary text-lg">Carregando Cola Aí CRM...</p>
                 </div>
             </div>
         );

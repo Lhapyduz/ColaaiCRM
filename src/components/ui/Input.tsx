@@ -22,10 +22,19 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
 }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === 'password';
+    const inputId = props.id || `input-${label?.toLowerCase().replace(/\s+/g, '-') || Math.random().toString(36).substr(2, 9)}`;
+    const errorId = `${inputId}-error`;
 
     return (
         <div className={cn('flex flex-col gap-1.5 w-full', className)}>
-            {label && <label className="text-sm font-medium text-text-secondary">{label}</label>}
+            {label && (
+                <label 
+                    htmlFor={inputId}
+                    className="text-sm font-medium text-text-secondary"
+                >
+                    {label}
+                </label>
+            )}
             <div className={cn(
                 'relative flex items-center bg-bg-tertiary border-2 border-border rounded-md transition-all duration-fast',
                 'focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(255,107,53,0.15)]',
@@ -38,6 +47,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
                 )}
                 <input
                     ref={ref}
+                    id={inputId}
                     type={isPassword && showPassword ? 'text' : type}
                     className={cn(
                         'flex-1 h-12 px-4 bg-transparent border-none outline-none text-[0.9375rem] text-text-primary',
@@ -45,6 +55,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
                         leftIcon && 'pl-11',
                         (rightIcon || isPassword) && 'pr-11'
                     )}
+                    aria-invalid={!!error}
+                    aria-describedby={error ? errorId : undefined}
                     {...props}
                 />
                 {isPassword && (
@@ -52,7 +64,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
                         type="button"
                         className="absolute right-3 flex items-center justify-center w-8 h-8 bg-transparent border-none rounded-sm text-text-muted cursor-pointer transition-all duration-fast hover:text-text-primary hover:bg-bg-card-hover"
                         onClick={() => setShowPassword(!showPassword)}
-                        tabIndex={-1}
+                        aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                     >
                         {showPassword ? <FiEyeOff /> : <FiEye />}
                     </button>
@@ -63,7 +75,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
                     </span>
                 )}
             </div>
-            {error && <span className="text-[0.8125rem] text-error">{error}</span>}
+            {error && (
+                <span id={errorId} className="text-[0.8125rem] text-error" role="alert">
+                    {error}
+                </span>
+            )}
         </div>
     );
 });

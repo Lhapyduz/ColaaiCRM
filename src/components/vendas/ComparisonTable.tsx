@@ -28,18 +28,18 @@ export default function ComparisonTable({ features, recommendedPlan = 'professio
     const renderValue = (value: boolean | string) => {
         if (typeof value === 'boolean') {
             return value ? (
-                <div className="flex justify-center">
+                <div className="flex justify-center" aria-label="Incluído">
                     <motion.div
                         initial={{ scale: 0 }}
                         whileInView={{ scale: 1 }}
                         viewport={{ once: true }}
                     >
-                        <FiCheck className="text-xl text-success" />
+                        <FiCheck className="text-xl text-success" aria-hidden="true" />
                     </motion.div>
                 </div>
             ) : (
-                <div className="flex justify-center">
-                    <FiMinus className="text-xl text-border" />
+                <div className="flex justify-center" aria-label="Não incluído">
+                    <FiMinus className="text-xl text-border" aria-hidden="true" />
                 </div>
             );
         }

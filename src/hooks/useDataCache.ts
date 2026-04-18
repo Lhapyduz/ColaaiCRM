@@ -184,10 +184,16 @@ export function useOrdersCache(options: { limit?: number; date?: string } = {}) 
     const [isSyncing, setIsSyncing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const orders = useLiveQuery(
-        () => db?.orders.orderBy('created_at').reverse().toArray() || [],
-        []
-    );
+    const orders = useLiveQuery(async () => {
+        if (!user || typeof window === 'undefined') return [];
+        try {
+            const data = await db.orders.where('user_id').equals(user.id).toArray();
+            return data.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+        } catch (err: any) {
+            console.error('Dexie orders query error:', err);
+            return [];
+        }
+    }, [user?.id]);
 
     const loading = orders === undefined;
 
@@ -228,7 +234,7 @@ export function useSingleOrderCache(orderId: string) {
         if (!user || !orderId || typeof window === 'undefined') return null;
         try {
             const o = await db.orders.get(orderId);
-            if (!o) return null;
+            if (!o || o.user_id !== user.id) return null;
             
             const items = await db.order_items.where('order_id').equals(orderId).toArray();
             const itemIds = items.map(i => i.id);
@@ -328,7 +334,7 @@ export function useTableDetailCache(tableId: string) {
         if (!user || !tableId || typeof window === 'undefined') return null;
         try {
             const table = await db.mesas.get(tableId);
-            if (!table) return null;
+            if (!table || table.user_id !== user.id) return null;
 
             const sessions = await db.mesa_sessions.where('mesa_id').equals(tableId).toArray();
             // Robust check for active session: not closed AND status is not 'livre'
@@ -650,12 +656,17 @@ export function useAddonsCache() {
     const addonsData = useLiveQuery(async () => {
         if (!user || typeof window === 'undefined') return null;
         try {
-            const [addons, groups, productGroups, groupItems] = await Promise.all([
+            const [addons, groups, allProductGroups, allGroupItems] = await Promise.all([
                 db.product_addons.where('user_id').equals(user.id).toArray(),
                 db.addon_groups.where('user_id').equals(user.id).toArray(),
                 db.product_addon_groups.toArray(),
                 db.addon_group_items.toArray()
             ]);
+            // Filter junction tables to only include user-owned addons/groups
+            const userGroupIds = new Set(groups.map(g => g.id));
+            const userAddonIds = new Set(addons.map(a => a.id));
+            const productGroups = allProductGroups.filter(pg => userGroupIds.has(pg.group_id));
+            const groupItems = allGroupItems.filter(gi => userGroupIds.has(gi.group_id) && userAddonIds.has(gi.addon_id));
             return { addons, groups, productGroups, groupItems };
         } catch (err: any) {
             console.error('Dexie addons query error:', err);

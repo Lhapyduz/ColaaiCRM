@@ -177,6 +177,7 @@ export default function PWAInstallPrompt({ appName, logoUrl, className }: PWAIns
                         <button
                             onClick={() => handleDismiss(false)}
                             className="bg-white/5 hover:bg-white/10 p-2 rounded-xl text-text-muted transition-all active:scale-90"
+                            aria-label="Fechar"
                         >
                             <FiX size={16} />
                         </button>

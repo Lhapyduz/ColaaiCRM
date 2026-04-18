@@ -123,6 +123,7 @@ const SortableNavItem = React.memo(({ item, isActive, collapsed, onMobileClose }
             {...listeners}
             href={item.href}
             scroll={false}
+            aria-current={isActive ? 'page' : undefined}
             className={cn(
                 'relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary no-underline transition-colors duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                 'hover:bg-bg-tertiary hover:text-text-primary',
@@ -363,11 +364,13 @@ export default function Sidebar() {
                 <div
                     className="hidden max-md:block fixed inset-0 bg-black/50 z-[calc(var(--z-sticky)-1)]"
                     onClick={closeMobileMenu}
+                    aria-hidden="true"
                 />
             )}
 
             <aside
                 style={{ backgroundColor: 'var(--sidebar-bg)' }}
+                aria-label="Menu principal"
                 className={cn(
                     'fixed top-0 left-0 h-screen border-r border-border flex flex-col z-sticky will-change-[width]',
                     // Only enable transitions after hydration to prevent FOUC
@@ -384,8 +387,7 @@ export default function Sidebar() {
                             <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0">
                                 <Image
                                     src={userSettings.logo_url}
-                                    alt=""
-                                    aria-hidden="true"
+                                    alt={appName}
                                     fill
                                     className="object-cover"
                                     sizes="40px"
@@ -452,6 +454,7 @@ export default function Sidebar() {
                                     key={item.href}
                                     href={item.href}
                                     scroll={false}
+                                    aria-current={isActive ? 'page' : undefined}
                                     className={cn(
                                         'relative flex items-center gap-3 px-4 py-3 rounded-xl text-text-secondary no-underline transition-all duration-fast cursor-pointer border-none bg-transparent w-full text-[0.9375rem]',
                                         'hover:bg-bg-tertiary hover:text-text-primary',

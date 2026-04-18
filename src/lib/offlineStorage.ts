@@ -43,6 +43,18 @@ export async function getAll<T>(storeName: StoreName): Promise<T[]> {
 }
 
 /**
+ * Get all items from a store filtered by user_id (tenant-safe)
+ */
+export async function getAllByUser<T>(storeName: StoreName, userId: string): Promise<T[]> {
+    try {
+        return await db.table(storeName).where('user_id').equals(userId).toArray() as T[];
+    } catch (err) {
+        console.error(`[offlineStorage] Error getAllByUser from ${storeName}:`, err);
+        return [];
+    }
+}
+
+/**
  * Get single item by key
  */
 export async function getItem<T>(storeName: StoreName, key: string): Promise<T | undefined> {

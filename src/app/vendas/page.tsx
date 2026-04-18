@@ -50,9 +50,9 @@ const faqs: FAQ[] = [
 ];
 
 const testimonials = [
-    { name: 'Carlos Silva', business: 'Hot Dog do Carlão', avatar: '👨‍🍳', text: 'Desde que comecei a usar o Cola Aí, meu faturamento aumentou 40%. A organização dos pedidos é impecável!', rating: 5 },
-    { name: 'Maria Santos', business: 'Lanchonete da Maria', avatar: '👩‍💼', text: 'O programa de fidelidade fez meus clientes voltarem muito mais. Já tenho mais de 200 clientes cadastrados!', rating: 5 },
-    { name: 'João Pereira', business: 'Burger House', avatar: '👨‍💻', text: 'Os relatórios me ajudam a entender melhor meu negócio. Sei exatamente quais produtos vendem mais.', rating: 5 }
+    { name: 'Carlos Silva', business: 'Hot Dog do Carlão', avatar: <span role="img" aria-label="Emoji de cozinheiro">👨‍🍳</span>, text: 'Desde que comecei a usar o Cola Aí, meu faturamento aumentou 40%. A organização dos pedidos é impecável!', rating: 5 },
+    { name: 'Maria Santos', business: 'Lanchonete da Maria', avatar: <span role="img" aria-label="Emoji de empresária">👩‍💼</span>, text: 'O programa de fidelidade fez meus clientes voltarem muito mais. Já tenho mais de 200 clientes cadastrados!', rating: 5 },
+    { name: 'João Pereira', business: 'Burger House', avatar: <span role="img" aria-label="Emoji de desenvolvedor">👨‍💻</span>, text: 'Os relatórios me ajudam a entender melhor meu negócio. Sei exatamente quais produtos vendem mais.', rating: 5 }
 ];
 
 const highlights = [
@@ -88,9 +88,9 @@ export default function VendasPage() {
             </div>
 
             {/* Navbar (Simplified) */}
-            <nav className="relative z-50 flex items-center justify-between px-6 py-6 md:px-12 max-w-7xl mx-auto">
-                <Link href="/" className="flex items-center gap-2">
-                    <span className="text-2xl">🌭</span>
+            <nav className="relative z-50 flex items-center justify-between px-6 py-6 md:px-12 max-w-7xl mx-auto" aria-label="Navegação principal">
+                <Link href="/" className="flex items-center gap-2" aria-label="Ir para a página inicial">
+                    <span className="text-2xl" role="img" aria-label="Ícone de cachorro-quente">🌭</span>
                     <span className="font-bold text-xl tracking-tight">Cola Aí - Gestão Inteligente</span>
                 </Link>
                 <div className="flex items-center gap-4">
@@ -164,8 +164,9 @@ export default function VendasPage() {
                             <button
                                 onClick={() => setIsVideoModalOpen(true)}
                                 className="px-8 py-4 bg-bg-tertiary text-text-primary rounded-xl font-bold text-lg border border-border hover:border-text-secondary transition-all flex items-center justify-center gap-2"
+                                aria-label="Ver vídeo demonstrativo como o sistema funciona"
                             >
-                                <FiPlay className="fill-current" />
+                                <FiPlay className="fill-current" aria-hidden="true" />
                                 Ver como funciona
                             </button>
                         </div>

@@ -8,7 +8,7 @@ import { supabase } from './supabase';
 import { db } from './db';
 import { useStorageStore } from '@/stores/useStorageStore';
 import { 
-    addPendingAction, saveAll, saveItem, getAll, getItem, deleteItem, getPendingActions 
+    addPendingAction, saveAll, saveItem, getAll, getAllByUser, getItem, deleteItem, getPendingActions 
 } from './offlineStorage';
 import type {
     CachedProduct,
@@ -74,7 +74,7 @@ export async function fetchProducts(userId: string): Promise<CachedProduct[]> {
         console.warn('[dataAccess] Supabase fetch failed, falling back to local:', error?.message);
     }
 
-    return getAll('products');
+    return getAllByUser('products', userId);
 }
 
 export async function createProduct(data: Record<string, unknown>): Promise<void> {
@@ -175,7 +175,7 @@ export async function fetchCategories(userId: string): Promise<CachedCategory[]>
         console.warn('[dataAccess] Supabase categories fetch failed, falling back to local:', error?.message);
     }
 
-    return getAll('categories');
+    return getAllByUser('categories', userId);
 }
 
 export async function createCategory(data: Record<string, unknown>): Promise<void> {
@@ -284,7 +284,7 @@ export async function fetchOrders(userId: string, options: { limit?: number; dat
         console.warn('[dataAccess] Supabase orders fetch failed, falling back to local:', error?.message);
     }
 
-    return getAll('orders');
+    return getAllByUser('orders', userId);
 }
 
 export async function createOrder(data: Record<string, unknown>): Promise<void> {
@@ -595,7 +595,7 @@ export async function fetchCustomers(userId: string): Promise<CachedClient[]> {
         }
         console.warn('[dataAccess] Supabase fetch failed, falling back to local:', error?.message);
     }
-    return getAll('customers');
+    return getAllByUser('customers', userId);
 }
 
 export async function createCustomer(data: Record<string, unknown>): Promise<void> {
@@ -666,7 +666,7 @@ export async function fetchMesas(userId: string): Promise<CachedTable[]> {
             return data as CachedTable[];
         }
     }
-    return await getAll<CachedTable>('mesas');
+    return await getAllByUser<CachedTable>('mesas', userId);
 }
 
 export async function fetchMesaById(id: string): Promise<any> {
@@ -712,7 +712,7 @@ export async function fetchMesaSessions(userId: string): Promise<any[]> {
             return data;
         }
     }
-    return getAll('mesa_sessions');
+    return getAllByUser('mesa_sessions', userId);
 }
 
 export async function fetchMesaSessionItems(userId: string): Promise<any[]> {
@@ -735,7 +735,11 @@ export async function fetchMesaSessionItems(userId: string): Promise<any[]> {
             return mappedItems;
         }
     }
-    return getAll('mesa_session_items');
+    // mesa_session_items has no user_id — filter via user-owned sessions
+    const userSessions = await getAllByUser<any>('mesa_sessions', userId);
+    const sessionIds = new Set(userSessions.map((s: any) => s.id));
+    const allItems = await getAll<any>('mesa_session_items');
+    return allItems.filter((item: any) => sessionIds.has(item.session_id));
 }
 
 export async function createMesa(data: Record<string, unknown>): Promise<void> {
@@ -862,7 +866,7 @@ export async function fetchEmployeesCached(userId: string): Promise<CachedEmploy
         }
         console.warn('[dataAccess] Supabase fetch failed, falling back to local:', error?.message);
     }
-    return getAll('employees');
+    return getAllByUser('employees', userId);
 }
 
 export async function createEmployee(data: Record<string, unknown>): Promise<void> {
@@ -923,7 +927,7 @@ export async function fetchLoyaltyRewards(userId: string): Promise<CachedLoyalty
             return data as CachedLoyaltyReward[];
         }
     }
-    return getAll('loyalty_rewards');
+    return getAllByUser('loyalty_rewards', userId);
 }
 
 export async function saveLoyaltyReward(data: Record<string, unknown>): Promise<void> {
@@ -991,7 +995,7 @@ export async function fetchCoupons(userId: string): Promise<CachedCoupon[]> {
             return data as CachedCoupon[];
         }
     }
-    return getAll('coupons');
+    return getAllByUser('coupons', userId);
 }
 
 export async function saveCoupon(data: Record<string, unknown>): Promise<void> {
@@ -1056,7 +1060,7 @@ export async function fetchProductAddons(userId: string): Promise<CachedProductA
             return data as CachedProductAddon[];
         }
     }
-    return getAll('product_addons');
+    return getAllByUser('product_addons', userId);
 }
 
 export async function fetchAddonGroups(userId: string): Promise<CachedAddonGroup[]> {
@@ -1067,7 +1071,7 @@ export async function fetchAddonGroups(userId: string): Promise<CachedAddonGroup
             return data as CachedAddonGroup[];
         }
     }
-    return getAll('addon_groups');
+    return getAllByUser('addon_groups', userId);
 }
 
 export async function fetchProductAddonGroups(userId: string): Promise<CachedProductAddonGroup[]> {
@@ -1083,7 +1087,11 @@ export async function fetchProductAddonGroups(userId: string): Promise<CachedPro
             return data as CachedProductAddonGroup[];
         }
     }
-    return getAll('product_addon_groups');
+    // product_addon_groups has no user_id — filter via user-owned products
+    const userProducts = await getAllByUser<any>('products', userId);
+    const productIds = new Set(userProducts.map((p: any) => p.id));
+    const allPAG = await getAll<CachedProductAddonGroup>('product_addon_groups');
+    return allPAG.filter((pag: any) => productIds.has(pag.product_id));
 }
 
 export async function fetchAddonGroupItems(userId: string): Promise<CachedAddonGroupItem[]> {
@@ -1099,7 +1107,11 @@ export async function fetchAddonGroupItems(userId: string): Promise<CachedAddonG
             return data as CachedAddonGroupItem[];
         }
     }
-    return getAll('addon_group_items');
+    // addon_group_items has no user_id — filter via user-owned addon groups
+    const userGroups = await getAllByUser<any>('addon_groups', userId);
+    const groupIds = new Set(userGroups.map((g: any) => g.id));
+    const allAGI = await getAll<CachedAddonGroupItem>('addon_group_items');
+    return allAGI.filter((agi: any) => groupIds.has(agi.group_id));
 }
 
 // ─── Action Logs ──────────────────────────────────────
