@@ -3,20 +3,19 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
-    ArrowLeft, Printer, ReceiptText, Clock, Users, History,
+    ArrowLeft, Printer, ReceiptText, Clock, Users,
     PlusCircle, Minus, Plus, CreditCard, Banknote, QrCode,
-    CheckCircle, Share, Info, Ticket, UtensilsCrossed, Loader2, Search, Combine
+    CheckCircle, Loader2, Search, Combine, Ticket, Info, Share
 } from 'lucide-react';
 import { useFormatters } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import Card from '@/components/ui/Card';
-import { MesaWithActiveSession, abrirMesa, addSessionItem, fecharMesaSessao, confirmarItensMesa, separarMesa, desagruparTodas } from '@/lib/services/mesas';
+import { abrirMesa, addSessionItem, fecharMesaSessao, confirmarItensMesa, separarMesa, desagruparTodas } from '@/lib/services/mesas';
 import { printOrder } from '@/lib/print';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProductsCache, useCategoriesCache, useTableDetailCache, type Product, type Category } from '@/hooks/useDataCache';
 import { supabase } from '@/lib/supabase';
-
-
+import { type CachedMesaSessionItem } from '@/types/db';
 
 export default function MesaDetailsPage() {
     const router = useRouter();
@@ -24,18 +23,15 @@ export default function MesaDetailsPage() {
     const { formatCurrency } = useFormatters();
 
     const { user, userSettings } = useAuth();
-    const { table: mesa, loading: loadingMesa, refetch: reloadMesa } = useTableDetailCache(params.id);
-    const { products, loading: loadingProducts } = useProductsCache();
-    const { categories, loading: loadingCategories } = useCategoriesCache();
+    const { table: mesa, loading: loadingMesa } = useTableDetailCache(params.id);
+    const { products } = useProductsCache();
+    const { categories } = useCategoriesCache();
     
     const [addingItem, setAddingItem] = useState(false);
-    const [closingMesa, setClosingMesa] = useState(false);
     const [isConfirming, setIsConfirming] = useState(false);
     const [groupedCount, setGroupedCount] = useState(0);
 
-    // Abrir sessão state
     const [nomeGarcom, setNomeGarcom] = useState('');
-
     const [view, setView] = useState<'detalhes' | 'pagamento'>('detalhes');
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -71,8 +67,6 @@ export default function MesaDetailsPage() {
         checkGrouped();
     }, [mesa]);
 
-
-
     const filteredProducts = useMemo(() => {
         const normalize = (text: string) =>
             text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -83,24 +77,23 @@ export default function MesaDetailsPage() {
             const productNameNormalized = normalize(p.name);
             const matchesSearch = productNameNormalized.includes(searchNormalized);
 
-            // Se houver busca, ignoramos o filtro de categoria (busca global)
             if (searchTerm.trim() !== '') {
                 return matchesSearch;
             }
 
-            // Se não houver busca, filtramos por categoria
             return p.category_id === activeCategory;
         });
     }, [activeCategory, products, searchTerm]);
 
-    // Payment state
     const [splitCount, setSplitCount] = useState(1);
     const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
-    const [valorRecebido, setValorRecebido] = useState<number | ''>('');
 
-    // Taxa de serviço configurável (agora vem do userSettings)
     const taxaServicoEnabled = userSettings?.taxa_servico_enabled ?? false;
     const taxaServicoPercent = userSettings?.taxa_servico_percent ?? 10;
+
+    const [valorRecebido, setValorRecebido] = useState<number | ''>('');
+    const [desconto, setDesconto] = useState(0);
+    const [closingMesa, setClosingMesa] = useState(false);
 
     if (loading) {
         return (
@@ -167,20 +160,18 @@ export default function MesaDetailsPage() {
         );
     }
 
-    const allItems = activeSession?.items || [];
-    const unconfirmedItems = allItems.filter((item: any) => !item.enviado_cozinha);
+    const allItems = (activeSession?.items || []) as CachedMesaSessionItem[];
+    const unconfirmedItems = allItems.filter((item) => !item.enviado_cozinha);
     const totalItems = allItems.length;
     const subtotal = activeSession?.valor_parcial || 0;
     const taxaServico = taxaServicoEnabled ? subtotal * (taxaServicoPercent / 100) : 0;
-    const desconto = 0;
-    const totalFinal = subtotal + taxaServico - desconto;
+    const totalFinal = Math.max(0, subtotal + taxaServico - desconto);
     const splitValue = splitCount > 0 ? totalFinal / splitCount : 0;
 
     const handleAbrirMesa = async () => {
         try {
             await abrirMesa(mesa.id, nomeGarcom.trim());
             alert("Mesa aberta com sucesso!");
-            // No manual reload needed due to useLiveQuery
         } catch (error) {
             console.error("Erro ao abrir mesa:", error);
             alert("Erro ao abrir mesa.");
@@ -197,34 +188,11 @@ export default function MesaDetailsPage() {
                 preco: produto.price,
             });
             alert(`${produto.name} adicionado.`);
-            // No manual reload needed due to useLiveQuery
         } catch (error) {
             console.error("Erro ao adicionar produto:", error);
             alert("Erro ao adicionar produto.");
         } finally {
             setAddingItem(false);
-        }
-    };
-
-    const handleConfirmarPagamento = async () => {
-        if (!activeSession || !selectedPayment) return;
-        setClosingMesa(true);
-        try {
-            await fecharMesaSessao(
-                activeSession.id,
-                selectedPayment as 'credito' | 'debito' | 'pix' | 'dinheiro',
-                taxaServico, // Passando o valor em R$ calculado acima
-                desconto,
-                totalFinal
-            );
-            alert("Pagamento confirmado e mesa fechada!");
-            router.push('/mesas'); // Voltar pra listar mesas, pois a mesa agora está suja/livre
-        } catch (error: unknown) {
-            console.error("Erro ao fechar conta:", error);
-            const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
-            alert(`Erro ao fechar conta: ${errorMessage}`);
-        } finally {
-            setClosingMesa(false);
         }
     };
 
@@ -234,7 +202,6 @@ export default function MesaDetailsPage() {
         try {
             await confirmarItensMesa(activeSession.id, mesa.numero_mesa, user.id, unconfirmedItems);
             alert("Itens enviados para a cozinha com sucesso!");
-            // No manual reload needed due to useLiveQuery
         } catch (error) {
             console.error("Erro ao enviar para cozinha:", error);
             alert("Erro ao enviar para a cozinha.");
@@ -261,17 +228,38 @@ export default function MesaDetailsPage() {
             notes: null,
             is_delivery: false,
             created_at: activeSession.opened_at || new Date().toISOString(),
-            items: allItems.map((item: any) => ({
+            items: allItems.map((item) => ({
                 id: item.id,
                 product_name: item.product_name || 'Produto',
                 quantity: item.quantidade,
-                unit_price: item.preco_unitario,
+                unit_price: item.preco_total / item.quantidade,
                 total: item.preco_total,
                 notes: item.observacao
             }))
         };
 
         await printOrder(orderData, { type: 'customer', appName: userSettings?.app_name || 'Cola Aí' });
+    };
+
+    const handleConfirmarPagamento = async () => {
+        if (!activeSession) return;
+        setClosingMesa(true);
+        try {
+            await fecharMesaSessao(
+                activeSession.id, 
+                (selectedPayment || 'dinheiro') as 'credito' | 'debito' | 'pix' | 'dinheiro',
+                taxaServico,
+                desconto,
+                totalFinal
+            );
+            alert("Mesa fechada com sucesso!");
+            router.push('/mesas');
+        } catch (error) {
+            console.error("Erro ao fechar mesa:", error);
+            alert("Erro ao fechar mesa.");
+        } finally {
+            setClosingMesa(false);
+        }
     };
 
     const handleImprimirFechamento = async () => {
@@ -283,42 +271,28 @@ export default function MesaDetailsPage() {
             customer_name: `Mesa ${mesa.numero_mesa}`,
             customer_phone: null,
             customer_address: null,
-            status: 'closed',
+            status: 'completed',
             payment_method: selectedPayment || 'money',
             payment_status: 'paid',
             subtotal: subtotal,
             delivery_fee: 0,
+            taxa_servico: taxaServico,
+            desconto: desconto,
             total: totalFinal,
             notes: null,
             is_delivery: false,
             created_at: activeSession.opened_at || new Date().toISOString(),
-            items: allItems.map((item: any) => ({
+            items: allItems.map((item) => ({
                 id: item.id,
                 product_name: item.product_name || 'Produto',
                 quantity: item.quantidade,
-                unit_price: item.preco_unitario,
+                unit_price: item.preco_total / item.quantidade,
                 total: item.preco_total,
                 notes: item.observacao
-            })),
-            service_fee: taxaServicoEnabled ? taxaServico : 0,
-            coupon_discount: desconto
+            }))
         };
 
-        // Wait, print.ts doesn't have a 'taxa_servico' field in OrderData. 
-        // It has 'delivery_fee'. I might use delivery_fee as service fee for tables? 
-        // Or I should patch print.ts to support service fee.
-
-        // Let's check generateCustomerReceiptHTML in print.ts again.
-        // It shows: ${order.delivery_fee > 0 ? `<span>Taxa de Entrega</span><span>${formatCurrency(order.delivery_fee)}</span>` : ''}
-
-        // I'll pass taxaServico as delivery_fee for now or improve print.ts.
-        // Given the requirement "100% funcionais com os dados necessarios", 
-        // I should probably add service_fee to OrderData in print.ts.
-
-        await printOrder({
-            ...orderData,
-            service_fee: taxaServico
-        }, { type: 'customer', appName: userSettings?.app_name || 'Cola Aí' });
+        await printOrder(orderData, { type: 'customer', appName: userSettings?.app_name || 'Cola Aí' });
     };
 
     const getStatusStyle = () => {
@@ -335,7 +309,6 @@ export default function MesaDetailsPage() {
 
     return (
         <div className="max-w-[1200px] mx-auto animate-fadeIn">
-            {/* Header — same pattern as pedidos/[id] */}
             <div className="flex items-center gap-4 mb-6">
                 <button
                     className="w-10 h-10 flex items-center justify-center rounded-full bg-bg-tertiary text-text-secondary hover:bg-primary hover:text-white transition-all cursor-pointer"
@@ -357,7 +330,8 @@ export default function MesaDetailsPage() {
                                             await desagruparTodas(mesa.numero_mesa);
                                             setGroupedCount(0);
                                             alert('Mesas desagrupadas!');
-                                        } catch (_) {
+                                        } catch (err) {
+                                            console.error(err);
                                             alert('Erro ao desagrupar mesas.');
                                         }
                                     }
@@ -376,17 +350,8 @@ export default function MesaDetailsPage() {
                             : 'A mesa não está em atendimento'}
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
-                    {totalItems > 0 && (
-                        <div className="text-right mr-2 hidden sm:block">
-                            <p className="text-[10px] text-text-muted uppercase font-bold">Total Parcial</p>
-                            <p className="text-xl font-black text-primary">{formatCurrency(subtotal)}</p>
-                        </div>
-                    )}
-                </div>
             </div>
 
-            {/* Tab Navigation */}
             {status !== 'livre' && status !== 'suja' && (
                 <div className="flex items-center gap-6 mb-6 border-b border-border pb-3">
                     <button
@@ -416,10 +381,11 @@ export default function MesaDetailsPage() {
             )}
 
             {status === 'livre' || status === 'suja' ? (
-                /* ======== VIEW: ABRIR MESA / LIMPAR ======== */
                 <div className="flex items-center justify-center h-64 mt-12">
                     <Card className="max-w-md w-full p-8! flex flex-col items-center">
-                        <UtensilsCrossed className="w-16 h-16 text-text-muted mb-4" />
+                        <div className="size-16 flex items-center justify-center rounded-full bg-bg-tertiary mb-4 text-text-muted">
+                           <Banknote className="w-8 h-8" />
+                        </div>
                         <h2 className="text-xl font-bold mb-2">
                             {status === 'livre' ? 'Mesa Livre' : 'Mesa em Limpeza'}
                         </h2>
@@ -452,13 +418,7 @@ export default function MesaDetailsPage() {
 
                         {status === 'suja' && (
                             <button
-                                onClick={async () => {
-                                    // Apenas marcar como livre para fluxo de demonstração ou um service especifico
-                                    alert("Mesa marcada como limpa/livre!");
-                                    // Isso requereria um service func, mas como mockamos workflow:
-                                    // router.back() ou recarregar...
-                                    window.location.reload();
-                                }}
+                                onClick={() => window.location.reload()}
                                 className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-[0.98] shadow-lg shadow-emerald-500/20 cursor-pointer"
                             >
                                 <CheckCircle className="w-5 h-5" /> Liberar Mesa
@@ -468,25 +428,7 @@ export default function MesaDetailsPage() {
                 </div>
             ) : view === 'detalhes' ? (
                 <div className="flex flex-col lg:flex-row gap-6">
-                    {/* Main Content */}
                     <div className="flex-[1.5] flex flex-col gap-6">
-                        {/* Status Card */}
-                        <Card className="p-4!">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <span className="text-sm text-text-muted">Status da Mesa</span>
-                                    <span className={cn('block mt-1 px-3 py-1 rounded-full text-sm font-medium w-fit', s.bg, s.text)}>
-                                        {s.label}
-                                    </span>
-                                </div>
-                                <div className="text-right">
-                                    <span className="text-sm text-text-muted">Garçom</span>
-                                    <span className="block mt-1 text-lg font-semibold">{activeSession?.garcom || 'Nenhum'}</span>
-                                </div>
-                            </div>
-                        </Card>
-
-                        {/* Stats Row */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <Card className="p-4!">
                                 <p className="text-text-muted text-[10px] font-bold uppercase tracking-widest">Total Consumido</p>
@@ -502,7 +444,6 @@ export default function MesaDetailsPage() {
                             </Card>
                         </div>
 
-                        {/* Actions */}
                         <div className="flex gap-3">
                             <button
                                 onClick={handleImprimirPrevia}
@@ -538,13 +479,9 @@ export default function MesaDetailsPage() {
                             )}
                         </div>
 
-                        {/* Orders Table */}
                         <Card padding="none">
                             <div className="p-4 border-b border-border flex justify-between items-center">
                                 <h3 className="font-bold text-text-primary">Itens do Pedido</h3>
-                                <button className="text-primary font-bold text-xs hover:underline flex items-center gap-1 uppercase tracking-wider cursor-pointer">
-                                    <History className="w-4 h-4" /> Histórico completo
-                                </button>
                             </div>
                             {totalItems > 0 ? (
                                 <table className="w-full text-left border-collapse">
@@ -558,7 +495,7 @@ export default function MesaDetailsPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {allItems.map((item: any) => (
+                                        {allItems.map((item) => (
                                             <tr key={item.id} className="hover:bg-bg-card-hover transition-colors">
                                                 <td className="px-4 py-3">
                                                     <div className="flex flex-col">
@@ -651,7 +588,7 @@ export default function MesaDetailsPage() {
 
                                 {/* Category Tabs */}
                                 <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
-                                    {categories.map((cat: any) => (
+                                    {categories.map((cat: Category) => (
                                         <button
                                             key={cat.id}
                                             onClick={() => setActiveCategory(cat.id)}
@@ -739,7 +676,13 @@ export default function MesaDetailsPage() {
                                     <p className="text-xs font-bold uppercase text-text-muted mb-2">Valor Personalizado</p>
                                     <div className="relative">
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted font-bold">R$</span>
-                                        <input type="number" placeholder="0,00" className="w-full bg-transparent border border-border rounded-lg pl-10 py-2 focus:ring-primary focus:border-primary text-text-primary" />
+                                        <input 
+                                            type="number" 
+                                            placeholder="0,00" 
+                                            value={valorRecebido}
+                                            onChange={(e) => setValorRecebido(e.target.value ? Number(e.target.value) : '')}
+                                            className="w-full bg-transparent border border-border rounded-lg pl-10 py-2 focus:ring-primary focus:border-primary text-text-primary" 
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -807,7 +750,13 @@ export default function MesaDetailsPage() {
                         {/* Ticket / Discount */}
                         <Card className="flex items-center gap-3 p-4!">
                             <Ticket className="text-text-muted w-5 h-5 shrink-0" />
-                            <input type="text" placeholder="Código de desconto..." className="flex-1 bg-transparent border-none focus:ring-0 text-sm p-0 text-text-primary placeholder:text-text-muted outline-none" />
+                            <input 
+                                type="number" 
+                                placeholder="Valor do desconto..." 
+                                value={desconto || ''}
+                                onChange={(e) => setDesconto(Number(e.target.value))}
+                                className="flex-1 bg-transparent border-none focus:ring-0 text-sm p-0 text-text-primary placeholder:text-text-muted outline-none" 
+                            />
                             <button className="text-primary text-xs font-bold uppercase tracking-tight hover:underline cursor-pointer">Aplicar</button>
                         </Card>
 

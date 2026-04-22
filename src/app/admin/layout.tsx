@@ -23,11 +23,14 @@ export default function AdminLayout({
         }
 
         const authenticated = isSuperAdminAuthenticated();
-        setIsAuthenticated(authenticated);
+        const frame = requestAnimationFrame(() => {
+            setIsAuthenticated(authenticated);
+        });
 
         if (!authenticated) {
             router.replace('/admin/login');
         }
+        return () => cancelAnimationFrame(frame);
     }, [pathname, router]);
 
     // Login page has its own layout

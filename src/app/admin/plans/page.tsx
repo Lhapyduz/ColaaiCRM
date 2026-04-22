@@ -7,13 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import {
     FiPackage,
-    FiPlus,
-    FiEdit2,
-    FiTrash2,
     FiCheck,
-    FiX,
-    FiSave,
-    FiActivity,
     FiDollarSign
 } from 'react-icons/fi';
 

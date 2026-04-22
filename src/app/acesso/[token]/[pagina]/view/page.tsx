@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FiClock, FiCheck, FiVolume2, FiVolumeX, FiLogOut, FiTruck, FiRefreshCw } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
@@ -35,20 +35,7 @@ export default function PublicViewPage() {
         setUserId(storedUserId);
     }, [pagina, token, router]);
 
-    useEffect(() => {
-        if (!userId) return;
-        fetchOrders();
-        const channelName = `public_kitchen_${userId}_${Date.now()}`;
-        const channel = supabase.channel(channelName)
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, () => { fetchOrders(); if (soundEnabled && audioRef.current) audioRef.current.play().catch(() => { }); })
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, () => fetchOrders())
-            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, () => fetchOrders())
-            .subscribe();
-        const pollInterval = setInterval(() => fetchOrders(), 15000);
-        return () => { channel.unsubscribe(); clearInterval(pollInterval); };
-    }, [userId, soundEnabled]);
-
-    const fetchOrders = async () => {
+    const fetchOrders = useCallback(async () => {
         if (!userId) return;
         try {
             const statusFilter = pagina === 'cozinha' ? ['pending', 'preparing'] : ['ready'];
@@ -63,13 +50,31 @@ export default function PublicViewPage() {
                 return { ...order, items: itemsWithAddons };
             }));
             setOrders(ordersWithItems);
-        } catch (e) { console.error(e); } finally { setLoading(false); }
-    };
+        } catch { console.error('Error fetching orders'); } finally { setLoading(false); }
+    }, [userId, pagina]);
 
-    const updateOrderStatus = async (orderId: string, newStatus: string) => { try { await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId); fetchOrders(); } catch (e) { console.error(e); } };
+    const updateOrderStatus = useCallback(async (orderId: string, newStatus: string) => { 
+        try { 
+            await supabase.from('orders').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', orderId); 
+            fetchOrders(); 
+        } catch (e) { console.error(e); } 
+    }, [fetchOrders]);
     const getTimeElapsed = (date: string) => { const diffMins = Math.floor((Date.now() - new Date(date).getTime()) / 60000); if (diffMins < 1) return '< 1 min'; if (diffMins < 60) return `${diffMins} min`; return `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`; };
     const getTimeColor = (date: string) => { const diffMins = Math.floor((Date.now() - new Date(date).getTime()) / 60000); if (diffMins < 10) return 'text-accent'; if (diffMins < 20) return 'text-warning'; return 'text-error'; };
     const handleLogout = () => { sessionStorage.removeItem('publicAccessEmployee'); sessionStorage.removeItem('publicAccessUserId'); sessionStorage.removeItem('publicAccessPage'); router.push(`/acesso/${token}/${pagina}`); };
+
+    useEffect(() => {
+        if (!userId) return;
+        fetchOrders();
+        const channelName = `public_kitchen_${userId}_${Date.now()}`;
+        const channel = supabase.channel(channelName)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, () => { fetchOrders(); if (soundEnabled && audioRef.current) audioRef.current.play().catch(() => { }); })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, () => fetchOrders())
+            .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'orders', filter: `user_id=eq.${userId}` }, () => fetchOrders())
+            .subscribe();
+        const pollInterval = setInterval(() => fetchOrders(), 15000);
+        return () => { channel.unsubscribe(); clearInterval(pollInterval); };
+    }, [userId, soundEnabled, fetchOrders]);
 
     if (!employee) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 

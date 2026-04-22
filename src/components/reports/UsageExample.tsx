@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import RelatorioPDFCompleto, { ReportData } from '@/components/reports/RelatorioPDFCompleto';
 
@@ -12,7 +11,10 @@ export default function DashboardPage() {
     const [isClient, setIsClient] = useState(false);
 
     useEffect(() => {
-        setIsClient(true);
+        const frame = requestAnimationFrame(() => {
+            setIsClient(true);
+        });
+        return () => cancelAnimationFrame(frame);
     }, []);
 
     // Exemplo de dados gerados dinamicamente do seu dashboard
@@ -79,7 +81,7 @@ export default function DashboardPage() {
                         fileName="relatorio_gerencial.pdf"
                         className="inline-flex items-center px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition-colors"
                     >
-                        {({ blob, url, loading, error }) =>
+                        {({ loading }) =>
                             loading ? 'Gerando PDF...' : 'Baixar Relatório Completo (PDF)'
                         }
                     </PDFDownloadLink>

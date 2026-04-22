@@ -13,13 +13,6 @@ export interface PixPayload {
     description?: string;
 }
 
-interface PixConfig {
-    pixKey: string;
-    merchantName: string;
-    merchantCity: string;
-    merchantCategoryCode?: string;
-}
-
 /**
  * CRC16-CCITT calculation for PIX payload
  */

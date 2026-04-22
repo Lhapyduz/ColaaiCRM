@@ -33,6 +33,7 @@ import {
     Addon,
     AddonGroup
 } from '@/hooks/useDataCache';
+import { CachedClient, CachedCoupon } from '@/types/db';
 import styles from './page.module.css';
 
 // Função para disparar notificação local
@@ -54,11 +55,7 @@ async function sendNewOrderPush(userId: string, orderNumber: number, customerNam
     }
 }
 
-interface Category {
-    id: string;
-    name: string;
-    icon: string;
-}
+// Categories are fetched via useCategoriesCache
 
 interface Product {
     id: string;
@@ -95,7 +92,7 @@ export default function NovoPedidoPage() {
 
     const { categories, loading: categoriesLoading } = useCategoriesCache();
     const { products: allProducts, loading: productsLoading } = useProductsCache();
-    const { getProductAddons, loading: addonsLoading } = useAddonsCache();
+    const { getProductAddons } = useAddonsCache();
     const { settings: appSettings, loading: settingsLoading } = useAppSettingsCache();
     const { coupons, loading: couponsLoading } = useCouponsCache();
     const { customers: allCustomers, loading: customersLoading } = useCustomersCache();
@@ -118,17 +115,12 @@ export default function NovoPedidoPage() {
 
     // Coupon state
     const [couponCode, setCouponCode] = useState('');
-    const [appliedCoupon, setAppliedCoupon] = useState<{
-        id: string;
-        code: string;
-        discount_type: 'percentage' | 'fixed';
-        discount_value: number;
-    } | null>(null);
+    const [appliedCoupon, setAppliedCoupon] = useState<CachedCoupon | null>(null);
     const [couponError, setCouponError] = useState('');
     const [validatingCoupon, setValidatingCoupon] = useState(false);
 
     // Loyalty state
-    const [loyaltyCustomer, setLoyaltyCustomer] = useState<{ id: string; name: string; total_points: number; total_orders?: number; total_spent?: number; coupons_used?: number; total_discount_savings?: number; } | null>(null);
+    const [loyaltyCustomer, setLoyaltyCustomer] = useState<CachedClient | null>(null);
 
     // Addons modal state
     const [showAddonModal, setShowAddonModal] = useState(false);
@@ -282,12 +274,7 @@ export default function NovoPedidoPage() {
                 return;
             }
 
-            setAppliedCoupon({
-                id: coupon.id,
-                code: coupon.code,
-                discount_type: coupon.discount_type as 'percentage' | 'fixed',
-                discount_value: coupon.discount_value
-            });
+            setAppliedCoupon(coupon);
         } catch {
             setCouponError('Erro ao validar cupom');
         } finally {
@@ -303,11 +290,7 @@ export default function NovoPedidoPage() {
         const customer = allCustomers.find(c => c.phone === cleanPhone);
 
         if (customer) {
-            setLoyaltyCustomer({
-                id: customer.id,
-                name: customer.name,
-                total_points: customer.total_points
-            });
+            setLoyaltyCustomer(customer);
         } else {
             setLoyaltyCustomer(null);
         }
@@ -337,8 +320,8 @@ export default function NovoPedidoPage() {
             let orderNumber = 1;
             // Use local Dexie as primary source of truth for order numbers to support offline creation
             try {
-                const module = await import('@/lib/db');
-                const db = module.db;
+                const dbModule = await import('@/lib/db');
+                const db = dbModule.db;
                 const lastOrder = await db.orders
                     .where('user_id')
                     .equals(user.id)
@@ -367,12 +350,20 @@ export default function NovoPedidoPage() {
                 total,
                 notes: notes || null,
                 is_delivery: isDelivery,
+                user_slug: appSettings?.public_slug || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                rating_token: null,
                 ...(appliedCoupon ? { discount_amount: discount, coupon_code: appliedCoupon.code } : {})
             };
+
+            const orderId = crypto.randomUUID();
 
             const orderItems = cart.map(item => {
                 const addonTotal = item.addons.reduce((a, addon) => a + addon.price, 0);
                 return {
+                    id: crypto.randomUUID(),
+                    order_id: orderId,
                     product_id: item.product.id,
                     product_name: item.product.name,
                     quantity: item.quantity,
@@ -382,11 +373,13 @@ export default function NovoPedidoPage() {
                 };
             });
 
-            const itemAddons: { itemIndex: number, addon_id: string, addon_name: string, addon_price: number, quantity: number }[] = [];
+            const itemAddons: { itemIndex: number, id: string, order_item_id: string, addon_id: string, addon_name: string, addon_price: number, quantity: number }[] = [];
             cart.forEach((item, index) => {
                 item.addons.forEach(addon => {
                     itemAddons.push({
                         itemIndex: index,
+                        id: crypto.randomUUID(),
+                        order_item_id: '', // Will be updated in DAL
                         addon_id: addon.id,
                         addon_name: addon.name,
                         addon_price: addon.price,
@@ -418,7 +411,8 @@ export default function NovoPedidoPage() {
                             total_points: 0,
                             total_spent: 0,
                             total_orders: 0,
-                            tier: 'bronze'
+                            email: null,
+                            created_at: new Date().toISOString()
                         } : null,
                         pointsEarned: isPaid ? Math.floor(total * 1) : 0, // Fallback default = 1 point per real
                         updateData: currentCustomer ? {
@@ -426,17 +420,12 @@ export default function NovoPedidoPage() {
                             ...(isPaid ? {
                                 total_spent: (currentCustomer.total_spent || 0) + total,
                                 total_points: (currentCustomer.total_points || 0) + Math.floor(total * 1)
-                            } : {}),
-                            ...(appliedCoupon ? {
-                                coupons_used: (currentCustomer.coupons_used || 0) + 1,
-                                total_discount_savings: (currentCustomer.total_discount_savings || 0) + discount
                             } : {})
                         } : null
                     };
                 }
             }
 
-            const orderId = crypto.randomUUID();
             const orderWithId = { ...orderData, id: orderId };
 
             await createFullOrder(orderWithId, orderItems, itemAddons, loyaltyData, couponData);

@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { stripe, getStripeCustomer } from '@/lib/stripe';
-import { cookies } from 'next/headers';
 
-export async function POST(req: NextRequest) {
+export async function POST() {
     try {
         const supabase = await createClient();
 
@@ -39,7 +38,7 @@ export async function POST(req: NextRequest) {
         if (subscription && !subscription.stripe_customer_id) {
             const { error: updateError } = await supabase
                 .from('subscriptions')
-                .update({ stripe_customer_id: customer.id } as any)
+                .update({ stripe_customer_id: customer.id })
                 .eq('user_id', user.id);
 
             if (updateError) {

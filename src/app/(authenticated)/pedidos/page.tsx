@@ -74,7 +74,7 @@ const ORDERS_PER_PAGE = 30;
 
 export default function PedidosPage() {
     const { user, userSettings } = useAuth();
-    const { orders: allOrders, loading, error: cacheError } = useOrdersCache();
+    const { orders: allOrders, loading } = useOrdersCache();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [showDropdown, setShowDropdown] = useState<string | null>(null);

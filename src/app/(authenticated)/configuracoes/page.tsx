@@ -37,7 +37,6 @@ import {
     type OpeningHourInput
 } from '@/app/actions/store';
 import { revalidateStoreMenu } from '@/app/actions/menu';
-import styles from './page.module.css';
 import OpeningHoursScheduler from '@/components/settings/OpeningHoursScheduler';
 import { PushNotificationPrompt } from '@/components/pwa/PushNotificationPrompt';
 
@@ -133,23 +132,25 @@ function ConfiguracoesContent() {
 
     useEffect(() => {
         if (userSettings) {
-            setAppName(userSettings.app_name || 'Cola Aí');
-            setSlogan(userSettings.slogan || '');
-            setPrimaryColor(userSettings.primary_color || '#ff6b35');
-            setSecondaryColor(userSettings.secondary_color || '#2d3436');
-            setWhatsappNumber(userSettings.whatsapp_number || '');
-            setPublicSlug(userSettings.public_slug || '');
-            setPixKey(userSettings.pix_key || '');
-            setPixKeyType(userSettings.pix_key_type || 'cpf');
-            setMerchantCity(userSettings.merchant_city || '');
-            setHiddenSidebarItems(userSettings.hidden_sidebar_items || []);
-            setDeliveryFee(userSettings.delivery_fee_value ?? 5);
-            setStoreOpen(userSettings.store_open ?? true);
-            setDeliveryTimeMin(userSettings.delivery_time_min ?? 30);
-            setDeliveryTimeMax(userSettings.delivery_time_max ?? 45);
-            setSidebarColor(userSettings.sidebar_color ?? userSettings.secondary_color ?? '#2d3436');
-            setTaxaServicoEnabled(userSettings.taxa_servico_enabled ?? false);
-            setTaxaServicoPercent(userSettings.taxa_servico_percent ?? 10);
+            requestAnimationFrame(() => {
+                setAppName(userSettings.app_name || 'Cola Aí');
+                setSlogan(userSettings.slogan || '');
+                setPrimaryColor(userSettings.primary_color || '#ff6b35');
+                setSecondaryColor(userSettings.secondary_color || '#2d3436');
+                setWhatsappNumber(userSettings.whatsapp_number || '');
+                setPublicSlug(userSettings.public_slug || '');
+                setPixKey(userSettings.pix_key || '');
+                setPixKeyType(userSettings.pix_key_type || 'cpf');
+                setMerchantCity(userSettings.merchant_city || '');
+                setHiddenSidebarItems(userSettings.hidden_sidebar_items || []);
+                setDeliveryFee(userSettings.delivery_fee_value ?? 5);
+                setStoreOpen(userSettings.store_open ?? true);
+                setDeliveryTimeMin(userSettings.delivery_time_min ?? 30);
+                setDeliveryTimeMax(userSettings.delivery_time_max ?? 45);
+                setSidebarColor(userSettings.sidebar_color ?? userSettings.secondary_color ?? '#2d3436');
+                setTaxaServicoEnabled(userSettings.taxa_servico_enabled ?? false);
+                setTaxaServicoPercent(userSettings.taxa_servico_percent ?? 10);
+            });
         }
     }, [userSettings]);
 
@@ -157,7 +158,9 @@ function ConfiguracoesContent() {
     useEffect(() => {
         const tab = searchParams.get('tab');
         if (tab && ['geral', 'aparencia', 'cardapio', 'pagamento', 'menu', 'avaliacoes', 'suporte', 'links', 'conta', 'atalhos'].includes(tab)) {
-            setActiveTab(tab as SettingsTab);
+            requestAnimationFrame(() => {
+                setActiveTab(tab as SettingsTab);
+            });
             // Limpa o parâmetro da URL de forma "limpa" no Next.js
             const params = new URLSearchParams(searchParams.toString());
             params.delete('tab');
@@ -169,21 +172,23 @@ function ConfiguracoesContent() {
     useEffect(() => {
         if (user?.id) {
             getOpeningHours(user.id).then((data) => {
-                if (data && data.length > 0) {
-                    setOpeningHours(data.map(h => ({
-                        day_of_week: h.day_of_week,
-                        open_time: h.open_time,
-                        close_time: h.close_time,
-                        is_closed: h.is_closed
-                    })));
-                } else {
-                    setOpeningHours(Array.from({ length: 7 }).map((_, i) => ({
-                        day_of_week: i,
-                        open_time: '18:00',
-                        close_time: '23:00',
-                        is_closed: false
-                    })));
-                }
+                requestAnimationFrame(() => {
+                    if (data && data.length > 0) {
+                        setOpeningHours(data.map(h => ({
+                            day_of_week: h.day_of_week,
+                            open_time: h.open_time,
+                            close_time: h.close_time,
+                            is_closed: h.is_closed
+                        })));
+                    } else {
+                        setOpeningHours(Array.from({ length: 7 }).map((_, i) => ({
+                            day_of_week: i,
+                            open_time: '18:00',
+                            close_time: '23:00',
+                            is_closed: false
+                        })));
+                    }
+                });
             });
         }
     }, [user?.id]);
@@ -383,7 +388,7 @@ function ConfiguracoesContent() {
                 return (
                     <div className="p-6 sm:p-8">
                         <div className="mb-7 pb-5 border-b border-border"><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Personalização Visual</h2><p className="text-sm text-text-muted">Customize as cores do seu aplicativo</p></div>
-                        <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Temas Prontos</label><div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">{colorPresets.map((preset) => (<button key={preset.name} className={`flex items-center gap-2.5 px-3 py-3 bg-bg-tertiary border-2 border-border rounded-md cursor-pointer transition-all hover:border-border-light group ${primaryColor === preset.primary ? "!border-primary !bg-primary/10" : ""}`} onClick={() => applyPreset(preset)} title={preset.name}><span className="w-6 h-6 rounded-full shrink-0" style={{ background: preset.primary }} /><span className={`text-sm ${primaryColor === preset.primary ? "text-text-primary" : "text-text-secondary"}`}>{preset.name}</span></button>))}</div></div>
+                        <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Temas Prontos</label><div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">{colorPresets.map((preset) => (<button key={preset.name} className={`flex items-center gap-2.5 px-3 py-3 bg-bg-tertiary border-2 border-border rounded-md cursor-pointer transition-all hover:border-border-light group ${primaryColor === preset.primary ? "border-primary! bg-primary/10!" : ""}`} onClick={() => applyPreset(preset)} title={preset.name}><span className="w-6 h-6 rounded-full shrink-0" style={{ background: preset.primary }} /><span className={`text-sm ${primaryColor === preset.primary ? "text-text-primary" : "text-text-secondary"}`}>{preset.name}</span></button>))}</div></div>
                         <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Cores Personalizadas</label><div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="flex flex-col"><span className="block text-[13px] text-text-muted mb-2">Cor Principal</span><div className="flex items-center gap-3 px-3.5 py-2.5 bg-bg-tertiary border border-border rounded-md"><input type="color" value={primaryColor} onChange={(e) => { setPrimaryColor(e.target.value); previewSettings({ primary_color: e.target.value }); }} /><span className="font-mono text-sm text-text-secondary uppercase">{primaryColor}</span></div></div>
                             <div className="flex flex-col"><span className="block text-[13px] text-text-muted mb-2">Cor Secundária</span><div className="flex items-center gap-3 px-3.5 py-2.5 bg-bg-tertiary border border-border rounded-md"><input type="color" value={secondaryColor} onChange={(e) => { setSecondaryColor(e.target.value); previewSettings({ secondary_color: e.target.value }); }} /><span className="font-mono text-sm text-text-secondary uppercase">{secondaryColor}</span></div></div>
@@ -625,7 +630,7 @@ function ConfiguracoesContent() {
                 return (
                     <div className="p-6 sm:p-8">
                         <div className="mb-7 pb-5 border-b border-border"><h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Pagamento PIX</h2><p className="text-sm text-text-muted">Configure sua chave PIX para receber pagamentos</p></div>
-                        <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Tipo de Chave PIX</label><div className="flex flex-wrap gap-2 text-sm">{[{ value: 'cpf', label: 'CPF' }, { value: 'cnpj', label: 'CNPJ' }, { value: 'email', label: 'E-mail' }, { value: 'phone', label: 'Telefone' }, { value: 'random', label: 'Aleatória' }].map((type) => (<button key={type.value} className={`px-4 py-3 bg-bg-tertiary border-2 border-border rounded-md text-text-secondary font-medium cursor-pointer transition-all hover:border-border-light hover:text-text-primary ${pixKeyType === type.value ? "!border-[#32BCAD] !bg-[#32BCAD]/10 !text-[#32BCAD]" : ""}`} onClick={() => setPixKeyType(type.value as typeof pixKeyType)} type="button">{type.label}</button>))}</div></div>
+                        <div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Tipo de Chave PIX</label><div className="flex flex-wrap gap-2 text-sm">{[{ value: 'cpf', label: 'CPF' }, { value: 'cnpj', label: 'CNPJ' }, { value: 'email', label: 'E-mail' }, { value: 'phone', label: 'Telefone' }, { value: 'random', label: 'Aleatória' }].map((type) => (<button key={type.value} className={`px-4 py-3 bg-bg-tertiary border-2 border-border rounded-md text-text-secondary font-medium cursor-pointer transition-all hover:border-border-light hover:text-text-primary ${pixKeyType === type.value ? "border-[#32BCAD]! bg-[#32BCAD]/10! text-[#32BCAD]!" : ""}`} onClick={() => setPixKeyType(type.value as typeof pixKeyType)} type="button">{type.label}</button>))}</div></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"><div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Chave PIX</label><Input value={pixKey} onChange={(e) => setPixKey(e.target.value)} placeholder={pixKeyType === 'cpf' ? '000.000.000-00' : pixKeyType === 'cnpj' ? '00.000.000/0000-00' : pixKeyType === 'email' ? 'email@exemplo.com' : pixKeyType === 'phone' ? '+5511999999999' : 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'} /><span className="block text-[13px] text-text-muted mt-2">Esta chave será usada para gerar QR Codes PIX nos pedidos</span></div><div className="mb-6"><label className="flex items-center text-[15px] font-medium text-text-primary mb-2.5">Cidade do Estabelecimento</label><Input value={merchantCity} onChange={(e) => setMerchantCity(e.target.value)} placeholder="São Paulo" maxLength={15} /><span className="block text-[13px] text-text-muted mt-2">Cidade que aparecerá no comprovante PIX (máx. 15 caracteres)</span></div></div>
                         <div className="pt-6 border-t border-border mt-2"><Button size="lg" leftIcon={saved ? <FiCheck /> : <FiSave />} onClick={handleSave} isLoading={saving} style={saved ? { background: 'var(--accent)' } : {}}>{saved ? 'Salvo!' : 'Salvar Alterações'}</Button></div>
                     </div>
@@ -729,7 +734,7 @@ function ConfiguracoesContent() {
         <div className="max-w-[1400px] mx-auto">
             <div className="mb-8"><h1 className="text-3xl font-bold mb-2">Configurações</h1><p className="text-text-secondary">Personalize seu aplicativo</p></div>
             <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6 items-start">
-                <div className="flex md:flex-col gap-2 md:gap-1 bg-bg-card rounded-xl p-3 border border-border sticky top-6 overflow-x-auto md:overflow-visible">{TABS.map((tab) => (<button key={tab.id} className={`flex items-center gap-3 px-4 py-3 bg-transparent border border-transparent md:border-none rounded-lg text-text-secondary text-[15px] font-medium cursor-pointer transition-all text-left hover:bg-bg-tertiary hover:text-text-primary whitespace-nowrap min-w-max md:min-w-0 ${activeTab === tab.id ? "!bg-primary/10 !text-primary" : ""}`} onClick={() => { if (tab.id === 'atalhos') { setShowHelp(true); } else { setActiveTab(tab.id); } }}><tab.icon /><span>{tab.label}</span></button>))}</div>
+                <div className="flex md:flex-col gap-2 md:gap-1 bg-bg-card rounded-xl p-3 border border-border sticky top-6 overflow-x-auto md:overflow-visible">{TABS.map((tab) => (<button key={tab.id} className={`flex items-center gap-3 px-4 py-3 bg-transparent border border-transparent md:border-none rounded-lg text-text-secondary text-[15px] font-medium cursor-pointer transition-all text-left hover:bg-bg-tertiary hover:text-text-primary whitespace-nowrap min-w-max md:min-w-0 ${activeTab === tab.id ? "bg-primary/10! text-primary!" : ""}`} onClick={() => { if (tab.id === 'atalhos') { setShowHelp(true); } else { setActiveTab(tab.id); } }}><tab.icon /><span>{tab.label}</span></button>))}</div>
                 <Card className="p-0 overflow-hidden">{renderTabContent()}</Card>
             </div>
         </div>

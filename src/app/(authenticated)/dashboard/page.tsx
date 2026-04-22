@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import {
     FiShoppingBag,
@@ -21,29 +21,11 @@ import { StatusBadge, type OrderStatus } from '@/components/ui/StatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useOrdersCache } from '@/hooks/useDataCache';
-import type { CachedOrder } from '@/types/db';
 import { formatCurrency, formatRelativeTime } from '@/hooks/useFormatters';
 import { predictRemainingToday, getConfidenceLabel } from '@/lib/salesPrediction';
 import { cn } from '@/lib/utils';
 import { TrialBanner } from '@/components/subscription/TrialBanner';
 
-interface Stats {
-    totalOrders: number;
-    totalRevenue: number;
-    pendingOrders: number;
-    pendingDeliveries: number;
-    yesterdayRevenue: number;
-    yesterdayOrders: number;
-}
-
-interface RecentOrder {
-    id: string;
-    order_number: number;
-    customer_name: string;
-    total: number;
-    status: string;
-    created_at: string;
-}
 
 interface HistoricalData {
     date: string;
@@ -52,12 +34,6 @@ interface HistoricalData {
     orders: number;
 }
 
-interface Prediction {
-    predictedRevenue: number;
-    predictedOrders: number;
-    confidence: 'low' | 'medium' | 'high';
-    basedOn: string;
-}
 
 export default function DashboardPage() {
     const { userSettings } = useAuth();

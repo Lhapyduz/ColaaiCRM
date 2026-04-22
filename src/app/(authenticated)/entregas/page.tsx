@@ -7,16 +7,13 @@ import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useToast } from '@/components/ui/Toast';
-import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { formatCurrency, formatRelativeTime, formatDateTime } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import { useOrdersCache } from '@/hooks/useDataCache';
 import { updateOrder } from '@/lib/dataAccess';
-import type { CachedOrder as Order } from '@/types/db';
 
 export default function EntregasPage() {
-    const { user } = useAuth();
     const { plan, canAccess } = useSubscription();
     const { orders: rawOrders, loading } = useOrdersCache();
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
@@ -52,10 +49,6 @@ export default function EntregasPage() {
     if (!canAccess('deliveries')) {
         return <UpgradePrompt feature="Gestão de Entregas" requiredPlan="Avançado" currentPlan={plan} fullPage />;
     }
-
-    const playNotificationSound = () => {
-        if (audioRef.current) audioRef.current.play().catch(() => { });
-    };
 
     const handleUpdateStatus = async (orderId: string, newStatus: string) => {
         try {

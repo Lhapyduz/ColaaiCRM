@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getDb, db } from '@/lib/db';
+import { db } from '@/lib/db';
 import { 
     fetchProducts, fetchCategories, fetchOrders, fetchCustomers, 
     fetchMesas, fetchEmployeesCached, fetchLoyaltyRewards, 
@@ -17,8 +17,8 @@ import {
 import type { 
     CachedClient, CachedTable, CachedEmployee, CachedOrder,
     CachedLoyaltyReward, CachedLoyaltySettings, CachedCoupon, CachedAppSetting,
-    CachedActionLog, CachedProductAddon, CachedAddonGroup, CachedProductAddonGroup,
-    CachedAddonGroupItem, CachedCashFlow, CachedBill, CachedBillCategory
+    CachedActionLog, CachedMesaSession, CachedMesaSessionItem,
+    CachedCashFlow, CachedBill, CachedBillCategory
 } from '@/types/db';
 
 
@@ -70,7 +70,7 @@ export function useProductsCache() {
                 }
                 return a.name.localeCompare(b.name);
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie products query error:', err);
             return [];
         }
@@ -189,7 +189,7 @@ export function useOrdersCache(options: { limit?: number; date?: string } = {}) 
         try {
             const data = await db.orders.where('user_id').equals(user.id).toArray();
             return data.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie orders query error:', err);
             return [];
         }
@@ -203,12 +203,12 @@ export function useOrdersCache(options: { limit?: number; date?: string } = {}) 
             setIsSyncing(true);
             await fetchOrders(user.id, options);
             setError(null);
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Erro desconhecido');
         } finally {
             setIsSyncing(false);
         }
-    }, [user, options.limit, options.date]);
+    }, [user, options]);
 
     useEffect(() => {
         if (user) {
@@ -247,7 +247,7 @@ export function useSingleOrderCache(orderId: string) {
                     order_item_addons: addons.filter(a => a.order_item_id === item.id)
                 }))
             } as CachedOrder;
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie fetchOrderById error:', err);
             return null;
         }
@@ -288,7 +288,7 @@ export function useCustomersCache() {
         try {
             const data = await db.customers.where('user_id').equals(user.id).toArray();
             return data.sort((a: CachedClient, b: CachedClient) => a.name.localeCompare(b.name));
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie customers query error:', err);
             return [];
         }
@@ -338,9 +338,9 @@ export function useTableDetailCache(tableId: string) {
 
             const sessions = await db.mesa_sessions.where('mesa_id').equals(tableId).toArray();
             // Robust check for active session: not closed AND status is not 'livre'
-            const activeSession = sessions.find((s: any) => !s.closed_at && s.status !== 'livre');
+            const activeSession = sessions.find((s: CachedMesaSession) => !s.closed_at && s.status !== 'livre');
             
-            let items: any[] = [];
+            let items: CachedMesaSessionItem[] = [];
             if (activeSession) {
                 items = await db.mesa_session_items.where('session_id').equals(activeSession.id).toArray();
             }
@@ -352,7 +352,7 @@ export function useTableDetailCache(tableId: string) {
                     items
                 } : null
             };
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie useTableDetailCache error:', err);
             return null;
         }
@@ -412,7 +412,7 @@ export function useMesasCache() {
             }));
             
             return mapped.sort((a, b) => a.numero_mesa - b.numero_mesa);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie mesas query error:', err);
             return [];
         }
@@ -424,7 +424,12 @@ export function useMesasCache() {
         if (!user) return;
         try {
             setIsSyncing(true);
-            await fetchMesas(user.id);
+            // Fetch mesas, sessions AND items from cloud to keep local Dexie in sync
+            await Promise.all([
+                fetchMesas(user.id),
+                fetchMesaSessions(user.id),
+                fetchMesaSessionItems(user.id),
+            ]);
             setError(null);
         } catch (err) {
             console.error('Error syncing mesas from cloud:', err);
@@ -434,10 +439,41 @@ export function useMesasCache() {
         }
     }, [user]);
 
+    // Initial sync on mount
     useEffect(() => {
         if (user) {
             syncFromCloud();
         }
+    }, [user, syncFromCloud]);
+
+    // Supabase Realtime: auto-sync when other browsers change mesa data
+    const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+        if (!user) return;
+
+        // Debounced sync to avoid rapid-fire re-fetches on batch changes
+        const debouncedSync = () => {
+            if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+            syncTimerRef.current = setTimeout(() => {
+                syncFromCloud();
+            }, 500);
+        };
+
+        const channel = supabase.channel(`mesas-realtime-${user.id}`)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'mesa_sessions', filter: `user_id=eq.${user.id}` },
+                debouncedSync
+            )
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'mesas', filter: `user_id=eq.${user.id}` },
+                debouncedSync
+            )
+            .subscribe();
+
+        return () => {
+            if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+            supabase.removeChannel(channel);
+        };
     }, [user, syncFromCloud]);
 
     return { 
@@ -463,7 +499,7 @@ export function useEmployeesCache() {
                 if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
                 return a.name.localeCompare(b.name);
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie employees query error:', err);
             return [];
         }
@@ -503,7 +539,7 @@ export function useLoyaltyRewardsCache() {
         if (!user || typeof window === 'undefined') return [];
         try {
             return await db.loyalty_rewards.where('user_id').equals(user.id).toArray();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie loyalty rewards query error:', err);
             return [];
         }
@@ -542,7 +578,7 @@ export function useLoyaltySettingsCache() {
         try {
             const data = await db.loyalty_settings.where('user_id').equals(user.id).toArray();
             return data[0] || null;
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie loyalty settings query error:', err);
             return null;
         }
@@ -580,7 +616,7 @@ export function useCouponsCache() {
         if (!user || typeof window === 'undefined') return [];
         try {
             return await db.coupons.where('user_id').equals(user.id).toArray();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie coupons query error:', err);
             return [];
         }
@@ -619,7 +655,7 @@ export function useAppSettingsCache() {
         try {
             const data = await db.app_settings.where('user_id').equals(user.id).toArray();
             return data[0] || null;
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie app settings query error:', err);
             return null;
         }
@@ -668,7 +704,7 @@ export function useAddonsCache() {
             const productGroups = allProductGroups.filter(pg => userGroupIds.has(pg.group_id));
             const groupItems = allGroupItems.filter(gi => userGroupIds.has(gi.group_id) && userAddonIds.has(gi.addon_id));
             return { addons, groups, productGroups, groupItems };
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie addons query error:', err);
             return null;
         }
@@ -755,7 +791,7 @@ export function useActionLogsCache(pageSize: number = 20, page: number = 1, filt
     const logs = useLiveQuery(async () => {
         if (!user || typeof window === 'undefined') return [];
         try {
-            let query = db.action_logs.where('user_id').equals(user.id);
+            const query = db.action_logs.where('user_id').equals(user.id);
 
             // Fetch all for count and filtering (not the most efficient but works for local)
             let allLogs = await query.toArray();
@@ -770,7 +806,7 @@ export function useActionLogsCache(pageSize: number = 20, page: number = 1, filt
 
             const start = (page - 1) * pageSize;
             return allLogs.slice(start, start + pageSize);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie logs query error:', err);
             return [];
         }
@@ -852,14 +888,14 @@ export function useCashFlowCache(from?: string, to?: string) {
     const entries = useLiveQuery(async () => {
         if (!user || typeof window === 'undefined') return [];
         try {
-            let query = db.cash_flow.where('user_id').equals(user.id);
+            const query = db.cash_flow.where('user_id').equals(user.id);
             
             let data = await query.toArray();
             if (from) data = data.filter(c => c.transaction_date >= (from.includes('T') ? from.split('T')[0] : from));
             if (to) data = data.filter(c => c.transaction_date <= (to.includes('T') ? to.split('T')[0] : to));
             
             return data.sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie cash_flow query error:', err);
             return [];
         }
@@ -898,7 +934,7 @@ export function useBillsCache() {
         try {
             const data = await db.bills.where('user_id').equals(user.id).toArray();
             return data.sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie bills query error:', err);
             return [];
         }
@@ -936,7 +972,7 @@ export function useBillCategoriesCache() {
         if (!user || typeof window === 'undefined') return [];
         try {
             return await db.bill_categories.where('user_id').equals(user.id).toArray();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Dexie bill categories query error:', err);
             return [];
         }

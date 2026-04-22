@@ -1,0 +1,33 @@
+﻿src/lib/dataAccess.ts(78,104): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/dataAccess.ts(181,106): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/dataAccess.ts(291,102): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/dataAccess.ts(608,105): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/dataAccess.ts(680,101): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/dataAccess.ts(863,105): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/dataAccess.ts(929,134): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/dataAccess.ts(997,126): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/dataAccess.ts(1248,128): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/dataAccess.ts(1325,124): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/dataAccess.ts(1430,134): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/offlineSync.ts(238,29): error TS2339: Property 'orderData' does not exist on type 'unknown'.
+src/lib/offlineSync.ts(238,40): error TS2339: Property 'orderItems' does not exist on type 'unknown'.
+src/lib/offlineSync.ts(238,52): error TS2339: Property 'itemAddons' does not exist on type 'unknown'.
+src/lib/offlineSync.ts(238,64): error TS2339: Property 'loyaltyData' does not exist on type 'unknown'.
+src/lib/offlineSync.ts(238,77): error TS2339: Property 'couponData' does not exist on type 'unknown'.
+src/lib/offlineSync.ts(319,29): error TS2339: Property 'productId' does not exist on type 'unknown'.
+src/lib/offlineSync.ts(319,40): error TS2339: Property 'groupIds' does not exist on type 'unknown'.
+src/lib/offlineSync.ts(363,29): error TS18046: 'r' is of type 'unknown'.
+src/lib/offlineSync.ts(364,34): error TS18046: 'r' is of type 'unknown'.
+src/lib/offlineSync.ts(365,38): error TS18046: 'r' is of type 'unknown'.
+src/lib/offlineSync.ts(366,38): error TS18046: 'r' is of type 'unknown'.
+src/lib/offlineSync.ts(367,36): error TS18046: 'r' is of type 'unknown'.
+src/lib/offlineSync.ts(368,38): error TS18046: 'r' is of type 'unknown'.
+src/lib/offlineSync.ts(369,38): error TS18046: 'r' is of type 'unknown'.
+src/lib/offlineSync.ts(370,35): error TS18046: 'r' is of type 'unknown'.
+src/lib/offlineSync.ts(371,37): error TS18046: 'r' is of type 'unknown'.
+src/lib/offlineSync.ts(414,98): error TS18046: 'action.data' is of type 'unknown'.
+src/lib/offlineSync.ts(449,33): error TS18046: 'a.data' is of type 'unknown'.
+src/lib/offlineSync.ts(477,29): error TS2339: Property 'userId' does not exist on type 'unknown'.
+src/lib/offlineSync.ts(477,37): error TS2339: Property 'olderThan' does not exist on type 'unknown'.
+src/lib/offlineSync.ts(491,29): error TS2339: Property 'userId' does not exist on type 'unknown'.
+

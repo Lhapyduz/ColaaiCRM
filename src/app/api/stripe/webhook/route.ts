@@ -467,7 +467,7 @@ export async function POST(req: Request) {
                 break;
             }
         }
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('Error handling webhook event:', error);
         return new NextResponse('Webhook handler failed', { status: 500 });
     }

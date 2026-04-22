@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, ReactNode } from 'react';
+import React, { useState } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiPercent, FiDollarSign, FiCopy, FiCheck } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -37,9 +37,14 @@ export function CuponsTab() {
     const [formFirstOrderOnly, setFormFirstOrderOnly] = useState(false);
     const toast = useToast();
 
-    if (!canAccess?.('coupons')) {
-        return <UpgradePrompt feature="Cupons de Desconto" requiredPlan="Profissional" currentPlan={plan} fullPage />;
-    }
+    const filteredCoupons = React.useMemo(() => 
+        (rawCoupons || []).filter(c => 
+            c.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
+            c.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        ), [rawCoupons, searchTerm]);
+
+    const activeCount = React.useMemo(() => (rawCoupons || []).filter(c => c.active).length, [rawCoupons]);
+    const totalUsage = React.useMemo(() => (rawCoupons || []).reduce((sum, c) => sum + (c.usage_count || 0), 0), [rawCoupons]);
 
     const generateRandomCode = () => { 
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; 
@@ -137,14 +142,9 @@ export function CuponsTab() {
     const isLimitReached = (coupon: Coupon) => coupon.usage_limit ? coupon.usage_count >= coupon.usage_limit : false;
     const getDiscountLabel = (coupon: Coupon) => coupon.discount_type === 'percentage' ? `${coupon.discount_value}%` : formatCurrency(coupon.discount_value);
     
-    const filteredCoupons = React.useMemo(() => 
-        (rawCoupons || []).filter(c => 
-            c.code.toLowerCase().includes(searchTerm.toLowerCase()) || 
-            c.description?.toLowerCase().includes(searchTerm.toLowerCase())
-        ), [rawCoupons, searchTerm]);
-
-    const activeCount = React.useMemo(() => (rawCoupons || []).filter(c => c.active).length, [rawCoupons]);
-    const totalUsage = React.useMemo(() => (rawCoupons || []).reduce((sum, c) => sum + (c.usage_count || 0), 0), [rawCoupons]);
+    if (!canAccess?.('coupons')) {
+        return <UpgradePrompt feature="Cupons de Desconto" requiredPlan="Profissional" currentPlan={plan} fullPage />;
+    }
 
     return (
         <div className="max-w-[1200px] mx-auto">

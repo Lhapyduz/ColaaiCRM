@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { FiCheck, FiAlertCircle } from 'react-icons/fi';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -19,28 +19,59 @@ export default function RatingClient({ token }: { token: string }) {
     const [submitted, setSubmitted] = useState(false);
     const [error, setError] = useState('');
 
-    useEffect(() => { fetchOrder(); }, [token]);
-    useEffect(() => { if (order?.user_settings) document.documentElement.style.setProperty('--primary', order.user_settings.primary_color); }, [order]);
-
-    const fetchOrder = async () => {
+    const fetchOrder = useCallback(async () => {
         try {
             const { data, error } = await supabase.from('orders').select('id,order_number,customer_name,total,rated,user_id').eq('rating_token', token).single();
-            if (error || !data) { setError('Pedido não encontrado'); setLoading(false); return; }
-            if (data.rated) setSubmitted(true);
+            if (error || !data) {
+                requestAnimationFrame(() => {
+                    setError('Pedido não encontrado');
+                    setLoading(false);
+                });
+                return;
+            }
+            if (data.rated) {
+                requestAnimationFrame(() => setSubmitted(true));
+            }
             const { data: settings } = await supabase.from('user_settings').select('app_name, logo_url, primary_color').eq('user_id', data.user_id).single();
-            setOrder({ ...data, user_settings: settings || { app_name: 'Cola Aí', logo_url: null, primary_color: '#ff6b35' } });
-        } catch { setError('Erro ao carregar pedido'); } finally { setLoading(false); }
-    };
+            requestAnimationFrame(() => {
+                setOrder({ ...data, user_settings: settings || { app_name: 'Cola Aí', logo_url: null, primary_color: '#ff6b35' } });
+                setLoading(false);
+            });
+        } catch {
+            requestAnimationFrame(() => {
+                setError('Erro ao carregar pedido');
+                setLoading(false);
+            });
+        }
+    }, [token]);
+
+    useEffect(() => { fetchOrder(); }, [fetchOrder]);
+    useEffect(() => {
+        if (order?.user_settings) {
+            requestAnimationFrame(() => {
+                document.documentElement.style.setProperty('--primary', order.user_settings.primary_color);
+            });
+        }
+    }, [order]);
 
 
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (rating === 0) { setError('Por favor, selecione uma avaliação'); return; }
-        setSubmitting(true); setError('');
+        if (rating === 0) {
+            requestAnimationFrame(() => setError('Por favor, selecione uma avaliação'));
+            return;
+        }
+        requestAnimationFrame(() => {
+            setSubmitting(true);
+            setError('');
+        });
         try {
             const { data: orderData } = await supabase.from('orders').select('id, user_id, customer_name').eq('rating_token', token).single();
-            if (!orderData) { setError('Pedido não encontrado'); return; }
+            if (!orderData) {
+                requestAnimationFrame(() => setError('Pedido não encontrado'));
+                return;
+            }
 
             // Insert into store_ratings instead of ratings
             const { error: ratingError } = await supabase.from('store_ratings').insert({
@@ -53,8 +84,13 @@ export default function RatingClient({ token }: { token: string }) {
             if (ratingError) throw ratingError;
 
             await supabase.from('orders').update({ rated: true }).eq('id', orderData.id);
-            setSubmitted(true);
-        } catch (err) { console.error(err); setError('Erro ao enviar avaliação. Tente novamente.'); } finally { setSubmitting(false); }
+            requestAnimationFrame(() => setSubmitted(true));
+        } catch (err) {
+            console.error(err);
+            requestAnimationFrame(() => setError('Erro ao enviar avaliação. Tente novamente.'));
+        } finally {
+            requestAnimationFrame(() => setSubmitting(false));
+        }
     };
 
     if (loading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="flex flex-col items-center gap-4"><div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" /><p className="text-text-muted">Carregando...</p></div></div>;

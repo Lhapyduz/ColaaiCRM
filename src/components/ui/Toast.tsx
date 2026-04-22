@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, ReactNode, useRef } from 'react';
+import React, { createContext, ReactNode } from 'react';
 import toast from 'react-hot-toast';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -53,8 +53,7 @@ const toastActions: ToastContextType = {
 
 // Hook retorna referência estável (mesma instância em todos os renders)
 export function useToast(): ToastContextType {
-    const ref = useRef(toastActions);
-    return ref.current;
+    return toastActions;
 }
 
 export default ToastProvider;

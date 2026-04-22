@@ -36,7 +36,7 @@ export async function updateClientPlan({ userId, planId, periodEnd }: UpdatePlan
             return { success: false, error: `Error fetching subscription: ${subError.message}` };
         }
 
-        let stripeSubscriptionId = currentSub?.stripe_subscription_id;
+        const stripeSubscriptionId = currentSub?.stripe_subscription_id;
         let paymentMethod = currentSub?.payment_method || 'manual';
 
         // 3. Logic: If Stripe, update Stripe. If Manual, just update DB.

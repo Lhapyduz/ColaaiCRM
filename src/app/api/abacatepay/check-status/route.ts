@@ -4,16 +4,6 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 import { getStripeCustomer } from '@/lib/stripe';
 
 // Get billing period from subscription or default
-async function getPeriodDaysForBilling(billingId: string): Promise<number> {
-    const { data: subscription } = await supabaseAdmin
-        .from('subscriptions')
-        .select('billing_period')
-        .eq('abacatepay_billing_id', billingId)
-        .maybeSingle();
-
-    return subscription?.billing_period === 'annual' ? 365 : 30;
-}
-
 // Ativa a assinatura automaticamente quando o pagamento for confirmado
 // Também cria/reutiliza cliente no Stripe para unificar gestão de clientes
 async function activateSubscriptionIfPaid(billingId: string): Promise<boolean> {
@@ -46,8 +36,9 @@ async function activateSubscriptionIfPaid(billingId: string): Promise<boolean> {
                 );
                 stripeCustomerId = stripeCustomer.id;
                 console.log('[AbacatePay Check Status] Stripe customer ID:', stripeCustomerId);
-            } catch (stripeError: any) {
-                console.error('[AbacatePay Check Status] Erro ao criar cliente Stripe:', stripeError.message);
+            } catch (stripeError) {
+                const message = stripeError instanceof Error ? stripeError.message : 'Unknown error';
+                console.error('[AbacatePay Check Status] Erro ao criar cliente Stripe:', message);
                 // Continua mesmo se falhar - a assinatura PIX funciona sem Stripe
             }
         }
@@ -58,7 +49,12 @@ async function activateSubscriptionIfPaid(billingId: string): Promise<boolean> {
         const periodEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
         // Montar dados de update incluindo stripe_customer_id se disponível
-        const updateData: any = {
+        const updateData: {
+            status: string;
+            current_period_start: string;
+            current_period_end: string;
+            stripe_customer_id?: string;
+        } = {
             status: 'active',
             current_period_start: now.toISOString(),
             current_period_end: periodEnd.toISOString(),
@@ -119,10 +115,11 @@ export async function GET(req: NextRequest) {
             activated, // Informa se a assinatura foi ativada nesta verificação
         });
 
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
         console.error('[AbacatePay Check Status] Error:', error);
         return NextResponse.json(
-            { error: `Erro: ${error.message}` },
+            { error: `Erro: ${message}` },
             { status: 500 }
         );
     }

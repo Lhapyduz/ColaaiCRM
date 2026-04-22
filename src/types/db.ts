@@ -127,7 +127,7 @@ export interface CachedEmployee {
     pin_code: string | null;
     is_active: boolean;
     is_fixed?: boolean;
-    permissions: any;
+    permissions: Record<string, boolean>;
     hourly_rate: number | null;
     salario_fixo?: number | null;
     created_at: string | null;
@@ -141,7 +141,9 @@ export interface CachedActionLog {
     entity_id: string | null;
     entity_name: string | null;
     description: string;
-    metadata: any;
+    metadata: Record<string, unknown>;
+    ip_address?: string | null;
+    user_agent?: string | null;
     created_at: string;
 }
 
@@ -154,6 +156,8 @@ export interface CachedCashFlow {
     amount: number;
     payment_method: string | null;
     transaction_date: string;
+    reference_type?: string | null;
+    reference_id?: string | null;
     created_at: string;
 }
 
@@ -179,10 +183,10 @@ export interface CachedMesaSessionItem {
     session_id: string;
     product_id: string | null;
     product_name: string;
-    quantity: number;
-    unit_price: number;
-    total: number;
-    notes: string | null;
+    quantidade: number;
+    preco_unitario: number;
+    preco_total: number;
+    observacao: string | null;
     status: string | null;
     created_at: string | null;
     order_id?: string | null;
@@ -241,6 +245,7 @@ export interface CachedCoupon {
 export interface CachedAppSetting {
     id: string;
     user_id: string;
+    public_slug: string | null;
     loyalty_enabled: boolean;
     coupons_enabled: boolean;
     updated_at: string | null;
@@ -306,11 +311,19 @@ export interface CachedBillCategory {
     created_at: string | null;
 }
 
+export interface HasId {
+    id: string;
+}
+
+export interface HasUserId extends HasId {
+    user_id: string;
+}
+
 export interface PendingAction {
     id: string; // UUID of the action itself
     type: 'create' | 'update' | 'delete' | 'create_full_order' | 'replace_relationships' | 'clear_logs' | 'delete_all';
     table: string;
-    data: any; // Record data
+    data: unknown; // Record data
     timestamp: number;
 }
 

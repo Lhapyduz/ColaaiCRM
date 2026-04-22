@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { FiActivity, FiFilter, FiCalendar, FiRefreshCw, FiChevronLeft, FiChevronRight, FiTrash2 } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
 import { getActionTypeLabel, getEntityTypeLabel, getActionIcon, ActionType, EntityType } from '@/lib/actionLogger';
 import { useActionLogsCache } from '@/hooks/useDataCache';
 import { clearActionLogsDAL } from '@/lib/dataAccess';

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { stripe, getStripeCustomer } from '@/lib/stripe';
+
+type CheckoutSessionCreateParams = Parameters<typeof stripe.checkout.sessions.create>[0];
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import Stripe from 'stripe';
 
 export async function POST(req: NextRequest) {
     try {
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
         const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || vercelUrl || 'http://localhost:3000';
 
-        const sessionConfig: any = {
+        const sessionConfig: CheckoutSessionCreateParams = {
             customer: customer.id,
             line_items: [
                 {

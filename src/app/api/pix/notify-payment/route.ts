@@ -41,8 +41,9 @@ export async function POST(req: NextRequest) {
             }, { status: 500 });
         }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[PIX Notification] Error:', error);
-        return new NextResponse(`Internal Error: ${error.message}`, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return new NextResponse(`Internal Error: ${message}`, { status: 500 });
     }
 }

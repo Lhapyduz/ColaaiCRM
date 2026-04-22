@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { FiGift, FiUsers, FiPlus, FiEdit2, FiTrash2, FiSearch, FiStar, FiSettings, FiTrendingUp, FiToggleLeft, FiToggleRight, FiTag, FiShoppingBag, FiDollarSign } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -25,10 +25,7 @@ import {
 } from '@/lib/dataAccess';
 
 import type { 
-    CachedClient as Customer, 
-    CachedLoyaltyReward as LoyaltyReward, 
-    CachedLoyaltySettings as LoyaltySettings, 
-    CachedAppSetting as AppSettings 
+    CachedLoyaltyReward as LoyaltyReward 
 } from '@/types/db';
 
 type TabType = 'customers' | 'rewards' | 'settings';

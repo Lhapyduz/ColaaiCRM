@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidateTag } from 'next/cache';
+import { updateTag } from 'next/cache';
 import { createClient } from '@/utils/supabase/server';
 
 /**
@@ -19,8 +19,7 @@ export async function revalidateStoreMenu() {
         .single();
 
     if (settings?.public_slug) {
-        // @ts-expect-error tipagem incompatível exigindo 2 argumentos na cache api do next local
-        revalidateTag(`menu-${settings.public_slug}`);
+        updateTag(`menu-${settings.public_slug}`);
         console.log(`[Cache] Revalidated menu for slug: ${settings.public_slug}`);
     }
 }

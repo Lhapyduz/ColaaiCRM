@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     FiCalendar,
     FiDownload,
@@ -19,8 +19,6 @@ import {
 } from 'react-icons/fi';
 import { BsCash } from 'react-icons/bs';
 import {
-    LineChart,
-    Line,
     AreaChart,
     Area,
     BarChart,
@@ -111,8 +109,6 @@ interface ReportStats {
     comparisonByDay: { [key: string]: number };
 }
 
-// Colors for charts
-const CHART_COLORS = ['#ff6b35', '#00b894', '#0984e3', '#fdcb6e', '#e84393', '#6c5ce7', '#00cec9', '#fd79a8'];
 const PAYMENT_COLORS: Record<string, string> = {
     money: '#00b894',
     pix: '#0984e3',
@@ -250,13 +246,7 @@ export default function RelatoriosPage() {
         setIsClient(true);
     }, []);
 
-    useEffect(() => {
-        if (user) {
-            fetchReportData();
-        }
-    }, [user, dateRange]);
-
-    const fetchReportData = async () => {
+    const fetchReportData = useCallback(async () => {
         if (!user) return;
 
         setLoading(true);
@@ -435,9 +425,14 @@ export default function RelatoriosPage() {
         } finally {
             setLoading(false);
         }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, dateRange]);
 
-
+    useEffect(() => {
+        if (user) {
+            fetchReportData();
+        }
+    }, [user, dateRange, fetchReportData]);
 
     const getPercentChange = (current: number, previous: number) => {
         if (previous === 0) return current > 0 ? 100 : 0;
@@ -511,21 +506,6 @@ export default function RelatoriosPage() {
         }));
     }, [stats.byPaymentMethod]);
 
-    const categoryData = useMemo(() => {
-        return stats.byCategory.map(cat => ({
-            name: cat.name,
-            value: cat.total,
-            color: cat.color
-        }));
-    }, [stats.byCategory]);
-
-    const deliveryData = useMemo(() => {
-        return [
-            { name: 'Entrega', value: stats.deliveryCount, color: '#ff6b35' },
-            { name: 'Balcão', value: stats.pickupCount, color: '#00b894' }
-        ];
-    }, [stats.deliveryCount, stats.pickupCount]);
-
     const topProductsData = useMemo(() => {
         return stats.topProducts.slice(0, 5).map(p => ({
             name: p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name,
@@ -540,10 +520,6 @@ export default function RelatoriosPage() {
             .sort((a, b) => b.count - a.count)
             .slice(0, 3);
         return hours;
-    };
-
-    const handleExportPDF = () => {
-        window.print();
     };
 
     const handleExportCSV = () => {

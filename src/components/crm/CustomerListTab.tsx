@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { FiSearch, FiMessageCircle, FiFilter, FiUser, FiClock, FiShoppingBag } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import { WhatsappSenderModal } from './WhatsappSenderModal';

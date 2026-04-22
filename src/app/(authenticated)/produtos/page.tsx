@@ -64,6 +64,7 @@ interface Product {
     promo_enabled: boolean;
     promo_value: number;
     promo_type: 'value' | 'percentage';
+    addon_groups?: Array<{ id: string }>;
 }
 
 interface AddonGroup {
@@ -186,8 +187,7 @@ export default function ProdutosPage() {
     // Novo sistema de cache: Economia de ~50% nas consultas
     const {
         products: cachedProducts,
-        loading: productsLoading,
-        refetch: refetchProducts
+        loading: productsLoading
     } = useProductsCache();
 
     const {
@@ -324,14 +324,6 @@ export default function ProdutosPage() {
                 promo_value: (product.promo_value ?? 0).toString(),
                 promo_type: (product.promo_type as 'value' | 'percentage') ?? 'percentage'
             });
-            const productGroups = (cachedProducts as any)?.find((p: any) => p.id === product.id)?.addon_groups || [];
-            // Actually, the cache hook might not have joined these in the products list yet if we only updated db.ts
-            // But we have useAddonsCache which provides addonGroups and their associations.
-            // Let's use the raw product_addon_groups from the useAddonsCache result.
-            const selectedIds = (cachedAddonGroups as any)?.filter((g: any) => g.productId === product.id).map((g: any) => g.id) || [];
-            // Wait, useAddonsCache's getProductAddons returns joined data.
-            // For the modal, we need selected IDs.
-            // I'll just use the Dexie database directly if needed, or better, the dataAccess.
             const selections = await db.product_addon_groups.where('product_id').equals(product.id).toArray();
             setSelectedAddonGroups(selections.map((s: CachedProductAddonGroup) => s.group_id));
         } else {
@@ -362,7 +354,7 @@ export default function ProdutosPage() {
         if (!user || !productForm.name || !productForm.price || !productForm.category_id) return;
         setSaving(true);
         try {
-            const productData = {
+            const productData: Record<string, unknown> = {
                 user_id: user.id,
                 name: productForm.name,
                 description: productForm.description || null,
@@ -381,7 +373,7 @@ export default function ProdutosPage() {
             } else {
                 const maxOrder = products.length > 0 ? Math.max(...products.map(p => p.display_order || 0)) : -1;
                 // Note: dataAccess.createProduct handles local record creation and pending action
-                productId = (productData as any).id || crypto.randomUUID();
+                productId = (productData.id as string) || crypto.randomUUID();
                 await dataAccess.createProduct({ ...productData, id: productId, display_order: maxOrder + 1 });
             }
             // Use the new DAL implementation for offline-first relationship updates

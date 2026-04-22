@@ -2,13 +2,7 @@
 // Uses Dexie wrapper for IndexedDB to store data for offline access
 
 import { db } from './db';
-import { supabase } from './supabase';
 import type {
-    CachedProduct, CachedCategory, CachedOrder, CachedUserSetting, 
-    CachedClient, CachedTable, CachedEmployee, CachedMesaSession, 
-    CachedMesaSessionItem, CachedLoyaltyReward, CachedLoyaltySettings, 
-    CachedCoupon, CachedAppSetting, CachedProductAddon, CachedAddonGroup, 
-    CachedProductAddonGroup, CachedAddonGroupItem, CachedBill, CachedBillCategory,
     PendingAction, StoreName
 } from '@/types/db';
 
@@ -26,7 +20,7 @@ export async function initOfflineDB() {
  * Get the underlying Dexie instance
  */
 export function getDexieInstance() {
-    if (typeof window === 'undefined') return undefined as any;
+    if (typeof window === 'undefined') return undefined;
     return db;
 }
 

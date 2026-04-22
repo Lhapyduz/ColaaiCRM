@@ -13,11 +13,19 @@ import {
 } from './offlineStorage';
 import { useStorageStore } from '@/stores/useStorageStore';
 import type { 
-    CachedProduct, 
-    CachedCategory, 
-    CachedOrder, 
-    PendingAction 
+    CachedOrder,
+    CachedOrderItem,
+    CachedOrderItemAddon,
+    CachedTable,
+    PendingAction,
+    HasId,
+    CachedActionLog,
+    CachedClient,
+    CachedCoupon,
+    CachedProduct,
+    CachedCategory
 } from '@/types/db';
+import type { PostgrestError } from '@supabase/supabase-js';
 
 interface SyncResult {
     synced: number;
@@ -91,12 +99,8 @@ export async function cacheDataForOffline(userId: string, force = false): Promis
                 .select('id,session_id,product_id,product_name,quantidade,preco_unitario,preco_total,observacao,created_at,order_id,enviado_cozinha')
                 .in('session_id', sessionIds);
             if (rSessionItems.data?.length) {
-                const mappedItems = rSessionItems.data.map((item: any) => ({
+                const mappedItems = rSessionItems.data.map((item) => ({
                     ...item,
-                    quantity: item.quantidade,
-                    unit_price: item.preco_unitario,
-                    total: item.preco_total,
-                    notes: item.observacao,
                     status: null
                 }));
                 try { await saveAll('mesa_session_items', mappedItems); } catch(e) { console.warn('[Offline] cache mesa_session_items failed:', e); }
@@ -190,6 +194,39 @@ function groupActions(actions: PendingAction[]) {
     return groups;
 }
 
+// ─── Interfaces for Pending Action Data ────────────────
+
+interface FullOrderSyncData {
+    orderData: CachedOrder;
+    orderItems: CachedOrderItem[];
+    itemAddons: (CachedOrderItemAddon & { itemIndex?: number })[];
+    loyaltyData?: {
+        customer?: CachedClient | null;
+        newCustomer?: Partial<CachedClient> | null;
+        pointsEarned: number;
+        updateData?: Partial<CachedClient> | null;
+    };
+    couponData?: {
+        appliedCoupon: CachedCoupon | null;
+        discount: number;
+        customerPhone: string | null;
+    };
+}
+
+interface ReplaceRelsSyncData {
+    productId: string;
+    groupIds: string[];
+}
+
+interface LogCleanupSyncData {
+    userId: string;
+    olderThan: string;
+}
+
+interface LogDeleteAllSyncData {
+    userId: string;
+}
+
 /**
  * Sync pending actions to server using batch upserts
  */
@@ -236,13 +273,13 @@ export async function syncPendingActions(): Promise<SyncResult> {
         if (fullOrderActions.length > 0) {
             for (const action of fullOrderActions) {
                 try {
-                    const { orderData, orderItems, itemAddons, loyaltyData, couponData } = action.data;
+                    const { orderData, orderItems, itemAddons, loyaltyData, couponData } = action.data as FullOrderSyncData;
                     
                     const { data: order, error: orderError } = await supabase.from('orders').insert(orderData).select().single();
                     if (orderError) throw orderError;
 
                     if (orderItems && orderItems.length > 0) {
-                        const mappedItems = orderItems.map((item: any) => ({ ...item, order_id: order.id }));
+                        const mappedItems = orderItems.map((item: CachedOrderItem) => ({ ...item, order_id: order.id }));
                         const { data: insertedItems, error: itemsError } = await supabase.from('order_items').insert(mappedItems).select('id');
                         if (itemsError) throw itemsError;
 
@@ -256,7 +293,11 @@ export async function syncPendingActions(): Promise<SyncResult> {
                                     order_item_id: insertedItems[itemIndex]?.id
                                 });
                             }
-                            const cleanAddons = mappedAddons.map(({ itemIndex, ...rest }) => rest);
+                            const cleanAddons = mappedAddons.map((addon) => {
+                                const rest = { ...addon } as Record<string, unknown>;
+                                delete rest.itemIndex;
+                                return rest;
+                            });
                             if (cleanAddons.length > 0) {
                                 await supabase.from('order_item_addons').insert(cleanAddons);
                             }
@@ -313,7 +354,7 @@ export async function syncPendingActions(): Promise<SyncResult> {
         if (replaceActions.length > 0) {
             for (const action of replaceActions) {
                 try {
-                    const { productId, groupIds } = action.data;
+                    const { productId, groupIds } = action.data as ReplaceRelsSyncData;
                     
                     // Transactional delete + insert on server
                     const { error: delError } = await supabase
@@ -356,23 +397,28 @@ export async function syncPendingActions(): Promise<SyncResult> {
 
                 // Resilience for action_logs: ensure only valid columns are sent
                 if (table === 'action_logs') {
-                    records = records.map(r => ({
-                        id: r.id,
-                        user_id: r.user_id,
-                        action_type: r.action_type,
-                        entity_type: r.entity_type,
-                        entity_id: r.entity_id || null,
-                        entity_name: r.entity_name || null,
-                        description: r.description,
-                        metadata: r.metadata || {},
-                        created_at: r.created_at
-                    }));
+                    records = records.map(r => {
+                        const log = r as CachedActionLog;
+                        return {
+                            id: log.id,
+                            user_id: log.user_id,
+                            action_type: log.action_type,
+                            entity_type: log.entity_type,
+                            entity_id: log.entity_id || null,
+                            entity_name: log.entity_name || null,
+                            description: log.description,
+                            metadata: log.metadata || {},
+                            created_at: log.created_at
+                        };
+                    });
                 }
 
                 // Resilience for orders: strip nested join data (order_items, order_item_addons)
                 if (table === 'orders') {
                     records = records.map(r => {
-                        const { order_items, order_item_addons, ...clean } = r as any;
+                        const clean = { ...(r as CachedOrder) } as Record<string, unknown>;
+                        delete clean.order_items;
+                        delete clean.order_item_addons;
                         return clean;
                     });
                 }
@@ -380,7 +426,8 @@ export async function syncPendingActions(): Promise<SyncResult> {
                 // Resilience for mesas: strip nested join data (mesa_sessions)
                 if (table === 'mesas') {
                     records = records.map(r => {
-                        const { mesa_sessions, ...clean } = r as any;
+                        const clean = { ...(r as CachedTable) } as Record<string, unknown>;
+                        delete clean.mesa_sessions;
                         return clean;
                     });
                 }
@@ -390,7 +437,8 @@ export async function syncPendingActions(): Promise<SyncResult> {
                     .upsert(records, { onConflict: 'id' });
 
                 if (error) {
-                    if (error.code === '23505' || (error as any).status === 409) {
+                    const pgError = error as PostgrestError;
+                    if (pgError.code === '23505') {
                         console.warn(`[Sync] Batch upsert conflict for ${table}, falling back to individual processing`);
                         for (const action of upsertActions) {
                             try {
@@ -400,10 +448,11 @@ export async function syncPendingActions(): Promise<SyncResult> {
                                 
                                 if (indError) {
                                     // Special handling for 409 Conflict in individual mode
-                                    const isConflict = indError.code === '23505' || (indError as any).status === 409;
+                                    const pgIndError = indError as PostgrestError;
+                                    const isConflict = pgIndError.code === '23505';
                                     
                                     if (isConflict) {
-                                        console.warn(`[Sync] Conflict reconciled for ${table}: ${action.data.id}. Treating as synced.`);
+                                        console.warn(`[Sync] Conflict reconciled for ${table}: ${(action.data as HasId).id}. Treating as synced.`);
                                         result.synced++;
                                         syncedIds.push(action.id);
                                     } else {
@@ -438,7 +487,7 @@ export async function syncPendingActions(): Promise<SyncResult> {
         if (deleteActions.length > 0) {
             try {
                 const idsToDelete = deleteActions
-                    .map((a) => a.data.id as string)
+                    .map((a) => (a.data as HasId).id)
                     .filter(Boolean);
 
                 if (idsToDelete.length > 0) {
@@ -466,7 +515,7 @@ export async function syncPendingActions(): Promise<SyncResult> {
             const clearLogsActions = types['clear_logs'] || [];
             for (const action of clearLogsActions) {
                 try {
-                    const { userId, olderThan } = action.data;
+                    const { userId, olderThan } = action.data as LogCleanupSyncData;
                     const { error } = await supabase.from('action_logs').delete().eq('user_id', userId).lt('created_at', olderThan);
                     if (error) throw error;
                     result.synced++;
@@ -480,7 +529,7 @@ export async function syncPendingActions(): Promise<SyncResult> {
             const deleteAllActions = types['delete_all'] || [];
             for (const action of deleteAllActions) {
                 try {
-                    const { userId } = action.data;
+                    const { userId } = action.data as LogDeleteAllSyncData;
                     const { error } = await supabase.from('action_logs').delete().eq('user_id', userId);
                     if (error) throw error;
                     result.synced++;

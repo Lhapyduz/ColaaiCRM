@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import { FiCreditCard, FiSmartphone } from 'react-icons/fi';
 import { BsCash } from 'react-icons/bs';
 import Card from '@/components/ui/Card';
-import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/hooks/useFormatters';
 import { useOrdersCache } from '@/hooks/useDataCache';
 
@@ -17,7 +16,6 @@ interface DaySummary {
 }
 
 export default function CaixaPage() {
-    const { user } = useAuth();
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const { orders, loading } = useOrdersCache({ date: selectedDate });
 

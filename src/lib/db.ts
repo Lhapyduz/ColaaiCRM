@@ -9,6 +9,14 @@ import type {
     PendingAction, QueryCacheEntry
 } from '@/types/db';
 
+declare global {
+  interface Window {
+    resetDatabase?: typeof resetDatabase;
+    getDb?: typeof getDb;
+    clearPendingActions?: typeof clearPendingActions;
+  }
+}
+
 // ────────────────────────────────────────────
 // Database Dexie com tipagem forte
 // ────────────────────────────────────────────
@@ -38,7 +46,7 @@ function _isSchemaError(err: unknown): boolean {
 function _initDb(): LigeirinhoDB {
     if (typeof window === 'undefined') {
         // Return a mock object for SSR to avoid "db is undefined" errors during compilation
-        return {} as any;
+        return {} as unknown as LigeirinhoDB;
     }
     if (!_db) {
         try {
@@ -73,7 +81,7 @@ export const db: LigeirinhoDB = new Proxy({} as LigeirinhoDB, {
         
         try {
             const instance = _initDb();
-            const value = (instance as any)[prop];
+            const value = (instance as unknown as Record<string | symbol, unknown>)[prop];
             
             // If it's a function (like .table() or .transaction()), bind it to the instance
             if (typeof value === 'function') {
@@ -308,9 +316,9 @@ export async function clearPendingActions() {
 
 // Exposição global para acesso via console (útil para suporte e debug)
 if (typeof window !== 'undefined') {
-    (window as any).resetDatabase = resetDatabase;
-    (window as any).getDb = getDb;
-    (window as any).clearPendingActions = clearPendingActions;
+    window.resetDatabase = resetDatabase;
+    window.getDb = getDb;
+    window.clearPendingActions = clearPendingActions;
 }
 
 

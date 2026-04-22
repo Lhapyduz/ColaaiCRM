@@ -39,7 +39,7 @@ export async function GET() {
                 current_period_start: new Date().toISOString(),
                 current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
                 billing_period: 'monthly'
-            } as any, { onConflict: 'user_id' })
+            }, { onConflict: 'user_id' })
             .select();
 
         if (upsertError) {
@@ -66,12 +66,13 @@ export async function GET() {
             existingSubscriptions: selectData,
             testUpsertResult: upsertData
         });
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('[DEBUG] Unexpected error:', error);
+        const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({
             success: false,
             error: 'Unexpected error',
-            details: (error as Error).message
+            details: message
         }, { status: 500 });
     }
 }

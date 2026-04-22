@@ -18,6 +18,8 @@ const eslintConfig = defineConfig([
     "tests/**",
     "public/**",
     "supabase/**",
+    "scripts/**",
+    "scan_error.mjs",
   ]),
 ]);
 

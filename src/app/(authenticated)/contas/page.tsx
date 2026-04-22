@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiCalendar, FiDollarSign, FiArrowUp, FiArrowDown, FiCheck, FiAlertCircle, FiClock, FiRepeat } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -21,32 +21,9 @@ import {
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
-
-interface Bill {
-    id: string;
-    type: 'payable' | 'receivable';
-    description: string;
-    category: string;
-    amount: number;
-    due_date: string;
-    payment_date: string | null;
-    status: 'pending' | 'paid' | 'overdue' | 'cancelled';
-    supplier_customer: string | null;
-    notes: string | null;
-    recurrence: 'none' | 'weekly' | 'monthly' | 'yearly' | null;
-    recurrence_end_date: string | null;
-}
+import { CachedBill } from '@/types/db';
 
 type RecurrenceType = 'none' | 'weekly' | 'monthly' | 'yearly';
-
-interface BillCategory {
-    id: string;
-    name: string;
-    type: 'payable' | 'receivable' | 'both';
-    icon: string;
-    color: string;
-}
-
 type TabType = 'payable' | 'receivable' | 'all';
 
 export default function ContasPage() {
@@ -62,7 +39,7 @@ export default function ContasPage() {
     const [activeTab, setActiveTab] = useState<TabType>('all');
     const [filterStatus, setFilterStatus] = useState<string>('');
     const [showModal, setShowModal] = useState(false);
-    const [editingBill, setEditingBill] = useState<Bill | null>(null);
+    const [editingBill, setEditingBill] = useState<CachedBill | null>(null);
     const [form, setForm] = useState({ type: 'payable' as 'payable' | 'receivable', description: '', category: '', amount: '' as string | number, due_date: '', supplier_customer: '', notes: '', recurrence: 'none' as RecurrenceType, recurrence_end_date: '' });
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [newCategory, setNewCategory] = useState({ name: '', type: 'both' as 'payable' | 'receivable' | 'both', icon: '📁', color: '#6366f1' });
@@ -76,7 +53,7 @@ export default function ContasPage() {
     // Initialize defaults if no categories exist
     useEffect(() => {
         if (user && hasAccess && categories.length === 0 && !loadingCategories) {
-            const defaults = [
+            const defaults: { name: string; type: 'payable' | 'receivable' | 'both'; icon: string; color: string }[] = [
                 { name: 'Fornecedores', type: 'payable', icon: '📦', color: '#e74c3c' },
                 { name: 'Aluguel', type: 'payable', icon: '🏠', color: '#9b59b6' },
                 { name: 'Energia', type: 'payable', icon: '⚡', color: '#f39c12' },
@@ -104,10 +81,10 @@ export default function ContasPage() {
 
     const handleSave = async () => {
         if (!user) return;
-        const billData = {
+        const billData: Partial<CachedBill> = {
             user_id: user.id, type: form.type, description: form.description, category: form.category,
             amount: Number(form.amount) || 0, due_date: form.due_date, supplier_customer: form.supplier_customer || null,
-            notes: form.notes || null, status: 'pending',
+            notes: form.notes || null, status: 'pending' as const,
             recurrence: form.recurrence || 'none',
             recurrence_end_date: form.recurrence_end_date || null
         };
@@ -119,8 +96,9 @@ export default function ContasPage() {
             toast.success(editingBill ? 'Conta atualizada!' : 'Conta adicionada!');
             setShowModal(false); 
             resetForm();
-        } catch (error: any) {
-            toast.error('Erro ao salvar conta: ' + error.message);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Erro desconhecido';
+            toast.error('Erro ao salvar conta: ' + message);
         }
     };
 
@@ -134,7 +112,7 @@ export default function ContasPage() {
         return date.toISOString().split('T')[0];
     };
 
-    const handleMarkPaid = async (bill: Bill) => {
+    const handleMarkPaid = async (bill: CachedBill) => {
         let nextDueDate: string | undefined;
         if (bill.recurrence && bill.recurrence !== 'none') {
             const calculatedNext = getNextDueDate(bill.due_date, bill.recurrence);
@@ -148,7 +126,7 @@ export default function ContasPage() {
 
         try {
             await markBillPaidDAL(
-                bill as any, 
+                bill, 
                 user!.id, 
                 new Date().toISOString().split('T')[0], 
                 nextDueDate
@@ -161,8 +139,9 @@ export default function ContasPage() {
             } else {
                 toast.success('Conta marcada como paga!');
             }
-        } catch (error: any) {
-            toast.error('Erro ao processar pagamento: ' + error.message);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Erro desconhecido';
+            toast.error('Erro ao processar pagamento: ' + message);
         }
     };
 
@@ -171,8 +150,8 @@ export default function ContasPage() {
         try {
             await deleteBillDAL(id);
             toast.success('Conta excluída!'); 
-        } catch (error: any) {
-            toast.error('Erro ao excluir conta: ' + error.message);
+        } catch (error) {
+            toast.error('Erro ao excluir conta: ' + (error instanceof Error ? error.message : String(error)));
         }
     };
 
@@ -188,8 +167,8 @@ export default function ContasPage() {
             });
             setNewCategory({ name: '', type: 'both', icon: '📁', color: '#6366f1' });
             setShowCategoryModal(false);
-        } catch (error: any) {
-            toast.error('Erro ao salvar categoria: ' + error.message);
+        } catch (error) {
+            toast.error('Erro ao salvar categoria: ' + (error instanceof Error ? error.message : String(error)));
         }
     };
 
@@ -198,13 +177,13 @@ export default function ContasPage() {
         try {
             await deleteBillCategoryDAL(categoryId);
             toast.success('Categoria excluída!');
-        } catch (error: any) {
-            toast.error('Erro ao excluir categoria: ' + error.message);
+        } catch (error) {
+            toast.error('Erro ao excluir categoria: ' + (error instanceof Error ? error.message : String(error)));
         }
     };
 
     const resetForm = () => { setForm({ type: 'payable', description: '', category: '', amount: '', due_date: '', supplier_customer: '', notes: '', recurrence: 'none', recurrence_end_date: '' }); setEditingBill(null); };
-    const openEdit = (bill: Bill) => { setEditingBill(bill); setForm({ type: bill.type, description: bill.description, category: bill.category, amount: bill.amount, due_date: bill.due_date, supplier_customer: bill.supplier_customer || '', notes: bill.notes || '', recurrence: (bill.recurrence || 'none') as RecurrenceType, recurrence_end_date: bill.recurrence_end_date || '' }); setShowModal(true); };
+    const openEdit = (bill: CachedBill) => { setEditingBill(bill); setForm({ type: bill.type, description: bill.description, category: bill.category, amount: bill.amount, due_date: bill.due_date, supplier_customer: bill.supplier_customer || '', notes: bill.notes || '', recurrence: (bill.recurrence || 'none') as RecurrenceType, recurrence_end_date: bill.recurrence_end_date || '' }); setShowModal(true); };
 
     const recurrenceLabels: Record<RecurrenceType, string> = { none: 'Única vez', weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual' };
 
@@ -220,16 +199,16 @@ export default function ContasPage() {
         return badges[status] || badges.pending;
     };
 
-    const filteredBills = bills.filter((b: Bill) => { if (activeTab !== 'all' && b.type !== activeTab) return false; if (filterStatus && b.status !== filterStatus) return false; return true; });
+    const filteredBills = bills.filter((b: CachedBill) => { if (activeTab !== 'all' && b.type !== activeTab) return false; if (filterStatus && b.status !== filterStatus) return false; return true; });
 
-    const recurringBills = bills.filter((b: Bill) => b.recurrence && b.recurrence !== 'none' && b.status === 'pending');
+    const recurringBills = bills.filter((b: CachedBill) => b.recurrence && b.recurrence !== 'none' && b.status === 'pending');
     const stats = {
-        totalPayable: bills.filter((b: Bill) => b.type === 'payable' && b.status === 'pending').reduce((sum: number, b: Bill) => sum + b.amount, 0),
-        totalReceivable: bills.filter((b: Bill) => b.type === 'receivable' && b.status === 'pending').reduce((sum: number, b: Bill) => sum + b.amount, 0),
-        overdue: bills.filter((b: Bill) => b.status === 'overdue').length,
-        dueThisWeek: bills.filter((b: Bill) => { if (b.status !== 'pending') return false; const due = new Date(b.due_date); const now = new Date(); const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); return due <= weekFromNow && due >= now; }).length,
+        totalPayable: bills.filter((b: CachedBill) => b.type === 'payable' && b.status === 'pending').reduce((sum: number, b: CachedBill) => sum + b.amount, 0),
+        totalReceivable: bills.filter((b: CachedBill) => b.type === 'receivable' && b.status === 'pending').reduce((sum: number, b: CachedBill) => sum + b.amount, 0),
+        overdue: bills.filter((b: CachedBill) => b.status === 'overdue').length,
+        dueThisWeek: bills.filter((b: CachedBill) => { if (b.status !== 'pending') return false; const due = new Date(b.due_date); const now = new Date(); const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); return due <= weekFromNow && due >= now; }).length,
         recurring: recurringBills.length,
-        recurringTotal: recurringBills.reduce((sum: number, b: Bill) => sum + b.amount, 0)
+        recurringTotal: recurringBills.reduce((sum: number, b: CachedBill) => sum + b.amount, 0)
     };
 
     return (

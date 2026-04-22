@@ -55,10 +55,10 @@ export async function POST() {
 
         // Preparar datas com validação
         const now = new Date().toISOString();
-        const sub = activeSub as any;
         const trialEndsAt = activeSub.trial_end ? new Date(activeSub.trial_end * 1000).toISOString() : null;
-        const periodStart = sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : now;
-        const periodEnd = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : now;
+        const activeSubWithDates = activeSub as { current_period_start?: number; current_period_end?: number };
+        const periodStart = activeSubWithDates.current_period_start ? new Date(activeSubWithDates.current_period_start * 1000).toISOString() : now;
+        const periodEnd = activeSubWithDates.current_period_end ? new Date(activeSubWithDates.current_period_end * 1000).toISOString() : now;
 
         console.log('[Force Sync] Updating with dates:', { trialEndsAt, periodStart, periodEnd });
 
@@ -75,7 +75,7 @@ export async function POST() {
                 current_period_start: periodStart,
                 current_period_end: periodEnd,
                 stripe_current_period_end: periodEnd
-            } as any)
+            })
             .eq('user_id', userId)
             .select();
 
@@ -99,11 +99,12 @@ export async function POST() {
             updatedData: data
         });
 
-    } catch (error) {
+    } catch (error: unknown) {
         console.error('[Force Sync] Error:', error);
+        const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({
             error: 'Internal error',
-            details: (error as Error).message
+            details: message
         }, { status: 500 });
     }
 }

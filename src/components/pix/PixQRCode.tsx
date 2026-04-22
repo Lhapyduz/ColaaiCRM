@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FiCopy, FiCheck, FiRefreshCw } from 'react-icons/fi';
 import Image from 'next/image';
 import { generatePixQRCode, generatePixCode, PixPayload } from '@/lib/pix';
@@ -32,20 +32,16 @@ export default function PixQRCode({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const payload: PixPayload = {
+    const payload = useMemo((): PixPayload => ({
         pixKey,
         pixKeyType,
         merchantName,
         merchantCity,
         amount,
         txId: orderId ? `PED${orderId}` : undefined
-    };
+    }), [pixKey, pixKeyType, merchantName, merchantCity, amount, orderId]);
 
-    useEffect(() => {
-        generateQRCode();
-    }, [pixKey, amount, orderId]);
-
-    const generateQRCode = async () => {
+    const generateQRCode = useCallback(async () => {
         if (!pixKey) {
             setError('Chave PIX não configurada');
             setLoading(false);
@@ -67,7 +63,11 @@ export default function PixQRCode({
         } finally {
             setLoading(false);
         }
-    };
+    }, [pixKey, payload]);
+
+    useEffect(() => {
+        generateQRCode();
+    }, [generateQRCode]);
 
     const copyToClipboard = async () => {
         try {

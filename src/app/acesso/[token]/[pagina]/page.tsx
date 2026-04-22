@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FiLock, FiAlertCircle, FiDelete, FiCoffee, FiTruck } from 'react-icons/fi';
+import type { IconType } from 'react-icons';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { verifyPin, isLegacyPin, hashPin } from '@/lib/pinSecurity';
@@ -12,7 +13,7 @@ import { cn } from '@/lib/utils';
 interface EstablishmentData { user_id: string; app_name: string; logo_url: string | null; primary_color: string; }
 interface Employee { id: string; name: string; role: string; permissions: Record<string, boolean>; }
 
-const PAGES_CONFIG: Record<string, { title: string; icon: React.ComponentType<any>; requiredRole?: string[] }> = {
+const PAGES_CONFIG: Record<string, { title: string; icon: IconType; requiredRole?: string[] }> = {
     'cozinha': { title: 'Cozinha', icon: FiCoffee, requiredRole: ['admin', 'manager', 'kitchen'] },
     'entregas': { title: 'Entregas', icon: FiTruck, requiredRole: ['admin', 'manager', 'delivery'] }
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { FiClock, FiCheck, FiVolume2, FiVolumeX, FiPrinter } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -9,45 +9,10 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useOrdersCache } from '@/hooks/useDataCache';
 import { updateOrder } from '@/lib/dataAccess';
 import type { CachedOrder } from '@/types/db';
-import { printKitchenTicket } from '@/lib/print';
+import { printKitchenTicket, type OrderData } from '@/lib/print';
 import { cn } from '@/lib/utils';
 
-interface OrderItemAddon {
-    id: string;
-    addon_name: string;
-    addon_price: number;
-    quantity: number;
-}
 
-interface OrderItem {
-    id: string;
-    product_name: string;
-    quantity: number;
-    unit_price: number;
-    total: number;
-    notes: string | null;
-    addons: OrderItemAddon[];
-}
-
-interface Order {
-    id: string;
-    order_number: number;
-    customer_name: string;
-    customer_phone: string | null;
-    customer_address: string | null;
-    status: string;
-    payment_method: string;
-    payment_status: string;
-    subtotal: number;
-    delivery_fee: number;
-    total: number;
-    notes: string | null;
-    is_delivery: boolean;
-    created_at: string;
-    items: OrderItem[];
-}
-
-const KITCHEN_QUERY_KEY = ['kitchen-orders'];
 
 export default function CozinhaPage() {
     const { plan, canAccess } = useSubscription();
@@ -61,18 +26,20 @@ export default function CozinhaPage() {
     }, []);
 
     const orders = useMemo(() => {
-        const filtered = rawOrders
+        return rawOrders
             .filter((o: CachedOrder) => o.status === 'pending' || o.status === 'preparing')
             .sort((a: CachedOrder, b: CachedOrder) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
-        
-        // Sound notification for new orders
-        if (soundEnabled && !loading && filtered.length > prevOrdersCount.current) {
-            playNotificationSound();
+    }, [rawOrders]);
+
+    // Sound notification for new orders - moved from useMemo to useEffect
+    useEffect(() => {
+        if (!loading && orders.length > prevOrdersCount.current) {
+            if (soundEnabled) {
+                playNotificationSound();
+            }
         }
-        prevOrdersCount.current = filtered.length;
-        
-        return filtered;
-    }, [rawOrders, soundEnabled, loading, playNotificationSound]);
+        prevOrdersCount.current = orders.length;
+    }, [orders.length, soundEnabled, loading, playNotificationSound]);
 
     if (!canAccess('kitchen')) {
         return (
@@ -153,7 +120,7 @@ export default function CozinhaPage() {
                 >
                     {isPreparing ? 'Marcar Pronto' : 'Iniciar Preparo'}
                 </Button>
-                <Button variant="ghost" leftIcon={<FiPrinter />} onClick={() => printKitchenTicket({ ...order, items: order.order_items || [] } as any)} title="Imprimir comanda" />
+                <Button variant="ghost" leftIcon={<FiPrinter />} onClick={() => printKitchenTicket({ ...order, items: (order.order_items || []).map(item => ({ ...item, unit_price: item.unit_price || 0, total: item.total || 0 })) } as OrderData)} title="Imprimir comanda" />
             </div>
         </Card>
     );

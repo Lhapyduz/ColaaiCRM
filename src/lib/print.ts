@@ -2,8 +2,9 @@
 // Handles printing receipts and kitchen tickets
 
 import { formatCurrency } from '@/hooks/useFormatters';
+import type { CachedOrder, CachedOrderItem } from '@/types/db';
 
-interface OrderItem {
+export interface OrderItem {
     id: string;
     product_name: string;
     quantity: number;
@@ -12,7 +13,7 @@ interface OrderItem {
     notes: string | null;
 }
 
-interface OrderData {
+export interface OrderData {
     id: string;
     order_number: number;
     customer_name: string;
@@ -32,34 +33,34 @@ interface OrderData {
     service_fee?: number;
 }
 
+export type PrintableOrder = OrderData | (CachedOrder & { items?: OrderItem[] });
+
+function normalizeToOrderData(order: PrintableOrder): OrderData {
+    const items = 'items' in order ? order.items : (order as CachedOrder).order_items || [];
+    return {
+        id: order.id,
+        order_number: order.order_number,
+        customer_name: order.customer_name,
+        customer_phone: order.customer_phone,
+        customer_address: order.customer_address,
+        status: order.status || 'pending',
+        payment_method: order.payment_method,
+        payment_status: order.payment_status || 'pending',
+        subtotal: order.subtotal,
+        delivery_fee: order.delivery_fee || 0,
+        total: order.total,
+        notes: order.notes,
+        is_delivery: order.is_delivery || false,
+        created_at: order.created_at || new Date().toISOString(),
+        items: items as OrderItem[],
+        coupon_discount: order.coupon_discount,
+    };
+}
+
 interface PrintOptions {
     copies?: number;
     type?: 'customer' | 'kitchen' | 'both';
     appName?: string;
-}
-
-/**
- * Creates a hidden print container and renders the component
- */
-function createPrintContainer(): HTMLDivElement {
-    // Remove existing print container if any
-    const existing = document.getElementById('print-container');
-    if (existing) {
-        existing.remove();
-    }
-
-    const container = document.createElement('div');
-    container.id = 'print-container';
-    container.style.cssText = `
-        position: fixed;
-        left: -9999px;
-        top: 0;
-        width: 80mm;
-        background: white;
-        z-index: -1;
-    `;
-    document.body.appendChild(container);
-    return container;
 }
 
 /**
@@ -286,14 +287,15 @@ function generateKitchenReceiptHTML(order: OrderData): string {
 /**
  * Print order receipt
  */
-export async function printOrder(order: OrderData, options: PrintOptions = {}): Promise<void> {
+export async function printOrder(order: PrintableOrder, options: PrintOptions = {}): Promise<void> {
     const { copies = 1, type = 'both', appName = 'Cola Aí' } = options;
+    const data = normalizeToOrderData(order);
 
     let html = '';
 
     if (type === 'customer' || type === 'both') {
         for (let i = 0; i < copies; i++) {
-            html += generateCustomerReceiptHTML(order, appName);
+            html += generateCustomerReceiptHTML(data, appName);
             if (type === 'both' || i < copies - 1) {
                 html += '<div style="page-break-after: always;"></div>';
             }
@@ -301,29 +303,29 @@ export async function printOrder(order: OrderData, options: PrintOptions = {}): 
     }
 
     if (type === 'kitchen' || type === 'both') {
-        html += generateKitchenReceiptHTML(order);
+        html += generateKitchenReceiptHTML(data);
     }
 
-    await printWithNewWindow(html, `Pedido #${order.order_number}`);
+    await printWithNewWindow(html, `Pedido #${data.order_number}`);
 }
 
 /**
  * Quick print just customer receipt
  */
-export async function printCustomerReceipt(order: OrderData, appName: string = 'Cola Aí'): Promise<void> {
+export async function printCustomerReceipt(order: PrintableOrder, appName: string = 'Cola Aí'): Promise<void> {
     await printOrder(order, { type: 'customer', appName });
 }
 
 /**
  * Quick print just kitchen ticket
  */
-export async function printKitchenTicket(order: OrderData): Promise<void> {
+export async function printKitchenTicket(order: PrintableOrder): Promise<void> {
     await printOrder(order, { type: 'kitchen' });
 }
 
 /**
- * Print both receipts
+ * Quick print both receipts at once
  */
-export async function printBothReceipts(order: OrderData, appName: string = 'Cola Aí'): Promise<void> {
+export async function printBothReceipts(order: PrintableOrder, appName: string = 'Cola Aí'): Promise<void> {
     await printOrder(order, { type: 'both', appName });
 }

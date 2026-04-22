@@ -1,8 +1,7 @@
 import { supabase, Database } from '../supabase';
-import { db } from '@/lib/db';
 import { getMode, incrPending } from '@/lib/dataAccess';
-import { saveItem, getItem, deleteItem, addPendingAction } from '@/lib/offlineStorage';
-import type { CachedMesaSession, CachedMesaSessionItem, CachedOrder, CachedTable, CachedEmployee } from '@/types/db';
+import { saveItem, getItem, addPendingAction } from '@/lib/offlineStorage';
+import type { CachedMesaSession, CachedMesaSessionItem, CachedUserSetting, CachedOrder, CachedOrderItem } from '@/types/db';
 
 export type Mesa = Database['public']['Tables']['mesas']['Row'];
 export type MesaSession = Database['public']['Tables']['mesa_sessions']['Row'];
@@ -113,7 +112,7 @@ export async function abrirMesa(mesaId: string, garcom?: string) {
             taxaServicoEnabled = settings.taxa_servico_enabled ?? true;
         }
     } else {
-        const localSettings = await getItem<any>('userSettings', userId);
+        const localSettings = await getItem<CachedUserSetting>('userSettings', userId);
         if (localSettings) {
             taxaServico = Number(localSettings.taxa_servico_percent) || 10;
             taxaServicoEnabled = localSettings.taxa_servico_enabled ?? true;
@@ -172,13 +171,13 @@ export async function updateStatusMesa(sessionId: string, newStatus: 'livre' | '
             console.error("Erro ao atualizar status:", error);
             throw error;
         }
-        const existing = await getItem<any>('mesa_sessions', sessionId);
+        const existing = await getItem<CachedMesaSession>('mesa_sessions', sessionId);
         if (existing) {
             await saveItem('mesa_sessions', { ...existing, status: newStatus } as CachedMesaSession);
         }
         return data;
     } else {
-        const existing = await getItem<any>('mesa_sessions', sessionId);
+        const existing = await getItem<CachedMesaSession>('mesa_sessions', sessionId);
         if (existing) {
             await saveItem('mesa_sessions', { ...existing, status: newStatus } as CachedMesaSession);
         }
@@ -223,15 +222,7 @@ export async function addSessionItem(
             throw itemError;
         }
 
-        const mappedItem = {
-            ...newItem,
-            quantity: newItem.quantidade,
-            unit_price: newItem.preco_unitario,
-            total: newItem.preco_total,
-            notes: newItem.observacao,
-            status: null
-        };
-        await saveItem('mesa_session_items', mappedItem as unknown as CachedMesaSessionItem);
+        await saveItem('mesa_session_items', newItem as unknown as CachedMesaSessionItem);
 
         // Após adicionar item, buscar sessão para atualizar o valor parcial
         const { data: sessionData, error: sessionFetchError } = await supabase
@@ -243,28 +234,20 @@ export async function addSessionItem(
         if (!sessionFetchError && sessionData) {
             await supabase
                 .from('mesa_sessions')
-                .update({ valor_parcial: sessionData.valor_parcial + itemTotal })
+                .update({ valor_parcial: (sessionData.valor_parcial || 0) + itemTotal })
                 .eq('id', sessionId);
-            const existingSession = await getItem<any>('mesa_sessions', sessionId);
+            const existingSession = await getItem<CachedMesaSession>('mesa_sessions', sessionId);
             if (existingSession) {
-                await saveItem('mesa_sessions', { ...existingSession, valor_parcial: existingSession.valor_parcial + itemTotal } as CachedMesaSession);
+                await saveItem('mesa_sessions', { ...existingSession, valor_parcial: (existingSession.valor_parcial || 0) + itemTotal } as CachedMesaSession);
             }
         }
 
         return newItem;
     } else {
-        const mappedLocal = {
-            ...itemToInsert,
-            quantity: itemToInsert.quantidade,
-            unit_price: itemToInsert.preco_unitario,
-            total: itemToInsert.preco_total,
-            notes: itemToInsert.observacao,
-            status: null
-        };
-        await saveItem('mesa_session_items', mappedLocal as unknown as CachedMesaSessionItem);
+        await saveItem('mesa_session_items', itemToInsert as unknown as CachedMesaSessionItem);
         await addPendingAction({ type: 'create', table: 'mesa_session_items', data: itemToInsert });
         
-        const existingSession = await getItem<any>('mesa_sessions', sessionId);
+        const existingSession = await getItem<CachedMesaSession>('mesa_sessions', sessionId);
         if (existingSession) {
             const newVal = (existingSession.valor_parcial || 0) + itemTotal;
             await saveItem('mesa_sessions', { ...existingSession, valor_parcial: newVal } as CachedMesaSession);
@@ -287,10 +270,10 @@ export async function fecharMesaSessao(
     totalFinal: number
 ) {
     if (getMode() !== 'cloud') {
-        const session = await getItem<any>('mesa_sessions', sessionId);
+        const { db } = await import('@/lib/db');
+        const session = await getItem<CachedMesaSession>('mesa_sessions', sessionId);
         if (!session) throw new Error("Sessão não encontrada no cache local");
         
-        const instance = db;
         const items = await db.mesa_session_items.where('session_id').equals(sessionId).toArray();
         const mesas = await db.mesas.where('id').equals(session.mesa_id).toArray();
         const mesa = mesas[0];
@@ -328,7 +311,7 @@ export async function fecharMesaSessao(
         };
 
         if (items && items.length > 0) {
-            const orderItems = items.map((item: any) => ({
+            const orderItems: CachedOrderItem[] = items.map((item: CachedMesaSessionItem) => ({
                 id: crypto.randomUUID(),
                 order_id: orderId,
                 product_id: item.product_id,
@@ -336,10 +319,11 @@ export async function fecharMesaSessao(
                 quantity: item.quantidade,
                 unit_price: item.preco_unitario,
                 total: item.preco_total,
+                notes: null,
                 created_at: new Date().toISOString()
             }));
             
-            await db.order_items.bulkAdd(orderItems as any[]);
+            await db.order_items.bulkAdd(orderItems);
             for (const oi of orderItems) {
                 await addPendingAction({ type: 'create', table: 'order_items', data: oi });
             }
@@ -527,7 +511,7 @@ export async function fecharMesaSessao(
  */
 export async function desagruparTodas(numeroMesa: number) {
     if (getMode() !== 'cloud') {
-        const instance = db;
+        const { db } = await import('@/lib/db');
         const tableNumberStr = String(numeroMesa).padStart(2, '0');
         const groupedString = `[Unida c/ Mesa ${tableNumberStr}]`;
         const grouped = await db.mesa_sessions.where('garcom').equals(groupedString).toArray();
@@ -614,10 +598,10 @@ export async function confirmarItensMesa(
     if (!itemsToConfirm || itemsToConfirm.length === 0) return;
 
     if (getMode() !== 'cloud') {
-        const module = await import('@/lib/db');
-        const db = module.db;
+        const dbModule = await import('@/lib/db');
+        const dbInstance = dbModule.db;
         
-        const lastOrder = await db.orders
+        const lastOrder = await dbInstance.orders
             .where('user_id').equals(userId)
             .reverse()
             .first();
@@ -641,7 +625,7 @@ export async function confirmarItensMesa(
             created_at: new Date().toISOString(),
         };
         
-        await db.orders.add(newOrder as any);
+        await dbInstance.orders.add(newOrder as unknown as CachedOrder);
         await addPendingAction({ type: 'create', table: 'orders', data: newOrder });
         
         const orderItems = itemsToConfirm.map((item) => ({
@@ -656,13 +640,13 @@ export async function confirmarItensMesa(
             created_at: new Date().toISOString(),
         }));
         
-        await db.order_items.bulkAdd(orderItems as any[]);
+        await dbInstance.order_items.bulkAdd(orderItems as unknown as CachedOrderItem[]);
         for (const oi of orderItems) {
              await addPendingAction({ type: 'create', table: 'order_items', data: oi });
         }
         
         for (const item of itemsToConfirm) {
-             await db.mesa_session_items.update(item.id, { enviado_cozinha: true, order_id: newOrder.id });
+             await dbInstance.mesa_session_items.update(item.id, { enviado_cozinha: true, order_id: newOrder.id });
              await addPendingAction({ type: 'update', table: 'mesa_session_items', data: { id: item.id, enviado_cozinha: true, order_id: newOrder.id } });
         }
         
@@ -705,14 +689,14 @@ export async function confirmarItensMesa(
     }
 
     // 2. Transcrever Itens para o Ticket
-    const orderItems = itemsToConfirm.map((item: any) => ({
+    const orderItems = itemsToConfirm.map((item) => ({
         order_id: newOrder.id,
         product_id: item.product_id,
         product_name: item.product_name,
-        quantity: item.quantity || item.quantidade,
-        unit_price: item.unit_price || item.preco_unitario,
-        total: item.total || item.preco_total,
-        notes: item.notes || item.observacao,
+        quantity: item.quantidade,
+        unit_price: item.preco_unitario,
+        total: item.preco_total,
+        notes: item.observacao,
     }));
 
     const { error: itemsError } = await supabase
@@ -739,6 +723,7 @@ export async function confirmarItensMesa(
             .eq('id', itemId);
 
         // Atualiza cache local imediatamente para refletir na UI local-first
+        const { db } = await import('@/lib/db');
         await db.mesa_session_items.update(itemId, {
             enviado_cozinha: true,
             order_id: newOrder.id
@@ -759,14 +744,14 @@ export async function unirMesas(sourceMesaId: string, targetMesaId: string, garc
     }
 
     if (getMode() !== 'cloud') {
-        const instance = db;
+        const { db } = await import('@/lib/db');
         const sourceMesa = await db.mesas.get(sourceMesaId);
         const targetMesa = await db.mesas.get(targetMesaId);
         
         if (!sourceMesa || !targetMesa) throw new Error("Mesa não encontrada");
         
-        let sourceSession = await db.mesa_sessions.where('mesa_id').equals(sourceMesaId).filter(s => !s.closed_at).first();
-        let targetSession = await db.mesa_sessions.where('mesa_id').equals(targetMesaId).filter(s => !s.closed_at).first();
+        const sourceSession = await db.mesa_sessions.where('mesa_id').equals(sourceMesaId).filter(s => !s.closed_at).first();
+        const targetSession = await db.mesa_sessions.where('mesa_id').equals(targetMesaId).filter(s => !s.closed_at).first();
         
         let finalTargetSessionId = targetSession?.id;
         if (!finalTargetSessionId) {
@@ -871,7 +856,7 @@ export async function unirMesas(sourceMesaId: string, targetMesaId: string, garc
 export async function separarMesa(sessionId: string) {
     if (getMode() !== 'cloud') {
         const payload = { status: 'livre', closed_at: new Date().toISOString() };
-        const existing = await getItem<any>('mesa_sessions', sessionId);
+        const existing = await getItem<CachedMesaSession>('mesa_sessions', sessionId);
         if (existing) {
             await saveItem('mesa_sessions', { ...existing, ...payload } as CachedMesaSession);
         }

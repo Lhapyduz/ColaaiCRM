@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useCallback, ReactNode } from 'react';
-import { initOfflineDB, onNetworkChange, isOnline, getPendingActions, checkConnectivity } from '@/lib/offlineStorage';
+import { initOfflineDB, onNetworkChange, getPendingActions, checkConnectivity } from '@/lib/offlineStorage';
 import { syncPendingActions, cacheDataForOffline, updateLastSync } from '@/lib/offlineSync';
 import { useStorageStore, type StorageMode } from '@/stores/useStorageStore';
 import { useAuth } from './AuthContext';
@@ -73,7 +73,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
             toast.error('Erro ao sincronizar com servidor.');
         }
         setSyncing(false);
-    }, [hardwareOnline, syncing, user, isEffectivelyOnline, updatePendingCount, setSyncing]);
+    }, [hardwareOnline, syncing, updatePendingCount, setSyncing]);
 
     const refreshCache = useCallback(async () => {
         if (!isEffectivelyOnline || !user) return;

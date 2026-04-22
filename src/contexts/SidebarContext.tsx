@@ -31,13 +31,28 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 
     // Mark as hydrated after first render
     useEffect(() => {
-        // Re-sync with localStorage in case SSR value was wrong
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored !== null) {
-            setCollapsedState(stored === 'true');
-        }
-        setIsHydrated(true);
+        const frame = requestAnimationFrame(() => {
+            setIsHydrated(true);
+        });
+        return () => cancelAnimationFrame(frame);
     }, []);
+
+    // Sync with localStorage after hydration
+    useEffect(() => {
+        if (isHydrated) {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored !== null) {
+                    const isCollapsed = stored === 'true';
+                    requestAnimationFrame(() => {
+                        setCollapsedState(isCollapsed);
+                    });
+                }
+            } catch {
+                // localStorage may be unavailable
+            }
+        }
+    }, [isHydrated]);
 
     // Persist state to localStorage
     const setCollapsed = useCallback((value: boolean) => {

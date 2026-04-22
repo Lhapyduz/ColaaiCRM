@@ -8,7 +8,6 @@ import {
     FiChevronDown,
     FiChevronLeft,
     FiChevronRight,
-    FiMoreVertical,
     FiCheck
 } from 'react-icons/fi';
 

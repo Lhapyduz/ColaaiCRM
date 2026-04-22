@@ -14,6 +14,8 @@ import type {
     CachedProduct,
     CachedCategory,
     CachedOrder,
+    CachedOrderItem,
+    CachedOrderItemAddon,
     CachedClient,
     CachedTable,
     CachedEmployee,
@@ -29,10 +31,26 @@ import type {
     CachedCashFlow,
     CachedBill,
     CachedBillCategory,
+    CachedMesaSession,
+    CachedMesaSessionItem,
     PendingAction,
+    HasId,
 } from '@/types/db';
 
 // ─── Helpers ─────────────────────────────────────────
+
+export interface OrderLoyaltyData {
+    customer?: CachedClient | null;
+    newCustomer?: Partial<CachedClient> | null;
+    pointsEarned: number;
+    updateData?: Partial<CachedClient> | null;
+}
+
+export interface OrderCouponData {
+    appliedCoupon: CachedCoupon | null;
+    discount: number;
+    customerPhone: string | null;
+}
 
 export function getMode() {
     const state = useStorageStore.getState();
@@ -58,11 +76,11 @@ export async function fetchProducts(userId: string): Promise<CachedProduct[]> {
             // Get all pending modifications for this table
             const pending = await getPendingActions();
             const pendingIds = new Set(
-                pending.filter((a: any) => a.table === 'products').map((a: any) => a.data.id)
+                pending.filter((a: PendingAction) => a.table === 'products').map((a: PendingAction) => (a.data as HasId).id)
             );
             
             // Only overwrite records that DON'T have pending local changes
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const toSave = data.filter((item: CachedProduct) => !pendingIds.has(item.id));
             
             // Cache locally for offline fallback
             if (toSave.length > 0) {
@@ -98,12 +116,12 @@ export async function updateProduct(id: string, data: Record<string, unknown>): 
         const { error } = await supabase.from('products').update(data).eq('id', id);
         if (error) throw new Error(error.message);
         // Update local cache
-        const existing = await getItem<any>('products', id);
+        const existing = await getItem<CachedProduct>('products', id);
         if (existing) {
             await saveItem('products', { ...existing, ...data } as CachedProduct);
         }
     } else {
-        const existing = await getItem<any>('products', id);
+        const existing = await getItem<CachedProduct>('products', id);
         if (existing) {
             await saveItem('products', { ...existing, ...data } as CachedProduct);
         }
@@ -131,14 +149,14 @@ export async function bulkUpdateProducts(updates: Array<{ id: string } & Record<
 
         // Update local cache
         for (const update of updates) {
-            const existing = await getItem<any>('products', update.id);
+            const existing = await getItem<CachedProduct>('products', update.id);
             if (existing) {
                 await saveItem('products', { ...existing, ...update } as CachedProduct);
             }
         }
     } else {
         for (const update of updates) {
-            const existing = await getItem<any>('products', update.id);
+            const existing = await getItem<CachedProduct>('products', update.id);
             if (existing) {
                 await saveItem('products', { ...existing, ...update } as CachedProduct);
             }
@@ -161,11 +179,11 @@ export async function fetchCategories(userId: string): Promise<CachedCategory[]>
             // Get all pending modifications
             const pending = await getPendingActions();
             const pendingIds = new Set(
-                pending.filter((a: any) => a.table === 'categories').map((a: any) => a.data.id)
+                pending.filter((a: PendingAction) => a.table === 'categories').map((a: PendingAction) => (a.data as HasId).id)
             );
             
             // Only overwrite records that DON'T have pending local changes
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const toSave = data.filter((item: CachedCategory) => !pendingIds.has(item.id));
             
             if (toSave.length > 0) {
                 await saveAll('categories', toSave);
@@ -197,12 +215,12 @@ export async function updateCategory(id: string, data: Record<string, unknown>):
     if (getMode() === 'cloud') {
         const { error } = await supabase.from('categories').update(data).eq('id', id);
         if (error) throw new Error(error.message);
-        const existing = await getItem<any>('categories', id);
+        const existing = await getItem<CachedCategory>('categories', id);
         if (existing) {
             await saveItem('categories', { ...existing, ...data } as CachedCategory);
         }
     } else {
-        const existing = await getItem<any>('categories', id);
+        const existing = await getItem<CachedCategory>('categories', id);
         if (existing) {
             await saveItem('categories', { ...existing, ...data } as CachedCategory);
         }
@@ -229,14 +247,14 @@ export async function bulkUpdateCategories(updates: Array<{ id: string } & Recor
         if (error) throw new Error(error.message);
 
         for (const update of updates) {
-            const existing = await getItem<any>('categories', update.id);
+            const existing = await getItem<CachedCategory>('categories', update.id);
             if (existing) {
                 await saveItem('categories', { ...existing, ...update } as CachedCategory);
             }
         }
     } else {
         for (const update of updates) {
-            const existing = await getItem<any>('categories', update.id);
+            const existing = await getItem<CachedCategory>('categories', update.id);
             if (existing) {
                 await saveItem('categories', { ...existing, ...update } as CachedCategory);
             }
@@ -271,10 +289,10 @@ export async function fetchOrders(userId: string, options: { limit?: number; dat
         if (!error && data) {
             const pending = await getPendingActions();
             const pendingIds = new Set(
-                pending.filter((a: any) => a.table === 'orders').map((a: any) => a.data.id)
+                pending.filter((a: PendingAction) => a.table === 'orders').map((a: PendingAction) => (a.data as HasId).id)
             );
             
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const toSave = data.filter((item: CachedOrder) => !pendingIds.has(item.id));
             
             if (toSave.length > 0) {
                 await saveAllOrdersDeep(toSave);
@@ -306,12 +324,12 @@ export async function updateOrder(id: string, data: Record<string, unknown>): Pr
     if (getMode() === 'cloud') {
         const { error } = await supabase.from('orders').update(data).eq('id', id);
         if (error) throw new Error(error.message);
-        const existing = await getItem<any>('orders', id);
+        const existing = await getItem<CachedOrder>('orders', id);
         if (existing) {
             await saveItem('orders', { ...existing, ...data } as CachedOrder);
         }
     } else {
-        const existing = await getItem<any>('orders', id);
+        const existing = await getItem<CachedOrder>('orders', id);
         if (existing) {
             await saveItem('orders', { ...existing, ...data } as CachedOrder);
         }
@@ -333,11 +351,11 @@ export async function deleteOrder(id: string): Promise<void> {
 }
 
 export async function createFullOrder(
-    orderData: any,
-    orderItems: any[],
-    itemAddons: any[],
-    loyaltyData?: any,
-    couponData?: any
+    orderData: CachedOrder,
+    orderItems: CachedOrderItem[],
+    itemAddons: (CachedOrderItemAddon & { itemIndex?: number })[],
+    loyaltyData?: OrderLoyaltyData | null,
+    couponData?: OrderCouponData | null
 ): Promise<void> {
     const id = orderData.id as string || crypto.randomUUID();
     const record = { ...orderData, id };
@@ -352,18 +370,18 @@ export async function createFullOrder(
             if (itemsError) throw new Error(itemsError.message);
 
             if (insertedItems && itemAddons.length > 0) {
-                const mappedAddons = [];
-                let itemIndex = 0;
-                for (const addon of itemAddons) {
+                let currentItemIndex = 0;
+                const cleanAddons = itemAddons.map(addon => {
                     if (addon.itemIndex !== undefined) {
-                        itemIndex = addon.itemIndex;
+                        currentItemIndex = addon.itemIndex;
                     }
-                    mappedAddons.push({
-                        ...addon,
-                        order_item_id: insertedItems[itemIndex]?.id
-                    });
-                }
-                const cleanAddons = mappedAddons.map(({ itemIndex, ...rest }) => rest);
+                    const addonData = { ...addon } as unknown as Record<string, unknown>;
+                    delete addonData.itemIndex;
+                    return {
+                        ...addonData,
+                        order_item_id: insertedItems[currentItemIndex]?.id
+                    };
+                });
                 if (cleanAddons.length > 0) {
                     await supabase.from('order_item_addons').insert(cleanAddons);
                 }
@@ -418,7 +436,7 @@ export async function createFullOrder(
     }
 }
 
-export async function fetchOrderById(id: string): Promise<any> {
+export async function fetchOrderById(id: string): Promise<CachedOrder | null> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('orders')
@@ -437,16 +455,16 @@ export async function fetchOrderById(id: string): Promise<any> {
     if (!order) return null;
 
     const items = await db.order_items.where('order_id').equals(id).toArray();
-    const itemIds = items.map((i: any) => i.id);
+    const itemIds = items.map(i => i.id);
     const addons = await db.order_item_addons.where('order_item_id').anyOf(itemIds).toArray();
 
     return {
         ...order,
-        order_items: items.map((item: any) => ({
+        order_items: items.map(item => ({
             ...item,
-            order_item_addons: addons.filter((a: any) => a.order_item_id === item.id)
+            order_item_addons: addons.filter(a => a.order_item_id === item.id)
         }))
-    };
+    } as CachedOrder;
 }
 
 export async function saveOrderDeep(order: CachedOrder): Promise<void> {
@@ -454,10 +472,14 @@ export async function saveOrderDeep(order: CachedOrder): Promise<void> {
     await saveItem('orders', orderData as CachedOrder);
 
     if (order_items && order_items.length > 0) {
-        const itemsToSave = order_items.map(({ order_item_addons, ...item }) => item);
+        const itemsToSave = order_items.map(item => {
+            const cleanItem = { ...item } as unknown as Record<string, unknown>;
+            delete cleanItem.order_item_addons;
+            return cleanItem;
+        });
         await saveAll('order_items', itemsToSave);
 
-        const allAddons: any[] = [];
+        const allAddons: CachedOrderItemAddon[] = [];
         for (const item of order_items) {
             if (item.order_item_addons) {
                 allAddons.push(...item.order_item_addons);
@@ -471,8 +493,8 @@ export async function saveOrderDeep(order: CachedOrder): Promise<void> {
 
 export async function saveAllOrdersDeep(orders: CachedOrder[]): Promise<void> {
     const mainOrders: CachedOrder[] = [];
-    const allItems: any[] = [];
-    const allAddons: any[] = [];
+    const allItems: CachedOrderItem[] = [];
+    const allAddons: CachedOrderItemAddon[] = [];
 
     for (const order of orders) {
         const { order_items, ...orderData } = order;
@@ -584,10 +606,10 @@ export async function fetchCustomers(userId: string): Promise<CachedClient[]> {
         if (!error && data) {
             const pending = await getPendingActions();
             const pendingIds = new Set(
-                pending.filter((a: any) => a.table === 'customers').map((a: any) => a.data.id)
+                pending.filter((a: PendingAction) => a.table === 'customers').map((a: PendingAction) => (a.data as HasId).id)
             );
             
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const toSave = data.filter((item: CachedClient) => !pendingIds.has(item.id));
             if (toSave.length > 0) {
                 await saveAll('customers', toSave);
             }
@@ -617,12 +639,12 @@ export async function updateCustomer(id: string, data: Record<string, unknown>):
     if (getMode() === 'cloud') {
         const { error } = await supabase.from('customers').update(data).eq('id', id);
         if (error) throw new Error(error.message);
-        const existing = await getItem<any>('customers', id);
+        const existing = await getItem<CachedClient>('customers', id);
         if (existing) {
             await saveItem('customers', { ...existing, ...data } as CachedClient);
         }
     } else {
-        const existing = await getItem<any>('customers', id);
+        const existing = await getItem<CachedClient>('customers', id);
         if (existing) {
             await saveItem('customers', { ...existing, ...data } as CachedClient);
         }
@@ -656,10 +678,10 @@ export async function fetchMesas(userId: string): Promise<CachedTable[]> {
         if (!error && data) {
             const pending = await getPendingActions();
             const pendingIds = new Set(
-                pending.filter((a: any) => a.table === 'mesas').map((a: any) => a.data.id)
+                pending.filter((a: PendingAction) => a.table === 'mesas').map((a: PendingAction) => (a.data as HasId).id)
             );
             
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const toSave = data.filter((item) => !pendingIds.has(item.id));
             if (toSave.length > 0) {
                 await saveAll('mesas', toSave);
             }
@@ -669,7 +691,7 @@ export async function fetchMesas(userId: string): Promise<CachedTable[]> {
     return await getAllByUser<CachedTable>('mesas', userId);
 }
 
-export async function fetchMesaById(id: string): Promise<any> {
+export async function fetchMesaById(id: string): Promise<CachedTable | undefined> {
     if (getMode() === 'cloud') {
         const { data: mesa, error: mesaError } = await supabase.from('mesas').select('id,user_id,numero_mesa,capacidade,ativa,created_at').eq('id', id).single();
         if (mesaError) throw mesaError;
@@ -683,23 +705,15 @@ export async function fetchMesaById(id: string): Promise<any> {
                 .select('id,session_id,product_id,product_name,quantidade,preco_unitario,preco_total,observacao,created_at,order_id,enviado_cozinha')
                 .in('session_id', sessionIds);
             if (items) {
-                const mappedItems = items.map((item: any) => ({
-                    ...item,
-                    quantity: item.quantidade,
-                    unit_price: item.preco_unitario,
-                    total: item.preco_total,
-                    notes: item.observacao,
-                    orders: item.orders
-                }));
-                await saveAll('mesa_session_items', mappedItems);
+                await saveAll('mesa_session_items', items);
             }
         }
-        return mesa;
+        return mesa as unknown as CachedTable;
     }
     return await getItem<CachedTable>('mesas', id);
 }
 
-export async function fetchMesaSessions(userId: string): Promise<any[]> {
+export async function fetchMesaSessions(userId: string): Promise<CachedMesaSession[]> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('mesa_sessions')
@@ -709,13 +723,13 @@ export async function fetchMesaSessions(userId: string): Promise<any[]> {
 
         if (!error && data) {
             await saveAll('mesa_sessions', data);
-            return data;
+            return data as unknown as CachedMesaSession[];
         }
     }
-    return getAllByUser('mesa_sessions', userId);
+    return getAllByUser<CachedMesaSession>('mesa_sessions', userId);
 }
 
-export async function fetchMesaSessionItems(userId: string): Promise<any[]> {
+export async function fetchMesaSessionItems(userId: string): Promise<CachedMesaSessionItem[]> {
     if (getMode() === 'cloud') {
         const { data, error } = await supabase
             .from('mesa_session_items')
@@ -723,23 +737,15 @@ export async function fetchMesaSessionItems(userId: string): Promise<any[]> {
             .eq('mesa_sessions.user_id', userId);
 
         if (!error && data) {
-            const mappedItems = data.map((item: any) => ({
-                ...item,
-                quantity: item.quantidade,
-                unit_price: item.preco_unitario,
-                total: item.preco_total,
-                notes: item.observacao,
-                status: null
-            }));
-            await saveAll('mesa_session_items', mappedItems);
-            return mappedItems;
+            await saveAll('mesa_session_items', data);
+            return data as unknown as CachedMesaSessionItem[];
         }
     }
     // mesa_session_items has no user_id — filter via user-owned sessions
-    const userSessions = await getAllByUser<any>('mesa_sessions', userId);
-    const sessionIds = new Set(userSessions.map((s: any) => s.id));
-    const allItems = await getAll<any>('mesa_session_items');
-    return allItems.filter((item: any) => sessionIds.has(item.session_id));
+    const userSessions = await getAllByUser<CachedMesaSession>('mesa_sessions', userId);
+    const sessionIds = new Set(userSessions.map((s) => s.id));
+    const allItems = await getAll<CachedMesaSessionItem>('mesa_session_items');
+    return allItems.filter((item) => sessionIds.has(item.session_id));
 }
 
 export async function createMesa(data: Record<string, unknown>): Promise<void> {
@@ -797,7 +803,7 @@ export async function updateMesa(id: string, data: Record<string, unknown>): Pro
         }
         // Non-blocking local cache update
         try {
-            const existing = await getItem<any>('mesas', id);
+            const existing = await getItem<CachedTable>('mesas', id);
             if (existing) {
                 await saveItem('mesas', { ...existing, ...data } as CachedTable);
             }
@@ -805,7 +811,7 @@ export async function updateMesa(id: string, data: Record<string, unknown>): Pro
             console.warn('[updateMesa] Falha ao atualizar cache local:', cacheErr);
         }
     } else {
-        const existing = await getItem<any>('mesas', id);
+        const existing = await getItem<CachedTable>('mesas', id);
         if (existing) {
             await saveItem('mesas', { ...existing, ...data } as CachedTable);
         }
@@ -835,7 +841,7 @@ export async function deleteMesa(id: string): Promise<void> {
             console.warn('[deleteMesa] Falha ao excluir do cache local:', cacheErr);
         }
     } else {
-        const existing = await getItem<any>('mesas', id);
+        const existing = await getItem<CachedTable>('mesas', id);
         await deleteItem('mesas', id);
         await addPendingAction({ type: 'delete', table: 'mesas', data: { id, user_id: existing?.user_id } });
         incrPending();
@@ -855,10 +861,10 @@ export async function fetchEmployeesCached(userId: string): Promise<CachedEmploy
         if (!error && data) {
             const pending = await getPendingActions();
             const pendingIds = new Set(
-                pending.filter((a: any) => a.table === 'employees').map((a: any) => a.data.id)
+                pending.filter((a: PendingAction) => a.table === 'employees').map((a: PendingAction) => (a.data as HasId).id)
             );
             
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const toSave = data.filter((item: CachedEmployee) => !pendingIds.has(item.id));
             if (toSave.length > 0) {
                 await saveAll('employees', toSave);
             }
@@ -888,12 +894,12 @@ export async function updateEmployee(id: string, data: Record<string, unknown>):
     if (getMode() === 'cloud') {
         const { error } = await supabase.from('employees').update(data).eq('id', id);
         if (error) throw new Error(error.message);
-        const existing = await getItem<any>('employees', id);
+        const existing = await getItem<CachedEmployee>('employees', id);
         if (existing) {
             await saveItem('employees', { ...existing, ...data } as CachedEmployee);
         }
     } else {
-        const existing = await getItem<any>('employees', id);
+        const existing = await getItem<CachedEmployee>('employees', id);
         if (existing) {
             await saveItem('employees', { ...existing, ...data } as CachedEmployee);
         }
@@ -921,8 +927,8 @@ export async function fetchLoyaltyRewards(userId: string): Promise<CachedLoyalty
         const { data, error } = await supabase.from('loyalty_rewards').select('id,user_id,name,description,points_cost,reward_type,reward_value,min_order_value,is_active,created_at').eq('user_id', userId);
         if (!error && data) {
             const pending = await getPendingActions();
-            const pendingIds = new Set(pending.filter((a: any) => a.table === 'loyalty_rewards').map((a: any) => a.data.id));
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'loyalty_rewards').map((a: PendingAction) => (a.data as HasId).id));
+            const toSave = data.filter((item: CachedLoyaltyReward) => !pendingIds.has(item.id));
             if (toSave.length > 0) await saveAll('loyalty_rewards', toSave);
             return data as CachedLoyaltyReward[];
         }
@@ -989,8 +995,8 @@ export async function fetchCoupons(userId: string): Promise<CachedCoupon[]> {
         const { data, error } = await supabase.from('coupons').select('id,user_id,code,description,discount_type,discount_value,min_order_value,max_discount,usage_limit,usage_count,valid_from,valid_until,active,first_order_only,created_at').eq('user_id', userId);
         if (!error && data) {
             const pending = await getPendingActions();
-            const pendingIds = new Set(pending.filter((a: any) => a.table === 'coupons').map((a: any) => a.data.id));
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'coupons').map((a: PendingAction) => (a.data as HasId).id));
+            const toSave = data.filter((item: CachedCoupon) => !pendingIds.has(item.id));
             if (toSave.length > 0) await saveAll('coupons', toSave);
             return data as CachedCoupon[];
         }
@@ -1088,10 +1094,10 @@ export async function fetchProductAddonGroups(userId: string): Promise<CachedPro
         }
     }
     // product_addon_groups has no user_id — filter via user-owned products
-    const userProducts = await getAllByUser<any>('products', userId);
-    const productIds = new Set(userProducts.map((p: any) => p.id));
+    const userProducts = await getAllByUser<CachedProduct>('products', userId);
+    const productIds = new Set(userProducts.map((p: CachedProduct) => p.id));
     const allPAG = await getAll<CachedProductAddonGroup>('product_addon_groups');
-    return allPAG.filter((pag: any) => productIds.has(pag.product_id));
+    return allPAG.filter((pag: CachedProductAddonGroup) => productIds.has(pag.product_id));
 }
 
 export async function fetchAddonGroupItems(userId: string): Promise<CachedAddonGroupItem[]> {
@@ -1108,15 +1114,15 @@ export async function fetchAddonGroupItems(userId: string): Promise<CachedAddonG
         }
     }
     // addon_group_items has no user_id — filter via user-owned addon groups
-    const userGroups = await getAllByUser<any>('addon_groups', userId);
-    const groupIds = new Set(userGroups.map((g: any) => g.id));
+    const userGroups = await getAllByUser<CachedAddonGroup>('addon_groups', userId);
+    const groupIds = new Set(userGroups.map((g: CachedAddonGroup) => g.id));
     const allAGI = await getAll<CachedAddonGroupItem>('addon_group_items');
-    return allAGI.filter((agi: any) => groupIds.has(agi.group_id));
+    return allAGI.filter((agi: CachedAddonGroupItem) => groupIds.has(agi.group_id));
 }
 
 // ─── Action Logs ──────────────────────────────────────
 
-export async function fetchActionLogs(userId: string, limit = 50, offset = 0, filters?: any): Promise<{ data: CachedActionLog[], count: number }> {
+export async function fetchActionLogs(userId: string, limit = 50, offset = 0, filters?: { action?: string; entity?: string; from?: string; to?: string }): Promise<{ data: CachedActionLog[], count: number }> {
     if (getMode() === 'cloud') {
         let query = supabase
             .from('action_logs')
@@ -1147,8 +1153,14 @@ export async function fetchActionLogs(userId: string, limit = 50, offset = 0, fi
     let filtered = all.filter(l => l.user_id === userId);
     if (filters?.action) filtered = filtered.filter(l => l.action_type === filters.action);
     if (filters?.entity) filtered = filtered.filter(l => l.entity_type === filters.entity);
-    if (filters?.from) filtered = filtered.filter(l => new Date(l.created_at) >= new Date(filters.from));
-    if (filters?.to) filtered = filtered.filter(l => new Date(l.created_at) <= new Date(filters.to));
+    if (filters?.from) {
+        const fromDate = new Date(filters.from);
+        filtered = filtered.filter(l => new Date(l.created_at) >= fromDate);
+    }
+    if (filters?.to) {
+        const toDate = new Date(filters.to);
+        filtered = filtered.filter(l => new Date(l.created_at) <= toDate);
+    }
     
     filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
@@ -1158,7 +1170,7 @@ export async function fetchActionLogs(userId: string, limit = 50, offset = 0, fi
     };
 }
 
-export async function addActionLogDAL(record: any): Promise<void> {
+export async function addActionLogDAL(record: CachedActionLog): Promise<void> {
     // Optimization: Logs are always saved locally immediately
     // If online AND mode is cloud, we ALSO try Supabase
     // But logs are secondary, so we don't necessarily WAIT if it's slow
@@ -1200,7 +1212,7 @@ export async function clearActionLogsDAL(userId: string, olderThan?: string): Pr
     }
 
     // Local cleanup
-    let localQuery = db.action_logs.where('user_id').equals(userId);
+    const localQuery = db.action_logs.where('user_id').equals(userId);
     if (olderThan) {
         await localQuery.and(l => new Date(l.created_at) < new Date(olderThan)).delete();
     } else {
@@ -1234,8 +1246,8 @@ export async function fetchCashFlow(userId: string, from?: string, to?: string):
 
         if (!error && data) {
             const pending = await getPendingActions();
-            const pendingIds = new Set(pending.filter((a: any) => a.table === 'cash_flow').map((a: any) => a.data.id));
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'cash_flow').map((a: PendingAction) => (a.data as HasId).id));
+            const toSave = data.filter((item: CachedCashFlow) => !pendingIds.has(item.id));
             if (toSave.length > 0) await saveAll('cash_flow', toSave);
             return data as CachedCashFlow[];
         }
@@ -1249,7 +1261,7 @@ export async function fetchCashFlow(userId: string, from?: string, to?: string):
     return filtered;
 }
 
-export async function createCashFlowEntry(data: any): Promise<void> {
+export async function createCashFlowEntry(data: Partial<CachedCashFlow>): Promise<void> {
     const id = data.id || crypto.randomUUID();
     const record = { ...data, id };
 
@@ -1311,8 +1323,8 @@ export async function fetchBills(userId: string): Promise<CachedBill[]> {
 
         if (!error && data) {
             const pending = await getPendingActions();
-            const pendingIds = new Set(pending.filter((a: any) => a.table === 'bills').map((a: any) => a.data.id));
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'bills').map((a: PendingAction) => (a.data as HasId).id));
+            const toSave = data.filter((item: CachedBill) => !pendingIds.has(item.id));
             if (toSave.length > 0) await saveAll('bills', toSave);
             return data as CachedBill[];
         }
@@ -1322,7 +1334,7 @@ export async function fetchBills(userId: string): Promise<CachedBill[]> {
     return all.filter(b => b.user_id === userId).sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
 }
 
-export async function createBillDAL(data: any): Promise<void> {
+export async function createBillDAL(data: Partial<CachedBill>): Promise<void> {
     const id = data.id || crypto.randomUUID();
     const record = { ...data, id };
 
@@ -1337,7 +1349,7 @@ export async function createBillDAL(data: any): Promise<void> {
     }
 }
 
-export async function updateBillDAL(id: string, data: any): Promise<void> {
+export async function updateBillDAL(id: string, data: Partial<CachedBill>): Promise<void> {
     if (getMode() === 'cloud') {
         const { error } = await supabase.from('bills').update(data).eq('id', id);
         if (error) throw new Error(error.message);
@@ -1370,11 +1382,11 @@ export async function markBillPaidDAL(
     nextDueDate?: string
 ): Promise<void> {
     // 1. Update current bill
-    const updateData = { status: 'paid', payment_date: paymentDate };
+    const updateData: Partial<CachedBill> = { status: 'paid', payment_date: paymentDate };
     await updateBillDAL(bill.id, updateData);
 
     // 2. Create cash flow entry
-    const cashFlowData = {
+    const cashFlowData: Partial<CachedCashFlow> = {
         user_id: userId,
         type: bill.type === 'payable' ? 'expense' : 'income',
         category: bill.category,
@@ -1388,7 +1400,7 @@ export async function markBillPaidDAL(
 
     // 3. Handle recurrence
     if (nextDueDate) {
-        const recurringData = {
+        const recurringData: Partial<CachedBill> = {
             user_id: userId,
             type: bill.type,
             description: bill.description,
@@ -1416,8 +1428,8 @@ export async function fetchBillCategories(userId: string): Promise<CachedBillCat
 
         if (!error && data) {
             const pending = await getPendingActions();
-            const pendingIds = new Set(pending.filter((a: any) => a.table === 'bill_categories').map((a: any) => a.data.id));
-            const toSave = data.filter((item: any) => !pendingIds.has(item.id));
+            const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'bill_categories').map((a: PendingAction) => (a.data as HasId).id));
+            const toSave = data.filter((item: CachedBillCategory) => !pendingIds.has(item.id));
             if (toSave.length > 0) await saveAll('bill_categories', toSave);
             return data as CachedBillCategory[];
         }
@@ -1426,12 +1438,12 @@ export async function fetchBillCategories(userId: string): Promise<CachedBillCat
     return (await getAll<CachedBillCategory>('bill_categories')).filter(c => c.user_id === userId);
 }
 
-export async function createBillCategoryDAL(data: any): Promise<void> {
+export async function createBillCategoryDAL(data: Partial<CachedBillCategory>): Promise<void> {
     // Prevent duplicates based on name/type/user_id constraint
     const existing = await getAll<CachedBillCategory>('bill_categories');
     const duplicate = existing.find(c => 
         c.user_id === data.user_id && 
-        c.name.toLowerCase() === data.name.toLowerCase() && 
+        data.name && c.name.toLowerCase() === data.name.toLowerCase() && 
         c.type === data.type
     );
 

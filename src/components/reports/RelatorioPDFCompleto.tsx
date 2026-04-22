@@ -1,19 +1,21 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
 // Interface defining the structure of the report data
+export interface ReportSection {
+    titulo: string;
+    tipo: 'kpi' | 'tabela' | 'lista';
+    dados: Array<Record<string, unknown> | string>;
+    colunas?: { header: string; key: string; width?: string }[];
+}
+
 export interface ReportData {
     businessName?: string;
     periodoSelecionado: string;
-    secoes: {
-        titulo: string;
-        tipo: 'kpi' | 'tabela' | 'lista';
-        dados: any[];
-        colunas?: { header: string; key: string; width?: string }[];
-    }[];
+    secoes: ReportSection[];
     comparacao?: {
         periodo: string;
-        dados: any;
+        dados: Record<string, unknown>;
     };
 }
 
@@ -152,7 +154,7 @@ const styles = StyleSheet.create({
     },
 });
 
-const MetricRows = ({ data }: { data: any[] }) => (
+const MetricRows = ({ data }: { data: Array<Record<string, unknown>> }) => (
     <View>
         <View style={styles.tableHeader}>
             <Text style={styles.tableHeaderLabel}>Métrica</Text>
@@ -161,15 +163,15 @@ const MetricRows = ({ data }: { data: any[] }) => (
 
         {data.map((item, index) => (
             <View key={index} style={styles.metricRow}>
-                <Text style={styles.metricLabel}>{item.label || item.produto || 'Item'}</Text>
-                <Text style={styles.metricValue}>{item.value || item.total || '-'}</Text>
+                <Text style={styles.metricLabel}>{(item.label as string) || (item.produto as string) || 'Item'}</Text>
+                <Text style={styles.metricValue}>{(item.value as string) || (item.total as string) || '-'}</Text>
             </View>
         ))}
     </View>
 );
 
-const GenericTable = ({ data, columns }: { data: any[]; columns?: any[] }) => {
-    const cols = columns || (data.length > 0 ? Object.keys(data[0]).map(key => ({ header: key, key })) : []);
+const GenericTable = ({ data, columns }: { data: Array<Record<string, unknown>>; columns?: Array<{ header: string; key: string; width?: string }> }) => {
+    const cols: Array<{ header: string; key: string; width?: string }> = columns || (data.length > 0 ? Object.keys(data[0]).map(key => ({ header: key, key })) : []);
 
     return (
         <View>
@@ -187,7 +189,7 @@ const GenericTable = ({ data, columns }: { data: any[]; columns?: any[] }) => {
                             colIndex === 0 ? styles.metricLabel : styles.metricValue,
                             col.width ? { flexBasis: col.width } : { flex: 1, textAlign: colIndex === cols.length - 1 ? 'right' : 'left' }
                         ]}>
-                            {String(row[col.key] || '')}
+                            {String((row as Record<string, unknown>)[col.key] || '')}
                         </Text>
                     ))}
                 </View>
@@ -196,7 +198,7 @@ const GenericTable = ({ data, columns }: { data: any[]; columns?: any[] }) => {
     );
 };
 
-const BulletList = ({ data }: { data: any[] }) => (
+const BulletList = ({ data }: { data: Array<Record<string, unknown> | string> }) => (
     <View>
         {data.map((item, index) => (
             <View key={index} style={styles.listItem}>
@@ -233,8 +235,8 @@ const RelatorioPDFCompleto: React.FC<{ reportData: ReportData }> = ({ reportData
 
                         {secao.titulo && <Text style={styles.sectionTitle}>{secao.titulo}</Text>}
 
-                        {secao.tipo === 'kpi' && <MetricRows data={secao.dados} />}
-                        {secao.tipo === 'tabela' && <GenericTable data={secao.dados} columns={secao.colunas} />}
+                        {secao.tipo === 'kpi' && <MetricRows data={secao.dados as Array<Record<string, unknown>>} />}
+                        {secao.tipo === 'tabela' && <GenericTable data={secao.dados as Array<Record<string, unknown>>} columns={secao.colunas} />}
                         {secao.tipo === 'lista' && <BulletList data={secao.dados} />}
 
                     </View>

@@ -110,7 +110,7 @@ export function recordFailedAttempt(identifier?: string): {
 } {
     const key = identifier || getSessionId();
     const now = Date.now();
-    let entry = getEntry(key);
+    const entry = getEntry(key);
 
     // Increment attempts
     entry.attempts += 1;

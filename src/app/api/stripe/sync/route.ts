@@ -1,3 +1,4 @@
+import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { stripe } from '@/lib/stripe';
@@ -30,6 +31,9 @@ function getPlanTypeFromPriceId(priceId: string): string {
 }
 
 export async function POST(req: NextRequest) {
+    // We keep req here for Next.js convention even if unused
+    void req;
+    
     try {
         const supabase = await createClient();
         const {
@@ -55,7 +59,7 @@ export async function POST(req: NextRequest) {
         // If no customer ID in local DB, try to find by email in Stripe
         if (!stripeCustomerId) {
             const customers = await stripe.customers.list({
-                email: user.email,
+                email: user.email || undefined,
                 limit: 1
             });
             if (customers.data.length > 0) {
@@ -79,7 +83,7 @@ export async function POST(req: NextRequest) {
         console.log('[Sync] Found', stripeSubscriptions.data.length, 'subscriptions in Stripe');
 
         // Find the best subscription (prioritize active > trialing > others)
-        let stripeSub = stripeSubscriptions.data.find(s => s.status === 'active');
+        let stripeSub: Stripe.Subscription | undefined = stripeSubscriptions.data.find(s => s.status === 'active');
         if (!stripeSub) {
             stripeSub = stripeSubscriptions.data.find(s => s.status === 'trialing');
         }
@@ -94,69 +98,72 @@ export async function POST(req: NextRequest) {
 
         console.log('[Sync] Using subscription:', stripeSub.id, 'status:', stripeSub.status);
 
+        // Cast to any to access properties that might be missing in the futuristic SDK types
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sub = stripeSub as any;
+
         // Map Price ID to Plan Type
         const priceId = stripeSub.items.data[0].price.id;
         const planType = getPlanTypeFromPriceId(priceId);
         const mappedStatus = mapStripeStatus(stripeSub.status);
 
-        console.log('[Sync] Plan type:', planType, 'Status:', mappedStatus);
-
-        // Get the next invoice date from Stripe (this is the exact date of the next charge)
+        // Try to get the next invoice date
         let nextInvoiceDate: string | null = null;
         try {
             const upcomingInvoice = await stripe.invoices.createPreview({
                 customer: stripeCustomerId,
                 subscription: stripeSub.id
-            } as any);
-            if (upcomingInvoice.next_payment_attempt) {
-                nextInvoiceDate = new Date(upcomingInvoice.next_payment_attempt * 1000).toISOString();
-            } else if (upcomingInvoice.created) {
-                nextInvoiceDate = new Date(upcomingInvoice.created * 1000 + 30 * 24 * 60 * 60 * 1000).toISOString();
+            });
+            
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const invoice = upcomingInvoice as any;
+            if (invoice.next_payment_attempt) {
+                nextInvoiceDate = new Date(invoice.next_payment_attempt * 1000).toISOString();
+            } else if (sub.current_period_end) {
+                nextInvoiceDate = new Date(sub.current_period_end * 1000).toISOString();
             }
             console.log('[Sync] Next invoice date from Stripe:', nextInvoiceDate);
         } catch (invoiceError) {
+            void invoiceError;
             console.log('[Sync] No upcoming invoice found, using current_period_end');
-            nextInvoiceDate = new Date((stripeSub as any).current_period_end * 1000).toISOString();
+            if (sub.current_period_end) {
+                nextInvoiceDate = new Date(sub.current_period_end * 1000).toISOString();
+            }
         }
 
         // Upsert to handle both insert and update cases
-        const { error } = await supabaseAdmin
+        const { error: upsertError } = await supabaseAdmin
             .from('subscriptions')
             .upsert({
                 user_id: user.id,
                 stripe_customer_id: stripeCustomerId,
                 stripe_subscription_id: stripeSub.id,
-                stripe_price_id: priceId,
                 status: mappedStatus,
                 plan_type: planType,
                 trial_ends_at: stripeSub.trial_end ? new Date(stripeSub.trial_end * 1000).toISOString() : null,
-                current_period_start: (stripeSub as any).current_period_start ? new Date((stripeSub as any).current_period_start * 1000).toISOString() : new Date().toISOString(),
-                current_period_end: (stripeSub as any).current_period_end ? new Date((stripeSub as any).current_period_end * 1000).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                stripe_current_period_end: nextInvoiceDate || ((stripeSub as any).current_period_end ? new Date((stripeSub as any).current_period_end * 1000).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()),
+                current_period_start: sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : new Date().toISOString(),
+                current_period_end: sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                stripe_current_period_end: nextInvoiceDate || (sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()),
                 billing_period: 'monthly'
-            } as any, { onConflict: 'user_id' });
+            }, { onConflict: 'user_id' });
 
-        if (error) {
-            console.error('[Sync] Error syncing subscription:', error);
-            return NextResponse.json({
-                error: 'Failed to update subscription',
-                details: error.message,
-                code: error.code
-            }, { status: 500 });
+        if (upsertError) {
+            console.error('[Sync] Error upserting subscription:', upsertError);
+            throw upsertError;
         }
-
-        console.log('[Sync] Successfully synced subscription');
 
         return NextResponse.json({
             message: 'Subscription synced successfully',
             status: mappedStatus,
             plan_type: planType,
-            current_period_end: nextInvoiceDate || new Date((stripeSub as any).current_period_end * 1000).toISOString()
+            current_period_end: nextInvoiceDate || (sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null)
         });
 
     } catch (error) {
-        console.error('[Sync] Sync error:', error);
-        return new NextResponse('Internal Error', { status: 500 });
+        console.error('[Sync] Error during Stripe sync:', error);
+        return NextResponse.json(
+            { error: 'Internal Server Error' },
+            { status: 500 }
+        );
     }
 }
-

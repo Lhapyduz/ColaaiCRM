@@ -1,29 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { FiTrendingUp, FiTrendingDown, FiCalendar, FiRefreshCw, FiDollarSign, FiShoppingBag, FiToggleLeft, FiToggleRight, FiTrash2 } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiTrendingUp, FiTrendingDown, FiCalendar, FiDollarSign, FiShoppingBag, FiToggleLeft, FiToggleRight, FiTrash2 } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
+
 import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/lib/utils';
 import { useCashFlowCache, useOrdersCache, useProductsCache, useCategoriesCache } from '@/hooks/useDataCache';
-import { createCashFlowEntry, deleteCashFlowEntry } from '@/lib/dataAccess';
+import { deleteCashFlowEntry } from '@/lib/dataAccess';
 
-interface CashFlowEntry {
-    id: string;
-    type: 'income' | 'expense';
-    category: string;
-    description: string;
-    amount: number;
-    payment_method: string | null;
-    transaction_date: string;
-    created_at: string;
-}
+
 
 interface DailySummary {
     date: string;
@@ -44,7 +35,7 @@ interface DailyCategoryInfo {
 }
 
 export default function FluxoCaixaPage() {
-    const { user } = useAuth();
+    const { } = useAuth();
     const { canAccess, plan } = useSubscription();
 
     const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
@@ -60,7 +51,7 @@ export default function FluxoCaixaPage() {
     // Derived State
     const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
     const [ordersRevenue, setOrdersRevenue] = useState(0);
-    const [loadingRevenue, setLoadingRevenue] = useState(false);
+
     const [showCategoryDetails, setShowCategoryDetails] = useState(true);
     const [dailyCategoryInfo, setDailyCategoryInfo] = useState<DailyCategoryInfo[]>([]);
 
@@ -68,11 +59,14 @@ export default function FluxoCaixaPage() {
     const toast = useToast();
 
     useEffect(() => {
-        const now = new Date();
-        const from = new Date(now.getFullYear(), now.getMonth(), 1);
-        const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        setDateFrom(from.toISOString().split('T')[0]);
-        setDateTo(to.toISOString().split('T')[0]);
+        const frame = requestAnimationFrame(() => {
+            const now = new Date();
+            const from = new Date(now.getFullYear(), now.getMonth(), 1);
+            const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            setDateFrom(from.toISOString().split('T')[0]);
+            setDateTo(to.toISOString().split('T')[0]);
+        });
+        return () => cancelAnimationFrame(frame);
     }, []);
 
     // Calculate statistics from cached data
@@ -91,7 +85,10 @@ export default function FluxoCaixaPage() {
         });
 
         const totalRevenue = filteredOrders.reduce((sum, order) => sum + (order.total || 0), 0);
-        setOrdersRevenue(totalRevenue);
+        
+        const frame = requestAnimationFrame(() => {
+            setOrdersRevenue(totalRevenue);
+        });
 
         // Category breakdown logic using local data
         if (filteredOrders.length > 0) {
@@ -112,16 +109,10 @@ export default function FluxoCaixaPage() {
                 }
 
                 // Dexie orders usually have items embedded or we use items cache
-                // But for now let's assume we have what we need in the order object if it was cached with items
-                // If items are NOT in CachedOrder, we might need useOrderItemsCache
-                const info = dailyMap.get(date)!;
                 // info.itemCount += ...; // Logic depends on how items are stored
             });
-            
-            // Note: Full category info requires items which might not be in CachedOrder
-            // For now, let's keep the revenue calculation local and the complex item-category 
-            // logic can be improved if CachedOrder includes items summary.
         }
+        return () => cancelAnimationFrame(frame);
     }, [orders, products, categories, dateFrom, dateTo]);
 
     // Recalcular DailySummaries quando entries mudar
@@ -133,12 +124,14 @@ export default function FluxoCaixaPage() {
             if (entry.type === 'income') s.income += entry.amount; else s.expense += entry.amount;
         });
         const summaries: DailySummary[] = Array.from(summaryMap.entries()).map(([date, { income, expense }]) => ({ date, income, expense, balance: income - expense })).sort((a, b) => b.date.localeCompare(a.date));
-        setDailySummaries(summaries);
+        
+        const frame = requestAnimationFrame(() => {
+            setDailySummaries(summaries);
+        });
+        return () => cancelAnimationFrame(frame);
     }, [entries]);
 
-    const fetchData = useCallback(() => {
-        refetchEntries();
-    }, [refetchEntries]);
+
 
     const handleDeleteEntry = async (id: string) => {
         if (!confirm('Tem certeza que deseja excluir esta movimentação? Essa ação não pode ser desfeita.')) return;

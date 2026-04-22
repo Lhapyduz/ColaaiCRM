@@ -31,8 +31,8 @@ export async function POST(req: Request) {
             const stripeCustomer = await getStripeCustomer(userId, userEmail, userName);
             stripeCustomerId = stripeCustomer.id;
             console.log('[AbacatePay] Stripe customer (criado/reutilizado):', stripeCustomerId);
-        } catch (stripeError: any) {
-            console.error('[AbacatePay] Erro ao criar/buscar cliente Stripe:', stripeError.message);
+        } catch (stripeError: unknown) {
+            console.error('[AbacatePay] Erro ao criar/buscar cliente Stripe:', stripeError instanceof Error ? stripeError.message : 'Unknown error');
             // Continua mesmo se falhar - o PIX funciona sem Stripe, mas é bom ter o cliente
         }
 
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
         const days = getPeriodDays(billingPeriod as BillingPeriod);
         const periodEnd = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
-        const subscriptionData: any = {
+        const subscriptionData: Record<string, unknown> = {
             user_id: userId,
             plan_type: planType,
             status: 'pending_pix',
@@ -126,11 +126,11 @@ export async function POST(req: Request) {
             url: billing?.url
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[AbacatePay] Exception:', error);
         return NextResponse.json({
             success: false,
-            error: 'Internal Server Error'
+            error: error instanceof Error ? error.message : 'Internal Server Error'
         }, { status: 500 });
     }
 }

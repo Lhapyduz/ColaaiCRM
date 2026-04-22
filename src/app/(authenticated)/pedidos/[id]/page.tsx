@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { FiArrowLeft, FiClock, FiUser, FiPhone, FiMapPin, FiCreditCard, FiPrinter, FiCheck, FiChevronDown } from 'react-icons/fi';
+import { FiArrowLeft, FiClock, FiUser, FiCreditCard, FiPrinter, FiCheck, FiChevronDown } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -10,6 +10,7 @@ import PixQRCode from '@/components/pix/PixQRCode';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSingleOrderCache } from '@/hooks/useDataCache';
+import type { CachedOrder } from '@/types/db';
 import { confirmOrderPayment } from '@/lib/dataAccess';
 import { printOrder, printCustomerReceipt, printKitchenTicket } from '@/lib/print';
 import { formatCurrency } from '@/hooks/useFormatters';
@@ -44,7 +45,7 @@ export default function OrderDetailsPage() {
                 hour: '2-digit', minute: '2-digit', 
                 timeZone: 'America/Sao_Paulo' 
             }).format(new Date(date));
-        } catch (e) {
+} catch {
             return 'Data inválida';
         }
     };
@@ -52,7 +53,7 @@ export default function OrderDetailsPage() {
     const updatePaymentStatus = async () => {
         if (!order || !user) return;
         try {
-            await confirmOrderPayment(order as any, user.id);
+            await confirmOrderPayment(order as CachedOrder, user.id);
             toast.success('Pagamento confirmado!');
         } catch (e) { 
             console.error(e); 
@@ -63,9 +64,9 @@ export default function OrderDetailsPage() {
     const getStatusLabel = (status: string) => ({ pending: 'Aguardando', preparing: 'Preparando', ready: 'Pronto', delivering: 'Entregando', delivered: 'Entregue', cancelled: 'Cancelado' }[status] || status);
     const getPaymentLabel = (method: string) => ({ money: 'Dinheiro', credit: 'Crédito', debit: 'Débito', pix: 'PIX' }[method] || method);
 
-    const handlePrintBoth = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printOrder(order as any, { type: 'both', appName }); } finally { setPrinting(false); } };
-    const handlePrintCustomer = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printCustomerReceipt(order as any, appName); } finally { setPrinting(false); } };
-    const handlePrintKitchen = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printKitchenTicket(order as any); } finally { setPrinting(false); } };
+    const handlePrintBoth = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printOrder(order as CachedOrder, { type: 'both', appName }); } finally { setPrinting(false); } };
+    const handlePrintCustomer = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printCustomerReceipt(order as CachedOrder, appName); } finally { setPrinting(false); } };
+    const handlePrintKitchen = async () => { if (!order) return; setPrinting(true); setShowPrintMenu(false); try { await printKitchenTicket(order as CachedOrder); } finally { setPrinting(false); } };
     
     if (loading && !order) return <div className="max-w-[1400px] mx-auto"><div className="h-[200px] bg-bg-tertiary rounded-xl animate-pulse mb-4" /><div className="h-[300px] bg-bg-tertiary rounded-xl animate-pulse" /></div>;
     if (cacheError) return <div className="max-w-[800px] mx-auto p-8 text-center"><p className="text-error mb-4">Erro ao carregar pedido.</p><Button onClick={() => router.push('/pedidos')}>Voltar para Pedidos</Button></div>;

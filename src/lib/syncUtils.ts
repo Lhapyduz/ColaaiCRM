@@ -7,6 +7,14 @@ import { db } from './db';
 import { syncPendingActions, cacheDataForOffline } from './offlineSync';
 import { useStorageStore } from '@/stores/useStorageStore';
 
+declare global {
+  interface Window {
+    forceSyncRefresh?: typeof forceSyncRefresh;
+    sanitizePendingActions?: typeof sanitizePendingActions;
+    runMigrationCleanup?: (userId: string) => Promise<void>;
+  }
+}
+
 /**
  * Validatable Dexie store names for current schema
  */
@@ -83,9 +91,9 @@ export async function sanitizePendingActions() {
 
 // Expose to window for emergency console use
 if (typeof window !== 'undefined') {
-    (window as any).forceSyncRefresh = forceSyncRefresh;
-    (window as any).sanitizePendingActions = sanitizePendingActions;
-    (window as any).runMigrationCleanup = async (userId: string) => {
+    window.forceSyncRefresh = forceSyncRefresh;
+    window.sanitizePendingActions = sanitizePendingActions;
+    window.runMigrationCleanup = async (userId: string) => {
         await sanitizePendingActions();
         const res = await forceSyncRefresh(userId);
         alert(`Cleanup completed!\nSynced: ${res.synced}\nFailed: ${res.failed}`);

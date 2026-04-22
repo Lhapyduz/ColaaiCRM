@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getFingerprint, generateFingerprint, FingerprintData } from '@/lib/fingerprint';
+import { generateFingerprint, FingerprintData } from '@/lib/fingerprint';
 
 interface UseFingerprint {
     fingerprint: string | null;

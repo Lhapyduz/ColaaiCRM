@@ -52,7 +52,7 @@ export function PushNotificationPrompt({ collapsed = false }: PushNotificationPr
                 }
             }
         }
-    }, [loading, isSubscribed, subscribe, unsubscribe, user?.id]);
+    }, [loading, isSubscribed, subscribe, unsubscribe, user]);
 
     const handleTest = useCallback(async () => {
         if (!user?.id) {
@@ -76,7 +76,7 @@ export function PushNotificationPrompt({ collapsed = false }: PushNotificationPr
             console.error('[Push Test] Erro:', e);
             toast.error('Erro ao enviar teste.', { id: 'push-test' });
         }
-    }, [user?.id]);
+    }, [user]);
 
     // Não renderiza se o navegador não suporta push notifications
     if (!isSupported) return null;

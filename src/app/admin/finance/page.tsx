@@ -79,7 +79,7 @@ export default function FinancePage() {
                 return {
                     id: s.id,
                     tenant_id: s.tenant_id,
-                    store_name: (setting as any)?.app_name || 'N/A',
+                    store_name: setting?.app_name || 'N/A',
                     email: '',
                     plan_name: s.plan_name || 'Desconhecido',
                     status: s.status || 'unknown',

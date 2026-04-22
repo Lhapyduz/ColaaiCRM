@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiUser, FiUsers, FiShield, FiPhone, FiMail, FiToggleLeft, FiToggleRight, FiLock } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -35,7 +35,7 @@ const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
 export default function FuncionariosPage() {
     const { user } = useAuth();
     const { plan, isWithinLimit, getLimit } = useSubscription();
-    const { employees, loading, error: cacheError } = useEmployeesCache();
+    const { employees, loading } = useEmployeesCache();
     const [showModal, setShowModal] = useState(false);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -158,16 +158,6 @@ export default function FuncionariosPage() {
                 employee={editingEmployee as unknown as EmployeeData}
                 onSave={handleSave}
             />
-
-            {/* Upgrade Modal */}
-            {showUpgradeModal && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-1000 p-4" onClick={() => setShowUpgradeModal(false)}>
-                    <div className="bg-bg-card border border-border rounded-lg p-6 w-full max-w-[600px]" onClick={e => e.stopPropagation()}>
-                        <UpgradePrompt feature="Limite de Funcionários Atingido" requiredPlan={plan === 'Basico' ? 'Avançado' : 'Profissional'} currentPlan={plan} />
-                        <div className="mt-4 text-center"><Button variant="ghost" onClick={() => setShowUpgradeModal(false)}>Fechar</Button></div>
-                    </div>
-                </div>
-            )}
 
             {/* Upgrade Modal */}
             {showUpgradeModal && (

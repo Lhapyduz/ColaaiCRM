@@ -1,6 +1,6 @@
 'use client';
 
-import React, { InputHTMLAttributes, forwardRef, useState } from 'react';
+import React, { InputHTMLAttributes, forwardRef, useState, useId } from 'react';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { cn } from '@/lib/utils';
 
@@ -22,7 +22,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({
 }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === 'password';
-    const inputId = props.id || `input-${label?.toLowerCase().replace(/\s+/g, '-') || Math.random().toString(36).substr(2, 9)}`;
+    const generatedId = useId();
+    const inputId = props.id || generatedId;
     const errorId = `${inputId}-error`;
 
     return (
