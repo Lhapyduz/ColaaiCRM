@@ -19,10 +19,10 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
-// import { supabase } from '@/lib/supabase'; // Removed for local-first
-import { logOrderCreated } from '@/lib/actionLogger';
+// import { supabase } from '@/infra/persistence/supabase'; // Removed for local-first
+import { logOrderCreated } from '@/infra/logging/actionLogger';
 import { formatCurrency } from '@/hooks/useFormatters';
-import { createFullOrder } from '@/lib/dataAccess';
+import { createFullOrder } from '@/repositories/dataAccess';
 import { 
     useProductsCache, 
     useCategoriesCache, 
@@ -320,7 +320,7 @@ export default function NovoPedidoPage() {
             let orderNumber = 1;
             // Use local Dexie as primary source of truth for order numbers to support offline creation
             try {
-                const dbModule = await import('@/lib/db');
+                const dbModule = await import('@/infra/persistence/db');
                 const db = dbModule.db;
                 const lastOrder = await db.orders
                     .where('user_id')

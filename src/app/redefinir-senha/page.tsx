@@ -4,7 +4,7 @@ import React, { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiLock, FiArrowRight, FiCheck, FiAlertCircle } from 'react-icons/fi';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 

@@ -3,13 +3,13 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, PlusCircle, Combine, Map, Filter, Clock, Loader2, X } from 'lucide-react';
-import { MesaWithActiveSession, unirMesas, separarMesa } from '@/lib/services/mesas';
-import { createMesa, updateMesa, deleteMesa } from '@/lib/dataAccess';
+import { MesaWithActiveSession, unirMesas, separarMesa } from '@/services/business/mesas';
+import { createMesa, updateMesa, deleteMesa } from '@/repositories/dataAccess';
 import { useMesasCache } from '@/hooks/useDataCache';
 import { MesaCard } from '@/components/mesas/MesaCard';
 import { MesaEditModal, AddMesaModal, MergeConfirmModal } from '@/components/mesas/MesaModals';
 import { useToast } from '@/components/ui/Toast';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 export default function MesasPage() {
     const router = useRouter();

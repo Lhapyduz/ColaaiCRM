@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import { useToast } from '@/components/ui/Toast';
 import { getStatusLabel } from '@/components/ui/StatusBadge';
 

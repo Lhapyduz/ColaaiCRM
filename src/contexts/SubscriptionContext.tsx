@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import { useAuth } from './AuthContext';
 import { PostgrestError } from '@supabase/supabase-js';
 

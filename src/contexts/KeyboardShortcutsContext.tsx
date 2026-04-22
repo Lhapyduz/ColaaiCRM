@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
-interface Shortcut {
+export interface Shortcut {
     key: string;
     ctrl?: boolean;
     alt?: boolean;
@@ -45,10 +45,13 @@ export function KeyboardShortcutsProvider({ children }: { children: ReactNode })
                 { key: 'x', alt: true, description: 'Ir para Caixa', action: () => router.push('/caixa'), scope: 'global' },
                 { key: 'b', alt: true, description: 'Ir para Contas', action: () => router.push('/contas'), scope: 'global' },
                 { key: 'm', alt: true, description: 'Ir para Fluxo de Caixa', action: () => router.push('/fluxo-caixa'), scope: 'global' },
+                { key: 'y', alt: true, description: 'Ir para Mesas', action: () => router.push('/mesas'), scope: 'global' },
+                { key: 'l', alt: true, description: 'Ir para Clientes', action: () => router.push('/clientes'), scope: 'global' },
                 { key: 's', alt: true, description: 'Ir para Funcionários', action: () => router.push('/funcionarios'), scope: 'global' },
                 { key: 'r', alt: true, description: 'Ir para Relatórios', action: () => router.push('/relatorios'), scope: 'global' },
                 { key: 'i', alt: true, description: 'Ir para Histórico', action: () => router.push('/historico'), scope: 'global' },
                 { key: 'q', alt: true, description: 'Ir para Assinatura', action: () => router.push('/assinatura'), scope: 'global' },
+                { key: 'w', alt: true, description: 'Ir para Suporte', action: () => router.push('/configuracoes?tab=suporte'), scope: 'global' },
                 { key: ',', alt: true, description: 'Ir para Configurações', action: () => router.push('/configuracoes'), scope: 'global' },
                 { key: 'n', alt: true, description: 'Novo Pedido', action: () => router.push('/pedidos/novo'), scope: 'global' },
                 { key: '/', ctrl: true, description: 'Mostrar Atalhos', action: () => setShowHelp(prev => !prev), scope: 'global' },

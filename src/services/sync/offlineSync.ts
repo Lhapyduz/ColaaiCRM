@@ -2,7 +2,7 @@
 // Handles synchronization between IndexedDB and Supabase
 // Uses batch upserts for efficiency and Zustand for state
 
-import { supabase } from './supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import {
     getAll,
     saveAll,
@@ -11,7 +11,7 @@ import {
     clearStore,
     isOnline,
 } from './offlineStorage';
-import { useStorageStore } from '@/stores/useStorageStore';
+import { useStorageStore } from '@/infra/persistence/useStorageStore';
 import type { 
     CachedOrder,
     CachedOrderItem,

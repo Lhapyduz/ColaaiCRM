@@ -7,7 +7,7 @@ import {
 } from 'react-icons/fi';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import {
     createTicket,
     sendMessage,
@@ -16,7 +16,7 @@ import {
     type TicketData
 } from '@/actions/support';
 import { useToast } from '@/components/ui/Toast';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 
 interface Ticket {
     id: string;

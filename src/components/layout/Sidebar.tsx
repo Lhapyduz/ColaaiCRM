@@ -53,7 +53,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { useEmployee } from '@/contexts/EmployeeContext';
 import PinPadModal from '@/components/auth/PinPadModal';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 interface MenuItem {
     href: string;

@@ -36,13 +36,13 @@ import { LimitWarning } from '@/components/ui/UpgradePrompt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
-import { db } from '@/lib/db';
+import { supabase } from '@/infra/persistence/supabase';
+import { db } from '@/infra/persistence/db';
 import { formatCurrency } from '@/hooks/useFormatters';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import { useProductsCache, useCategoriesCache, useAddonsCache } from '@/hooks/useDataCache';
-import { revalidateStoreMenu } from '@/app/actions/menu';
-import * as dataAccess from '@/lib/dataAccess';
+import { revalidateStoreMenu } from '@/actions/menu';
+import * as dataAccess from '@/repositories/dataAccess';
 import type { CachedProductAddonGroup } from '@/types/db';
 
 interface Category {

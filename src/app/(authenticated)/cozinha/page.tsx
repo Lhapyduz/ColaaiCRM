@@ -7,10 +7,10 @@ import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useOrdersCache } from '@/hooks/useDataCache';
-import { updateOrder } from '@/lib/dataAccess';
+import { updateOrder } from '@/repositories/dataAccess';
 import type { CachedOrder } from '@/types/db';
-import { printKitchenTicket, type OrderData } from '@/lib/print';
-import { cn } from '@/lib/utils';
+import { printKitchenTicket, type OrderData } from '@/services/business/print';
+import { cn } from '@/utils/utils';
 
 
 

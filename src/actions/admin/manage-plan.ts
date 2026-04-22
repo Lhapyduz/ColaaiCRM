@@ -1,7 +1,7 @@
 'use server';
 
-import { stripe } from '@/lib/stripe';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { stripe } from '@/services/payments/stripe';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
 import { revalidatePath } from 'next/cache';
 
 interface UpdatePlanParams {

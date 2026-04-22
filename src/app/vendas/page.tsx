@@ -8,7 +8,7 @@ import {
     FiGift, FiZap, FiStar, FiArrowRight, FiPlay, FiX
 } from 'react-icons/fi';
 import { GiCookingPot } from 'react-icons/gi';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ComparisonTable, { PlanFeature } from '@/components/vendas/ComparisonTable';
 import PricingCard from '@/components/vendas/PricingCard';

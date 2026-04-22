@@ -1,7 +1,7 @@
 // Offline Storage Utility
 // Uses Dexie wrapper for IndexedDB to store data for offline access
 
-import { db } from './db';
+import { db } from '@/infra/persistence/db';
 import type {
     PendingAction, StoreName
 } from '@/types/db';

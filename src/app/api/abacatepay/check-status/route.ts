@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAbacatepayBilling } from '@/lib/abacatepay';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getStripeCustomer } from '@/lib/stripe';
+import { getAbacatepayBilling } from '@/services/payments/abacatepay';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
+import { getStripeCustomer } from '@/services/payments/stripe';
 
 // Get billing period from subscription or default
 // Ativa a assinatura automaticamente quando o pagamento for confirmado

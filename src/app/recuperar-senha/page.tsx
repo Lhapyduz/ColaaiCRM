@@ -3,7 +3,7 @@
 import React, { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { FiMail, FiArrowRight, FiArrowLeft, FiCheck } from 'react-icons/fi';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 

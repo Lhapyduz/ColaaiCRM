@@ -1,7 +1,7 @@
 'use server';
 
 import { updateTag } from 'next/cache';
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/infra/persistence/supabase/server';
 
 /**
  * Revalida o cache do menu público da lanchonete do usuário autenticado.

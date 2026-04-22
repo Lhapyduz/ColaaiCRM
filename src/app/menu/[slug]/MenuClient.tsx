@@ -6,12 +6,12 @@ import { useRouter } from 'next/navigation';
 import { IconShoppingBag as FiShoppingBag, IconMinus as FiMinus, IconPlus as FiPlus, IconX as FiX, IconMessageCircle as FiMessageCircle, IconStar as FiStar, IconClock as FiClock, IconChevronDown as FiChevronDown } from '@/components/ui/Icons';
 
 import Image from 'next/image';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import { formatCurrency } from '@/hooks/useFormatters';
 
 import { useQuery } from '@tanstack/react-query';
 import MenuSkeleton from '@/components/menu/MenuSkeleton';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import StoreRatingModal from '@/components/menu/StoreRatingModal';
 import ProductRatingModal from '@/components/menu/ProductRatingModal';
 import StoreReviewsModal from '@/components/menu/StoreReviewsModal';

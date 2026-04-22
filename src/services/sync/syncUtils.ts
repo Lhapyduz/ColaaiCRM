@@ -3,9 +3,9 @@
  * Helper functions for managing local database sync state and recovery.
  */
 
-import { db } from './db';
+import { db } from '@/infra/persistence/db';
 import { syncPendingActions, cacheDataForOffline } from './offlineSync';
-import { useStorageStore } from '@/stores/useStorageStore';
+import { useStorageStore } from '@/infra/persistence/useStorageStore';
 
 declare global {
   interface Window {

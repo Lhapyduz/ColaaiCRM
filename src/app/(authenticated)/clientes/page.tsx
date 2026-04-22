@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { FiUsers, FiGift, FiPercent } from 'react-icons/fi';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import { FidelidadeTab } from '@/components/crm/FidelidadeTab';
 import { CuponsTab } from '@/components/crm/CuponsTab';
 import { CustomerListTab } from '@/components/crm/CustomerListTab';

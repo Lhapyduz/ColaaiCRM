@@ -18,13 +18,13 @@ import Input from '@/components/ui/Input';
 import { StatusBadge, PaymentMethodBadge, type OrderStatus, type PaymentMethod } from '@/components/ui/StatusBadge';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import { formatCurrency, formatDateTime } from '@/hooks/useFormatters';
-import { openWhatsAppNotification, shouldNotifyOnStatusChange, OrderDetails } from '@/lib/whatsapp';
-import { logOrderStatusChange, logPaymentReceived } from '@/lib/actionLogger';
-import { cn } from '@/lib/utils';
+import { openWhatsAppNotification, shouldNotifyOnStatusChange, OrderDetails } from '@/services/communication/whatsapp';
+import { logOrderStatusChange, logPaymentReceived } from '@/infra/logging/actionLogger';
+import { cn } from '@/utils/utils';
 import { useOrdersCache } from '@/hooks/useDataCache';
-import { updateLoyaltyPoints } from '@/app/actions/loyalty';
+import { updateLoyaltyPoints } from '@/actions/loyalty';
 import { getStatusLabel } from '@/components/ui/StatusBadge';
 
 // Função para disparar notificação local de status
@@ -124,7 +124,7 @@ export default function PedidosPage() {
                     audio.play().catch(() => { });
                     toast.info('Novo pedido recebido na nuvem!');
                     // Trigger a background sync to fetch the new order into Dexie
-                    const { fetchOrders } = await import('@/lib/dataAccess');
+                    const { fetchOrders } = await import('@/repositories/dataAccess');
                     await fetchOrders(user.id);
                 }
             )
@@ -168,7 +168,7 @@ export default function PedidosPage() {
         if (!order) return;
 
         try {
-            const { updateOrder } = await import('@/lib/dataAccess');
+            const { updateOrder } = await import('@/repositories/dataAccess');
             
             logOrderStatusChange(orderId, order.order_number, order.status || 'pending', newStatus);
             
@@ -210,7 +210,7 @@ export default function PedidosPage() {
         if (!order) return;
 
         try {
-            const { updateOrder } = await import('@/lib/dataAccess');
+            const { updateOrder } = await import('@/repositories/dataAccess');
             
             logPaymentReceived(orderId, order.order_number, order.total, order.payment_method);
 
@@ -241,7 +241,7 @@ export default function PedidosPage() {
         if (!confirm('Tem certeza que deseja excluir este pedido?')) return;
         
         try {
-            const { deleteOrder } = await import('@/lib/dataAccess');
+            const { deleteOrder } = await import('@/repositories/dataAccess');
             await deleteOrder(orderId);
             toast.success('Pedido excluído');
         } catch (err) {

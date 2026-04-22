@@ -5,7 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import React, { useState } from 'react';
-import { db } from '@/lib/db';
+import { db } from '@/infra/persistence/db';
 
 // ────────────────────────────────────────────
 // Async Storage adapter usando Dexie (IndexedDB)

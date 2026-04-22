@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { FiCopy, FiCheck, FiRefreshCw } from 'react-icons/fi';
 import Image from 'next/image';
-import { generatePixQRCode, generatePixCode, PixPayload } from '@/lib/pix';
+import { generatePixQRCode, generatePixCode, PixPayload } from '@/services/payments/pix';
 import { formatCurrency } from '@/hooks/useFormatters';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 interface PixQRCodeProps {
     pixKey: string;

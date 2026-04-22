@@ -5,8 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { FiClock, FiCheck, FiVolume2, FiVolumeX, FiLogOut, FiTruck, FiRefreshCw } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { supabase } from '@/infra/persistence/supabase';
+import { cn } from '@/utils/utils';
 
 interface OrderItemAddon { id: string; addon_name: string; addon_price: number; quantity: number; }
 interface OrderItem { id: string; product_name: string; quantity: number; unit_price: number; total: number; notes: string | null; addons: OrderItemAddon[]; }

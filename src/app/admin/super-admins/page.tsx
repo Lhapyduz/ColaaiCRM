@@ -3,14 +3,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { DataTable, StatsCard } from '@/components/admin';
 import type { Column } from '@/components/admin';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import {
     listSuperAdmins,
     createSuperAdmin,
     toggleSuperAdminStatus,
     deleteSuperAdmin,
     type SuperAdminCredential
-} from '@/lib/admin-auth';
+} from '@/services/auth/admin-auth';
 import {
     FiUsers,
     FiPlus,

@@ -6,9 +6,9 @@ import Button from '@/components/ui/Button';
 import { useRouter } from 'next/navigation';
 import { useSubscription, PlanType } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { BillingPeriod, PlanPriceKey } from '@/lib/pix-config';
+import { BillingPeriod, PlanPriceKey } from '@/services/payments/pix-config';
 import PixPaymentModal from '@/components/pix/PixPaymentModal';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 const PLANS = [
     { id: 'Basico' as PlanType, name: 'Básico', priceMonthly: 49, priceAnnual: 490, priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_BASIC, features: [{ name: 'Dashboard em Tempo Real', included: true }, { name: 'Gestão de Pedidos', included: true }, { name: 'Até 25 Produtos', included: true }, { name: 'Até 5 Categorias', included: true }, { name: 'Até 5 Adicionais', included: true }, { name: 'Suporte por Email', included: true }, { name: 'Relatórios', included: false }, { name: 'Cardápio Online', included: false }, { name: 'Gestão de Cozinha', included: false }] },

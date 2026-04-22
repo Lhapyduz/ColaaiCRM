@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { FiCheck, FiMinus } from 'react-icons/fi';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import { motion } from 'framer-motion';
 
 export interface PlanFeature {

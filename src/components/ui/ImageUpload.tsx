@@ -5,8 +5,8 @@ import Cropper, { Area } from 'react-easy-crop';
 import imageCompression from 'browser-image-compression';
 import { FiCamera, FiX, FiUpload, FiRefreshCw, FiCheck } from 'react-icons/fi';
 import NextImage from 'next/image';
-import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { supabase } from '@/infra/persistence/supabase';
+import { cn } from '@/utils/utils';
 
 interface ImageUploadProps {
     value: string | null;

@@ -3,7 +3,7 @@
 // Super Admin Authentication Utilities
 // Synchronized with Supabase super_admin_credentials table
 
-import { supabase } from './supabase';
+import { supabase } from '@/infra/persistence/supabase';
 
 const SESSION_KEY = 'super_admin_session';
 const SESSION_EXPIRY_KEY = 'super_admin_session_expiry';

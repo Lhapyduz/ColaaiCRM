@@ -7,9 +7,9 @@ import Button from '@/components/ui/Button';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { getActionTypeLabel, getEntityTypeLabel, getActionIcon, ActionType, EntityType } from '@/lib/actionLogger';
+import { getActionTypeLabel, getEntityTypeLabel, getActionIcon, ActionType, EntityType } from '@/infra/logging/actionLogger';
 import { useActionLogsCache } from '@/hooks/useDataCache';
-import { clearActionLogsDAL } from '@/lib/dataAccess';
+import { clearActionLogsDAL } from '@/repositories/dataAccess';
 
 const PAGE_SIZE = 20;
 

@@ -1,7 +1,7 @@
 // Action Logger Utility
 // Provides functions to log user actions for auditing
 
-import { supabase } from './supabase';
+import { supabase } from '@/infra/persistence/supabase';
 
 export type ActionType =
     | 'create'
@@ -57,7 +57,7 @@ export async function logAction(params: LogActionParams): Promise<void> {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const { addActionLogDAL } = await import('./dataAccess');
+        const { addActionLogDAL } = await import('@/repositories/dataAccess');
         
         let entity_id = null;
         let metadata = params.metadata || {};

@@ -1,7 +1,7 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { createClient } from '@/infra/persistence/supabase/server';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
 import { revalidatePath } from 'next/cache';
 
 export interface TicketData {

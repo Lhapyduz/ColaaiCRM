@@ -5,7 +5,7 @@ import { FiBell, FiBellOff } from 'react-icons/fi';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 interface PushNotificationPromptProps {
     collapsed?: boolean;

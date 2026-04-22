@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
 
 export interface SubscriptionCacheRecord {
   id: string;

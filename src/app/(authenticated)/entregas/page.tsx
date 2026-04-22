@@ -9,9 +9,9 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useToast } from '@/components/ui/Toast';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { formatCurrency, formatRelativeTime, formatDateTime } from '@/hooks/useFormatters';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import { useOrdersCache } from '@/hooks/useDataCache';
-import { updateOrder } from '@/lib/dataAccess';
+import { updateOrder } from '@/repositories/dataAccess';
 
 export default function EntregasPage() {
     const { plan, canAccess } = useSubscription();

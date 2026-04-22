@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/lib/db';
+import { db } from '@/infra/persistence/db';
 import { 
     fetchProducts, fetchCategories, fetchOrders, fetchCustomers, 
     fetchMesas, fetchEmployeesCached, fetchLoyaltyRewards, 
@@ -13,7 +13,7 @@ import {
     fetchProductAddons, fetchAddonGroups, fetchProductAddonGroups,
     fetchAddonGroupItems, fetchCashFlow, fetchBills, fetchBillCategories,
     fetchMesaSessions, fetchMesaSessionItems, fetchOrderById, fetchMesaById
-} from '@/lib/dataAccess';
+} from '@/repositories/dataAccess';
 import type { 
     CachedClient, CachedTable, CachedEmployee, CachedOrder,
     CachedLoyaltyReward, CachedLoyaltySettings, CachedCoupon, CachedAppSetting,
@@ -197,18 +197,21 @@ export function useOrdersCache(options: { limit?: number; date?: string } = {}) 
 
     const loading = orders === undefined;
 
+    const optionsStr = JSON.stringify(options);
+
     const syncFromCloud = useCallback(async () => {
         if (!user) return;
         try {
             setIsSyncing(true);
-            await fetchOrders(user.id, options);
+            const parsedOptions = JSON.parse(optionsStr);
+            await fetchOrders(user.id, parsedOptions);
             setError(null);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : 'Erro desconhecido');
         } finally {
             setIsSyncing(false);
         }
-    }, [user, options]);
+    }, [user, optionsStr]);
 
     useEffect(() => {
         if (user) {

@@ -10,9 +10,9 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useCouponsCache } from '@/hooks/useDataCache';
-import { saveCoupon, deleteCoupon } from '@/lib/dataAccess';
+import { saveCoupon, deleteCoupon } from '@/repositories/dataAccess';
 import { formatCurrency } from '@/hooks/useFormatters';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import type { CachedCoupon as Coupon } from '@/types/db';
 
 export function CuponsTab() {

@@ -8,13 +8,13 @@ import {
     CheckCircle, Loader2, Search, Combine, Ticket, Info, Share
 } from 'lucide-react';
 import { useFormatters } from '@/hooks/useFormatters';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import Card from '@/components/ui/Card';
-import { abrirMesa, addSessionItem, fecharMesaSessao, confirmarItensMesa, separarMesa, desagruparTodas } from '@/lib/services/mesas';
-import { printOrder } from '@/lib/print';
+import { abrirMesa, addSessionItem, fecharMesaSessao, confirmarItensMesa, separarMesa, desagruparTodas } from '@/services/business/mesas';
+import { printOrder } from '@/services/business/print';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProductsCache, useCategoriesCache, useTableDetailCache, type Product, type Category } from '@/hooks/useDataCache';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import { type CachedMesaSessionItem } from '@/types/db';
 
 export default function MesaDetailsPage() {

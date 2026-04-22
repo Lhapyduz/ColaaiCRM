@@ -3,10 +3,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { FiCheck, FiAlertCircle } from 'react-icons/fi';
 import Image from 'next/image';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import StarRating from '@/components/ui/StarRating';
 import { formatCurrency } from '@/hooks/useFormatters';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 interface OrderInfo { id: string; order_number: number; customer_name: string; total: number; rated: boolean; user_settings: { app_name: string; logo_url: string | null; primary_color: string; }; }
 

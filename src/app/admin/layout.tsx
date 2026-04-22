@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { AdminSidebar } from '@/components/admin';
-import { isSuperAdminAuthenticated } from '@/lib/admin-auth';
+import { isSuperAdminAuthenticated } from '@/services/auth/admin-auth';
 import { FiLoader } from 'react-icons/fi';
 
 export default function AdminLayout({

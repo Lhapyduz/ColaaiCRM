@@ -39,7 +39,7 @@ import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import { formatCurrency, formatCurrencyShort } from '@/hooks/useFormatters';
 import styles from './page.module.css';
 import dynamic from 'next/dynamic';

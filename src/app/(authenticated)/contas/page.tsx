@@ -17,10 +17,10 @@ import {
     createBillCategoryDAL, 
     deleteBillCategoryDAL,
     markBillPaidDAL 
-} from '@/lib/dataAccess';
+} from '@/repositories/dataAccess';
 import { formatCurrency } from '@/hooks/useFormatters';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
+import { cn } from '@/utils/utils';
+import { supabase } from '@/infra/persistence/supabase';
 import { CachedBill } from '@/types/db';
 
 type RecurrenceType = 'none' | 'weekly' | 'monthly' | 'yearly';

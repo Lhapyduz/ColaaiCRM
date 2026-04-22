@@ -1,4 +1,4 @@
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/infra/persistence/supabase/server';
 import { NextResponse } from 'next/server';
 
 const COLA_AI_LOGO = 'https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp';

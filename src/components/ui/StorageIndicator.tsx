@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useOffline } from '@/contexts/OfflineContext';
 import { FiCloud, FiHardDrive, FiWifiOff, FiRefreshCw, FiAlertCircle } from 'react-icons/fi';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 export function StorageIndicator() {
     const { hardwareOnline, storageMode, setStorageMode, pendingCount, syncing, syncNow, lastSync } = useOffline();
@@ -94,7 +94,7 @@ export function StorageIndicator() {
                             <button
                                 onClick={async () => {
                                     if (confirm(`Tem certeza que deseja descartar ${pendingCount} ações pendentes? Dados não sincronizados serão perdidos.`)) {
-                                        const { clearPendingActions } = await import('@/lib/db');
+                                        const { clearPendingActions } = await import('@/infra/persistence/db');
                                         await clearPendingActions();
                                         window.location.reload();
                                     }

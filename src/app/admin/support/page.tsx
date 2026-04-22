@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { DataTable, StatsCard } from '@/components/admin';
 import type { Column } from '@/components/admin';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import {
     FiMessageSquare,
     FiClock,
@@ -26,7 +26,7 @@ import {
     adminUpdateTicketDetails
 } from '@/actions/support';
 import { useToast } from '@/components/ui/Toast';
-import { supabase } from '@/lib/supabase'; // We can use public client for realtime channel 
+import { supabase } from '@/infra/persistence/supabase'; // We can use public client for realtime channel 
 
 interface Ticket {
     id: string;

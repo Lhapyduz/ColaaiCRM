@@ -9,7 +9,7 @@ import {
     validatePassword,
     sanitizeCurrency,
     isValidUUID,
-} from '../sanitize';
+} from '@/utils/sanitize';
 
 describe('sanitizeText', () => {
     it('retorna vazio para null/undefined', () => {

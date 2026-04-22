@@ -8,16 +8,16 @@ import {
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { FaWhatsapp } from 'react-icons/fa';
-import { useKeyboardShortcuts } from '@/contexts/KeyboardShortcutsContext';
+import { useKeyboardShortcuts, Shortcut } from '@/contexts/KeyboardShortcutsContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import QRCodeGenerator from '@/components/ui/QRCodeGenerator';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription, FeatureKey } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import SupportTab from '@/components/settings/SupportTab';
 import { useToast } from '@/components/ui/Toast';
 import {
@@ -35,8 +35,8 @@ import {
     replyToStoreRating,
     replyToProductRating,
     type OpeningHourInput
-} from '@/app/actions/store';
-import { revalidateStoreMenu } from '@/app/actions/menu';
+} from '@/actions/store';
+import { revalidateStoreMenu } from '@/actions/menu';
 import OpeningHoursScheduler from '@/components/settings/OpeningHoursScheduler';
 import { PushNotificationPrompt } from '@/components/pwa/PushNotificationPrompt';
 
@@ -56,7 +56,7 @@ type SettingsTab = 'geral' | 'aparencia' | 'cardapio' | 'pagamento' | 'menu' | '
 function ConfiguracoesContent() {
     const { user, userSettings, updateSettings, signOut, previewSettings } = useAuth();
     const { canAccess } = useSubscription();
-    const { setShowHelp } = useKeyboardShortcuts();
+    const { shortcuts } = useKeyboardShortcuts();
     const searchParams = useSearchParams();
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -726,6 +726,68 @@ function ConfiguracoesContent() {
                         <SupportTab />
                     </div>
                 );
+            case 'atalhos':
+                const globalShortcuts = shortcuts.filter(s => s.scope === 'global');
+                const pageShortcuts = shortcuts.filter(s => s.scope === 'page');
+
+                const formatKey = (shortcut: Shortcut) => {
+                    const keys = [];
+                    if (shortcut.ctrl) keys.push('Ctrl');
+                    if (shortcut.alt) keys.push('Alt');
+                    if (shortcut.shift) keys.push('Shift');
+                    keys.push(shortcut.key === ' ' ? 'Space' : shortcut.key.toUpperCase());
+                    return keys.join(' + ');
+                };
+
+                return (
+                    <div className="p-6 sm:p-8 animate-fadeIn">
+                        <div className="mb-7 pb-5 border-b border-border">
+                            <h2 className="text-[1.375rem] font-semibold mb-1.5 text-text-primary">Atalhos de Teclado</h2>
+                            <p className="text-sm text-text-muted">Aumente sua produtividade navegando rapidamente pelo sistema</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {globalShortcuts.map((s, i) => (
+                                <div key={i} className="flex items-center justify-between p-4 bg-bg-tertiary border border-border rounded-xl hover:border-border-light transition-all duration-200 group hover:shadow-sm">
+                                    <span className="text-[13px] font-medium text-text-secondary group-hover:text-text-primary transition-colors">{s.description}</span>
+                                    <kbd className="inline-flex items-center gap-1 px-2 py-1 bg-bg-card border border-border rounded text-[10px] font-bold text-primary font-mono shadow-sm shrink-0 ml-3">
+                                        {formatKey(s)}
+                                    </kbd>
+                                </div>
+                            ))}
+                        </div>
+
+                        {pageShortcuts.length > 0 && (
+                            <>
+                                <div className="mt-10 mb-5 pb-3 border-b border-border">
+                                    <h3 className="text-[13px] font-bold text-text-muted uppercase tracking-wider">Atalhos desta Página</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {pageShortcuts.map((s, i) => (
+                                        <div key={i} className="flex items-center justify-between p-4 bg-bg-tertiary border border-border rounded-xl hover:border-border-light transition-all duration-200 group hover:shadow-sm">
+                                            <span className="text-[13px] font-medium text-text-secondary group-hover:text-text-primary transition-colors">{s.description}</span>
+                                            <kbd className="inline-flex items-center gap-1 px-2 py-1 bg-bg-card border border-border rounded text-[10px] font-bold text-primary font-mono shadow-sm shrink-0 ml-3">
+                                                {formatKey(s)}
+                                            </kbd>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+
+                        <div className="mt-10 p-5 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                <FiCommand size={22} />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm text-text-primary font-semibold mb-0.5">Dica de Produtividade</p>
+                                <p className="text-[13px] text-text-muted m-0">
+                                    Você pode abrir esta lista de atalhos em qualquer lugar do sistema pressionando <kbd className="inline-flex px-1.5 py-0.5 bg-bg-card border border-border rounded text-[10px] mx-1 font-bold text-primary">Ctrl + /</kbd>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                );
             default: return null;
         }
     };
@@ -734,7 +796,7 @@ function ConfiguracoesContent() {
         <div className="max-w-[1400px] mx-auto">
             <div className="mb-8"><h1 className="text-3xl font-bold mb-2">Configurações</h1><p className="text-text-secondary">Personalize seu aplicativo</p></div>
             <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6 items-start">
-                <div className="flex md:flex-col gap-2 md:gap-1 bg-bg-card rounded-xl p-3 border border-border sticky top-6 overflow-x-auto md:overflow-visible">{TABS.map((tab) => (<button key={tab.id} className={`flex items-center gap-3 px-4 py-3 bg-transparent border border-transparent md:border-none rounded-lg text-text-secondary text-[15px] font-medium cursor-pointer transition-all text-left hover:bg-bg-tertiary hover:text-text-primary whitespace-nowrap min-w-max md:min-w-0 ${activeTab === tab.id ? "bg-primary/10! text-primary!" : ""}`} onClick={() => { if (tab.id === 'atalhos') { setShowHelp(true); } else { setActiveTab(tab.id); } }}><tab.icon /><span>{tab.label}</span></button>))}</div>
+                <div className="flex md:flex-col gap-2 md:gap-1 bg-bg-card rounded-xl p-3 border border-border sticky top-6 overflow-x-auto md:overflow-visible">{TABS.map((tab) => (<button key={tab.id} className={`flex items-center gap-3 px-4 py-3 bg-transparent border border-transparent md:border-none rounded-lg text-text-secondary text-[15px] font-medium cursor-pointer transition-all text-left hover:bg-bg-tertiary hover:text-text-primary whitespace-nowrap min-w-max md:min-w-0 ${activeTab === tab.id ? "bg-primary/10! text-primary!" : ""}`} onClick={() => setActiveTab(tab.id)}><tab.icon /><span>{tab.label}</span></button>))}</div>
                 <Card className="p-0 overflow-hidden">{renderTabContent()}</Card>
             </div>
         </div>

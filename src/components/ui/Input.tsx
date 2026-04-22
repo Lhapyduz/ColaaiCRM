@@ -2,7 +2,7 @@
 
 import React, { InputHTMLAttributes, forwardRef, useState, useId } from 'react';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: string;

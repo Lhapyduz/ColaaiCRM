@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Check, Trash2, Combine } from 'lucide-react';
-import { MesaWithActiveSession } from '@/lib/services/mesas';
+import { MesaWithActiveSession } from '@/services/business/mesas';
 import { useFormatters } from '@/hooks/useFormatters';
 
 interface MesaEditModalProps {

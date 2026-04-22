@@ -2,10 +2,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { X, Printer, ReceiptText, Clock, Users, History, PlusCircle, Minus, Plus, CreditCard, Banknote, QrCode, CheckCircle, Share, Info, Ticket } from 'lucide-react';
-import { MesaMock } from '@/lib/mock/mesas';
-import { categoriasCardapio, produtosCardapio } from '@/lib/mock/cardapio';
+import { MesaMock } from '@/infra/mock/mesas';
+import { categoriasCardapio, produtosCardapio } from '@/infra/mock/cardapio';
 import { useFormatters } from '@/hooks/useFormatters';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 interface MesaDetailsModalProps {
     mesa: MesaMock;

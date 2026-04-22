@@ -11,10 +11,10 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSingleOrderCache } from '@/hooks/useDataCache';
 import type { CachedOrder } from '@/types/db';
-import { confirmOrderPayment } from '@/lib/dataAccess';
-import { printOrder, printCustomerReceipt, printKitchenTicket } from '@/lib/print';
+import { confirmOrderPayment } from '@/repositories/dataAccess';
+import { printOrder, printCustomerReceipt, printKitchenTicket } from '@/services/business/print';
 import { formatCurrency } from '@/hooks/useFormatters';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 export default function OrderDetailsPage() {
     const { user, userSettings } = useAuth();

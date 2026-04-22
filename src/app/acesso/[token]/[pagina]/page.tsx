@@ -5,10 +5,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { FiLock, FiAlertCircle, FiDelete, FiCoffee, FiTruck } from 'react-icons/fi';
 import type { IconType } from 'react-icons';
 import Image from 'next/image';
-import { supabase } from '@/lib/supabase';
-import { verifyPin, isLegacyPin, hashPin } from '@/lib/pinSecurity';
-import { checkRateLimit, recordFailedAttempt, recordSuccessfulLogin, formatBlockTime } from '@/lib/rateLimiter';
-import { cn } from '@/lib/utils';
+import { supabase } from '@/infra/persistence/supabase';
+import { verifyPin, isLegacyPin, hashPin } from '@/services/auth/pinSecurity';
+import { checkRateLimit, recordFailedAttempt, recordSuccessfulLogin, formatBlockTime } from '@/infra/security/rateLimiter';
+import { cn } from '@/utils/utils';
 
 interface EstablishmentData { user_id: string; app_name: string; logo_url: string | null; primary_color: string; }
 interface Employee { id: string; name: string; role: string; permissions: Record<string, boolean>; }

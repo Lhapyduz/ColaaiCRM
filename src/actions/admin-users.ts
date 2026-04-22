@@ -1,6 +1,6 @@
 'use server';
 
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
 
 export async function listAllUsers() {
     try {

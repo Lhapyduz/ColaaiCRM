@@ -4,7 +4,7 @@ import React, { ReactNode, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import RouteGuard from '@/components/auth/RouteGuard';
 import Sidebar from './Sidebar';
 

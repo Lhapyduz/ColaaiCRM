@@ -1,5 +1,5 @@
 import { Metadata, Viewport } from 'next';
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/infra/persistence/supabase/server';
 
 const COLA_AI_LOGO = 'https://koxmxvutlxlikeszwyir.supabase.co/storage/v1/object/public/logos/colaaipwa.webp';
 

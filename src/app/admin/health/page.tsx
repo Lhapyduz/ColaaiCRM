@@ -5,8 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { DataTable } from '@/components/admin';
 import { ResourceUsage } from '@/components/admin/ResourceUsage';
 import type { Column } from '@/components/admin';
-import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { supabase } from '@/infra/persistence/supabase';
+import { cn } from '@/utils/utils';
 import {
     FiDatabase,
     FiServer,

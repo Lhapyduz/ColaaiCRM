@@ -1,8 +1,8 @@
 'use server';
 
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/infra/persistence/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { StoreStatusSchema, DeliveryTimeSchema, StoreRatingSchema, ProductRatingSchema } from '@/lib/schemas';
+import { StoreStatusSchema, DeliveryTimeSchema, StoreRatingSchema, ProductRatingSchema } from '@/types/schemas';
 
 export async function updateStoreStatus(isOpen: boolean) {
     const validated = StoreStatusSchema.safeParse(isOpen);

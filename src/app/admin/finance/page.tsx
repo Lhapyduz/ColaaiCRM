@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { DataTable, StatsCard, ChartCard } from '@/components/admin';
 import type { Column } from '@/components/admin';
-import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { supabase } from '@/infra/persistence/supabase';
+import { cn } from '@/utils/utils';
 import {
     FiDollarSign,
     FiAlertTriangle,

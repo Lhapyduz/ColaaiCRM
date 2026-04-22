@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { FiLock, FiArrowRight, FiStar } from 'react-icons/fi';
 import { PlanType, getPlanDisplayName } from '@/contexts/SubscriptionContext';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 interface UpgradePromptProps {
     feature: string;

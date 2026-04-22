@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { sendTelegramNotification, formatPixTelegramMessage } from '@/lib/telegram';
+import { createClient } from '@/infra/persistence/supabase/server';
+import { sendTelegramNotification, formatPixTelegramMessage } from '@/services/communication/telegram';
 
 export async function POST(req: NextRequest) {
     try {

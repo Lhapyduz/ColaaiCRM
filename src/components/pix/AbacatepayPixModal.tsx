@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FiX, FiCheck, FiCopy, FiRefreshCw } from 'react-icons/fi';
 import { QRCodeSVG } from 'qrcode.react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import { Portal } from '@/components/ui/Portal';
 
 interface AbacatepayPixModalProps {

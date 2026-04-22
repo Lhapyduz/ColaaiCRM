@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { createClient } from '@/utils/supabase/server';
-import { stripe, getStripeCustomer } from '@/lib/stripe';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { PLAN_PRICES, PlanPriceKey } from '@/lib/pix-config';
-import { sendTelegramNotification, formatPixTelegramMessage } from '@/lib/telegram';
+import { createClient } from '@/infra/persistence/supabase/server';
+import { stripe, getStripeCustomer } from '@/services/payments/stripe';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
+import { PLAN_PRICES, PlanPriceKey } from '@/services/payments/pix-config';
+import { sendTelegramNotification, formatPixTelegramMessage } from '@/services/communication/telegram';
 
 // Map plan type to Stripe price ID
 function getPriceIdFromPlanType(planType: string): string | undefined {

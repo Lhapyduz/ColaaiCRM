@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import UpgradePrompt from '@/components/ui/UpgradePrompt';
 import { useEmployeesCache } from '@/hooks/useDataCache';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import EditEmployeeSheet, { EmployeeData } from '@/components/funcionarios/EditEmployeeSheet';
 import type { CachedEmployee } from '@/types/db';
 
@@ -54,7 +54,7 @@ export default function FuncionariosPage() {
         if (!user) return;
         
         const isCreating = !editingEmployee;
-        const { createEmployee, updateEmployee } = await import('@/lib/dataAccess');
+        const { createEmployee, updateEmployee } = await import('@/repositories/dataAccess');
         
         if (editingEmployee?.is_fixed) {
             await updateEmployee(editingEmployee.id, { pin_code: updatedData.pin_code || null });
@@ -88,7 +88,7 @@ export default function FuncionariosPage() {
 
     const handleToggleActive = async (employee: Employee) => { 
         if (!user) return; 
-        const { updateEmployee } = await import('@/lib/dataAccess');
+        const { updateEmployee } = await import('@/repositories/dataAccess');
         await updateEmployee(employee.id, { is_active: !employee.is_active }); 
     };
 
@@ -99,7 +99,7 @@ export default function FuncionariosPage() {
             return; 
         } 
         if (!confirm('Excluir este funcionário?')) return; 
-        const { deleteEmployee } = await import('@/lib/dataAccess');
+        const { deleteEmployee } = await import('@/repositories/dataAccess');
         await deleteEmployee(employee.id); 
     };
     const openEdit = (employee: Employee) => { setEditingEmployee(employee); setShowModal(true); };

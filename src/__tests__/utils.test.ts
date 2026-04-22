@@ -7,7 +7,7 @@ import {
     formatDate,
     formatDateTime,
     cn,
-} from '../utils';
+} from '@/utils/utils';
 
 describe('normalizePhone', () => {
     it('retorna string vazia para input vazio', () => {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendPushToUser } from '@/lib/pushNotification';
+import { sendPushToUser } from '@/services/communication/pushNotification';
 
 // Rota para testar push notification
 // GET /api/push/test?userId=xxx

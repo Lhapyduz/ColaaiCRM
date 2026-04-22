@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { unstable_cache } from 'next/cache';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import MenuClient from './MenuClient';
 
 // Cache helpers - usamos a instância anônima do supabase (sem cookies) para permitir o cache estático

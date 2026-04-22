@@ -26,10 +26,10 @@ import Input from '@/components/ui/Input';
 import { LimitWarning } from '@/components/ui/UpgradePrompt';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
-import { revalidateStoreMenu } from '@/app/actions/menu';
-import * as dataAccess from '@/lib/dataAccess';
+import { supabase } from '@/infra/persistence/supabase';
+import { cn } from '@/utils/utils';
+import { revalidateStoreMenu } from '@/actions/menu';
+import * as dataAccess from '@/repositories/dataAccess';
 
 interface Category {
     id: string;

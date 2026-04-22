@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { stripe, getStripeCustomer } from '@/lib/stripe';
+import { createClient } from '@/infra/persistence/supabase/server';
+import { stripe, getStripeCustomer } from '@/services/payments/stripe';
 
 type CheckoutSessionCreateParams = Parameters<typeof stripe.checkout.sessions.create>[0];
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
 
 export async function POST(req: NextRequest) {
     try {

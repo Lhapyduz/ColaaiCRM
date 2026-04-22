@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { FiStar } from 'react-icons/fi';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 interface StarRatingProps {
     rating: number;

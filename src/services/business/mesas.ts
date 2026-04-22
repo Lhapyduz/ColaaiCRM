@@ -1,6 +1,6 @@
-import { supabase, Database } from '../supabase';
-import { getMode, incrPending } from '@/lib/dataAccess';
-import { saveItem, getItem, addPendingAction } from '@/lib/offlineStorage';
+import { supabase, Database } from '@/infra/persistence/supabase';
+import { getMode, incrPending } from '@/repositories/dataAccess';
+import { saveItem, getItem, addPendingAction } from '@/services/sync/offlineStorage';
 import type { CachedMesaSession, CachedMesaSessionItem, CachedUserSetting, CachedOrder, CachedOrderItem } from '@/types/db';
 
 export type Mesa = Database['public']['Tables']['mesas']['Row'];
@@ -270,7 +270,7 @@ export async function fecharMesaSessao(
     totalFinal: number
 ) {
     if (getMode() !== 'cloud') {
-        const { db } = await import('@/lib/db');
+        const { db } = await import('@/infra/persistence/db');
         const session = await getItem<CachedMesaSession>('mesa_sessions', sessionId);
         if (!session) throw new Error("Sessão não encontrada no cache local");
         
@@ -511,7 +511,7 @@ export async function fecharMesaSessao(
  */
 export async function desagruparTodas(numeroMesa: number) {
     if (getMode() !== 'cloud') {
-        const { db } = await import('@/lib/db');
+        const { db } = await import('@/infra/persistence/db');
         const tableNumberStr = String(numeroMesa).padStart(2, '0');
         const groupedString = `[Unida c/ Mesa ${tableNumberStr}]`;
         const grouped = await db.mesa_sessions.where('garcom').equals(groupedString).toArray();
@@ -598,7 +598,7 @@ export async function confirmarItensMesa(
     if (!itemsToConfirm || itemsToConfirm.length === 0) return;
 
     if (getMode() !== 'cloud') {
-        const dbModule = await import('@/lib/db');
+        const dbModule = await import('@/infra/persistence/db');
         const dbInstance = dbModule.db;
         
         const lastOrder = await dbInstance.orders
@@ -723,7 +723,7 @@ export async function confirmarItensMesa(
             .eq('id', itemId);
 
         // Atualiza cache local imediatamente para refletir na UI local-first
-        const { db } = await import('@/lib/db');
+        const { db } = await import('@/infra/persistence/db');
         await db.mesa_session_items.update(itemId, {
             enviado_cozinha: true,
             order_id: newOrder.id
@@ -744,7 +744,7 @@ export async function unirMesas(sourceMesaId: string, targetMesaId: string, garc
     }
 
     if (getMode() !== 'cloud') {
-        const { db } = await import('@/lib/db');
+        const { db } = await import('@/infra/persistence/db');
         const sourceMesa = await db.mesas.get(sourceMesaId);
         const targetMesa = await db.mesas.get(targetMesaId);
         

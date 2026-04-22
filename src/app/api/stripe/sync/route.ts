@@ -1,8 +1,8 @@
 import Stripe from 'stripe';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
-import { stripe } from '@/lib/stripe';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { createClient } from '@/infra/persistence/supabase/server';
+import { stripe } from '@/services/payments/stripe';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
 
 // Map Stripe subscription status to Supabase status
 function mapStripeStatus(stripeStatus: string): string {

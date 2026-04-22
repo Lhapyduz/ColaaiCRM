@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import PixQRCode from './PixQRCode';
-import { PIX_CONFIG, PlanPriceKey, BillingPeriod, getPlanPrice } from '@/lib/pix-config';
+import { PIX_CONFIG, PlanPriceKey, BillingPeriod, getPlanPrice } from '@/services/payments/pix-config';
 import { Portal } from '@/components/ui/Portal';
 
 interface PixPaymentModalProps {

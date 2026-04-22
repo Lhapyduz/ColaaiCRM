@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FiShield, FiUser, FiLock, FiAlertCircle, FiLoader } from 'react-icons/fi';
-import { validateCredentials, setSuperAdminSession, isSuperAdminAuthenticated } from '@/lib/admin-auth';
-import { cn } from '@/lib/utils';
+import { validateCredentials, setSuperAdminSession, isSuperAdminAuthenticated } from '@/services/auth/admin-auth';
+import { cn } from '@/utils/utils';
 
 export default function AdminLoginPage() {
     const router = useRouter();

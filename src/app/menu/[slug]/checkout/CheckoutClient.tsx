@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { IconArrowLeft as FiArrowLeft, IconUser as FiUser, IconPhone as FiPhone, IconMapPin as FiMapPin, IconTag as FiTag, IconCheck as FiCheck, IconX as FiX, IconMessageCircle as FiMessageCircle } from '@/components/ui/Icons';
 
 import Image from 'next/image';
-import { formatCurrency, getWhatsAppUrl, EMOJIS } from '@/lib/whatsapp';
-import { supabase } from '@/lib/supabase';
-import { createOrder } from '@/app/actions/orders';
+import { formatCurrency, getWhatsAppUrl, EMOJIS } from '@/services/communication/whatsapp';
+import { supabase } from '@/infra/persistence/supabase';
+import { createOrder } from '@/actions/orders';
 import { toast } from 'react-hot-toast';
 
 // ── Interfaces ─────────────────────────────────────────────────────

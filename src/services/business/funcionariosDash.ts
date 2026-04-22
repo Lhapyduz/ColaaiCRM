@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import { startOfDay, startOfWeek, startOfMonth, endOfDay, endOfWeek, endOfMonth, eachDayOfInterval, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 

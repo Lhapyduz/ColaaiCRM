@@ -4,8 +4,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { DataTable, StatsCard } from '@/components/admin';
 import type { Column } from '@/components/admin';
-import { supabase } from '@/lib/supabase';
-import { cn } from '@/lib/utils';
+import { supabase } from '@/infra/persistence/supabase';
+import { cn } from '@/utils/utils';
 import { listAllUsers } from '@/actions/admin-users';
 import {
     FiUsers,

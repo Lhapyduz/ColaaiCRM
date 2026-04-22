@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { IconX as FiX, IconCheck as FiCheck, IconAlertCircle as FiAlertCircle } from '@/components/ui/Icons';
 import Image from 'next/image';
 import StarRating from '@/components/ui/StarRating';
-import { addProductRating } from '@/app/actions/store';
+import { addProductRating } from '@/actions/store';
 import Button from '@/components/ui/Button';
 import { Portal } from '@/components/ui/Portal';
 

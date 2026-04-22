@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendPushToUser } from '@/lib/pushNotification';
+import { sendPushToUser } from '@/services/communication/pushNotification';
 
 // IMPORTANTE: Esta rota só deve ser chamada pelo próprio sistema ou admin
 // Num cenário real, adicione validação de API Key ou Token admin

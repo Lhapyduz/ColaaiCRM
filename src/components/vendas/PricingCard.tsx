@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { FiCheck } from 'react-icons/fi';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import { motion, useMotionTemplate, useMotionValue } from 'framer-motion';
 import Button from '@/components/ui/Button';
 

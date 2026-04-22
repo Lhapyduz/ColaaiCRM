@@ -3,8 +3,8 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from 'react';
 
 import { User, Session, PostgrestError } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
-import { isOnline, getAll, saveItem } from '@/lib/offlineStorage';
+import { supabase } from '@/infra/persistence/supabase';
+import { isOnline, getAll, saveItem } from '@/services/sync/offlineStorage';
 import { clearAllCache } from '@/hooks/useDataCache';
 
 interface UserSettings {

@@ -1,5 +1,5 @@
-import { stripe } from '@/lib/stripe';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { stripe } from '@/services/payments/stripe';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
 import Stripe from 'stripe';
 import { subscriptionRepository } from '@/repositories/SubscriptionRepository';
 

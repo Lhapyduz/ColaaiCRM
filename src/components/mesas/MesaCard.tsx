@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Clock, Users, ReceiptText, MapPin, Sparkles, CheckCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import { useFormatters } from '@/hooks/useFormatters';
-import { MesaWithActiveSession } from '@/lib/services/mesas';
+import { MesaWithActiveSession } from '@/services/business/mesas';
 
 interface MesaCardProps {
     mesa: MesaWithActiveSession;

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FiLock, FiX } from 'react-icons/fi';
 import Button from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 
 // Employee Data Type without mocks
 export interface EmployeeData {

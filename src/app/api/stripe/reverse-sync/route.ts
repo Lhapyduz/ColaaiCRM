@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { stripe } from '@/lib/stripe';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { stripe } from '@/services/payments/stripe';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
 
 // Webhook secret for verification (set in Supabase Database Webhook config)
 const WEBHOOK_SECRET = process.env.SUPABASE_WEBHOOK_SECRET;

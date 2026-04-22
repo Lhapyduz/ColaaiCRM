@@ -2,10 +2,10 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from 'react';
 import { PostgrestError } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/infra/persistence/supabase';
 import { useAuth } from './AuthContext';
-import { verifyPin, isLegacyPin, hashPin } from '@/lib/pinSecurity';
-import { checkRateLimit, recordFailedAttempt, recordSuccessfulLogin, formatBlockTime } from '@/lib/rateLimiter';
+import { verifyPin, isLegacyPin, hashPin } from '@/services/auth/pinSecurity';
+import { checkRateLimit, recordFailedAttempt, recordSuccessfulLogin, formatBlockTime } from '@/infra/security/rateLimiter';
 
 export interface Employee {
     id: string;

@@ -22,8 +22,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useOrdersCache } from '@/hooks/useDataCache';
 import { formatCurrency, formatRelativeTime } from '@/hooks/useFormatters';
-import { predictRemainingToday, getConfidenceLabel } from '@/lib/salesPrediction';
-import { cn } from '@/lib/utils';
+import { predictRemainingToday, getConfidenceLabel } from '@/services/ai/salesPrediction';
+import { cn } from '@/utils/utils';
 import { TrialBanner } from '@/components/subscription/TrialBanner';
 
 

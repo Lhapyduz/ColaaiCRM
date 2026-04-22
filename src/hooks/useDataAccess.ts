@@ -7,8 +7,8 @@
 // ─────────────────────────────────────────────────────
 
 import { useMemo } from 'react';
-import { useStorageStore } from '@/stores/useStorageStore';
-import * as dataAccess from '@/lib/dataAccess';
+import { useStorageStore } from '@/infra/persistence/useStorageStore';
+import * as dataAccess from '@/repositories/dataAccess';
 
 export function useDataAccess() {
     // Subscribe to storageMode so components re-render when it changes

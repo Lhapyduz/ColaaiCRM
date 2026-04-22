@@ -1,7 +1,7 @@
 import React from 'react';
 import { FiClock } from 'react-icons/fi';
-import { cn } from '@/lib/utils';
-import { OpeningHourInput } from '@/app/actions/store';
+import { cn } from '@/utils/utils';
+import { OpeningHourInput } from '@/actions/store';
 
 interface OpeningHoursSchedulerProps {
     hours: OpeningHourInput[];

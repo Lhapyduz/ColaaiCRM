@@ -1,9 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useCallback, ReactNode } from 'react';
-import { initOfflineDB, onNetworkChange, getPendingActions, checkConnectivity } from '@/lib/offlineStorage';
-import { syncPendingActions, cacheDataForOffline, updateLastSync } from '@/lib/offlineSync';
-import { useStorageStore, type StorageMode } from '@/stores/useStorageStore';
+import { initOfflineDB, onNetworkChange, getPendingActions, checkConnectivity } from '@/services/sync/offlineStorage';
+import { syncPendingActions, cacheDataForOffline, updateLastSync } from '@/services/sync/offlineSync';
+import { useStorageStore, type StorageMode } from '@/infra/persistence/useStorageStore';
 import { useAuth } from './AuthContext';
 import toast from 'react-hot-toast';
 

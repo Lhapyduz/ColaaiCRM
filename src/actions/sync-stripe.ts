@@ -1,6 +1,6 @@
 'use server';
 
-import { subscriptionService } from '@/services/SubscriptionService';
+import { subscriptionService } from '@/services/payments/SubscriptionService';
 
 export async function syncStripeData() {
     try {

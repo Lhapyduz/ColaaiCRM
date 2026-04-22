@@ -6,7 +6,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { formatCurrency } from '@/hooks/useFormatters';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/utils';
 import { WhatsappSenderModal } from './WhatsappSenderModal';
 import { useCustomersCache, useOrdersCache } from '@/hooks/useDataCache';
 

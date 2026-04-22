@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { getPeriodDays, BillingPeriod } from '@/lib/abacatepay';
-import { getStripeCustomer } from '@/lib/stripe';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
+import { getPeriodDays, BillingPeriod } from '@/services/payments/abacatepay';
+import { getStripeCustomer } from '@/services/payments/stripe';
 
 const ABACATEPAY_API_URL = 'https://api.abacatepay.com/v1';
 const API_KEY = process.env.ABACATEPAY_API_KEY_PROD || process.env.ABACATEPAY_API_KEY_DEV;

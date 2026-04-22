@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '@/infra/persistence/supabase/server';
 import CheckoutClient from './CheckoutClient';
 
 interface PageProps {

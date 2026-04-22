@@ -4,12 +4,12 @@
 // based on the current storageMode from Zustand.
 // ─────────────────────────────────────────────────────
 
-import { supabase } from './supabase';
-import { db } from './db';
-import { useStorageStore } from '@/stores/useStorageStore';
+import { supabase } from '@/infra/persistence/supabase';
+import { db } from '@/infra/persistence/db';
+import { useStorageStore } from '@/infra/persistence/useStorageStore';
 import { 
     addPendingAction, saveAll, saveItem, getAll, getAllByUser, getItem, deleteItem, getPendingActions 
-} from './offlineStorage';
+} from '@/services/sync/offlineStorage';
 import type {
     CachedProduct,
     CachedCategory,
@@ -39,6 +39,21 @@ import type {
 
 // ─── Helpers ─────────────────────────────────────────
 
+// Simple promise cache to deduplicate simultaneous requests for the same resource
+const activeRequests = new Map<string, Promise<unknown>>();
+
+async function dedupeRequest<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
+    const existing = activeRequests.get(key);
+    if (existing) return existing as Promise<T>;
+
+    const promise = fetchFn().finally(() => {
+        activeRequests.delete(key);
+    });
+
+    activeRequests.set(key, promise);
+    return promise;
+}
+
 export interface OrderLoyaltyData {
     customer?: CachedClient | null;
     newCustomer?: Partial<CachedClient> | null;
@@ -67,29 +82,27 @@ export function incrPending(count = 1) {
 
 export async function fetchProducts(userId: string): Promise<CachedProduct[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
-            .from('products')
-            .select('id,user_id,name,price,description,image_url,category_id,available,display_order,promo_enabled,promo_value,promo_type,created_at')
-            .eq('user_id', userId);
+        return dedupeRequest(`products:${userId}`, async () => {
+            const { data, error } = await supabase
+                .from('products')
+                .select('id,user_id,name,price,description,image_url,category_id,available,display_order,promo_enabled,promo_value,promo_type,created_at')
+                .eq('user_id', userId);
 
-        if (!error && data) {
-            // Get all pending modifications for this table
-            const pending = await getPendingActions();
-            const pendingIds = new Set(
-                pending.filter((a: PendingAction) => a.table === 'products').map((a: PendingAction) => (a.data as HasId).id)
-            );
-            
-            // Only overwrite records that DON'T have pending local changes
-            const toSave = data.filter((item: CachedProduct) => !pendingIds.has(item.id));
-            
-            // Cache locally for offline fallback
-            if (toSave.length > 0) {
-                await saveAll('products', toSave);
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(
+                    pending.filter((a: PendingAction) => a.table === 'products').map((a: PendingAction) => (a.data as HasId).id)
+                );
+                
+                const toSave = data.filter((item: CachedProduct) => !pendingIds.has(item.id));
+                if (toSave.length > 0) {
+                    await saveAll('products', toSave);
+                }
+                return data as CachedProduct[];
             }
-            return data as CachedProduct[];
-        }
-        // Fallback to local on error
-        console.warn('[dataAccess] Supabase fetch failed, falling back to local:', error?.message);
+            console.warn('[dataAccess] Supabase fetch failed, falling back to local:', error?.message);
+            return getAllByUser('products', userId);
+        });
     }
 
     return getAllByUser('products', userId);
@@ -170,27 +183,27 @@ export async function bulkUpdateProducts(updates: Array<{ id: string } & Record<
 
 export async function fetchCategories(userId: string): Promise<CachedCategory[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
-            .from('categories')
-            .select('id,user_id,name,icon,color,display_order,created_at')
-            .eq('user_id', userId);
+        return dedupeRequest(`categories:${userId}`, async () => {
+            const { data, error } = await supabase
+                .from('categories')
+                .select('id,user_id,name,icon,color,display_order,created_at')
+                .eq('user_id', userId);
 
-        if (!error && data) {
-            // Get all pending modifications
-            const pending = await getPendingActions();
-            const pendingIds = new Set(
-                pending.filter((a: PendingAction) => a.table === 'categories').map((a: PendingAction) => (a.data as HasId).id)
-            );
-            
-            // Only overwrite records that DON'T have pending local changes
-            const toSave = data.filter((item: CachedCategory) => !pendingIds.has(item.id));
-            
-            if (toSave.length > 0) {
-                await saveAll('categories', toSave);
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(
+                    pending.filter((a: PendingAction) => a.table === 'categories').map((a: PendingAction) => (a.data as HasId).id)
+                );
+                
+                const toSave = data.filter((item: CachedCategory) => !pendingIds.has(item.id));
+                if (toSave.length > 0) {
+                    await saveAll('categories', toSave);
+                }
+                return data as CachedCategory[];
             }
-            return data as CachedCategory[];
-        }
-        console.warn('[dataAccess] Supabase categories fetch failed, falling back to local:', error?.message);
+            console.warn('[dataAccess] Supabase categories fetch failed, falling back to local:', error?.message);
+            return getAllByUser('categories', userId);
+        });
     }
 
     return getAllByUser('categories', userId);
@@ -269,37 +282,39 @@ export async function bulkUpdateCategories(updates: Array<{ id: string } & Recor
 export async function fetchOrders(userId: string, options: { limit?: number; date?: string } = {}): Promise<CachedOrder[]> {
     const { limit = 50, date } = options;
     if (getMode() === 'cloud') {
-        let query = supabase
-            .from('orders')
-            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,discount_amount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity))')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false });
+        const cacheKey = `orders:${userId}:${date || 'latest'}:${limit}`;
+        return dedupeRequest(cacheKey, async () => {
+            let query = supabase
+                .from('orders')
+                .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,discount_amount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity))')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
 
-        if (date) {
-            // Se informada uma data, busca o dia inteiro sem limite (ou limite alto)
-            query = query
-                .gte('created_at', `${date}T00:00:00`)
-                .lte('created_at', `${date}T23:59:59.999`);
-        } else {
-            query = query.limit(limit);
-        }
-
-        const { data, error } = await query;
-
-        if (!error && data) {
-            const pending = await getPendingActions();
-            const pendingIds = new Set(
-                pending.filter((a: PendingAction) => a.table === 'orders').map((a: PendingAction) => (a.data as HasId).id)
-            );
-            
-            const toSave = data.filter((item: CachedOrder) => !pendingIds.has(item.id));
-            
-            if (toSave.length > 0) {
-                await saveAllOrdersDeep(toSave);
+            if (date) {
+                query = query
+                    .gte('created_at', `${date}T00:00:00`)
+                    .lte('created_at', `${date}T23:59:59.999`);
+            } else {
+                query = query.limit(limit);
             }
-            return data as CachedOrder[];
-        }
-        console.warn('[dataAccess] Supabase orders fetch failed, falling back to local:', error?.message);
+
+            const { data, error } = await query;
+
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(
+                    pending.filter((a: PendingAction) => a.table === 'orders').map((a: PendingAction) => (a.data as HasId).id)
+                );
+                
+                const toSave = data.filter((item: CachedOrder) => !pendingIds.has(item.id));
+                if (toSave.length > 0) {
+                    await saveAllOrdersDeep(toSave);
+                }
+                return data as CachedOrder[];
+            }
+            console.warn('[dataAccess] Supabase orders fetch failed, falling back to local:', error?.message);
+            return getAllByUser('orders', userId);
+        });
     }
 
     return getAllByUser('orders', userId);
@@ -438,16 +453,22 @@ export async function createFullOrder(
 
 export async function fetchOrderById(id: string): Promise<CachedOrder | null> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
-            .from('orders')
-            .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity))')
-            .eq('id', id)
-            .single();
+        return dedupeRequest(`order:${id}`, async () => {
+            const { data, error } = await supabase
+                .from('orders')
+                .select('id,user_id,order_number,customer_name,customer_phone,customer_address,status,payment_method,payment_status,subtotal,total,delivery_fee,is_delivery,notes,coupon_discount,user_slug,created_at,updated_at,rating_token,order_items(id,order_id,product_id,product_name,quantity,unit_price,total,notes,order_item_addons(id,order_item_id,addon_id,addon_name,addon_price,quantity))')
+                .eq('id', id)
+                .single();
 
-        if (!error && data) {
-            await saveOrderDeep(data as CachedOrder);
-            return data;
-        }
+            if (!error && data) {
+                await saveOrderDeep(data as CachedOrder);
+                return data;
+            }
+            if (error && error.code !== 'PGRST116') {
+                console.warn(`[dataAccess] Supabase fetchOrderById(${id}) failed, falling back to local:`, error.message);
+            }
+            return await db.orders.get(id) || null;
+        });
     }
 
     // Local fetch with joins
@@ -597,25 +618,28 @@ export async function confirmOrderPayment(order: CachedOrder, userId: string): P
 
 export async function fetchCustomers(userId: string): Promise<CachedClient[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
-            .from('customers')
-            .select('id,user_id,name,email,phone,total_points,total_spent,total_orders,created_at')
-            .eq('user_id', userId)
-            .limit(500);
+        return dedupeRequest(`customers:${userId}`, async () => {
+            const { data, error } = await supabase
+                .from('customers')
+                .select('id,user_id,name,email,phone,total_points,total_spent,total_orders,created_at')
+                .eq('user_id', userId)
+                .limit(500);
 
-        if (!error && data) {
-            const pending = await getPendingActions();
-            const pendingIds = new Set(
-                pending.filter((a: PendingAction) => a.table === 'customers').map((a: PendingAction) => (a.data as HasId).id)
-            );
-            
-            const toSave = data.filter((item: CachedClient) => !pendingIds.has(item.id));
-            if (toSave.length > 0) {
-                await saveAll('customers', toSave);
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(
+                    pending.filter((a: PendingAction) => a.table === 'customers').map((a: PendingAction) => (a.data as HasId).id)
+                );
+                
+                const toSave = data.filter((item: CachedClient) => !pendingIds.has(item.id));
+                if (toSave.length > 0) {
+                    await saveAll('customers', toSave);
+                }
+                return data as CachedClient[];
             }
-            return data as CachedClient[];
-        }
-        console.warn('[dataAccess] Supabase fetch failed, falling back to local:', error?.message);
+            console.warn('[dataAccess] Supabase fetch failed, falling back to local:', error?.message);
+            return getAllByUser('customers', userId);
+        });
     }
     return getAllByUser('customers', userId);
 }
@@ -669,77 +693,101 @@ export async function deleteCustomer(id: string): Promise<void> {
 
 export async function fetchMesas(userId: string): Promise<CachedTable[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
-            .from('mesas')
-            .select('id,user_id,numero_mesa,capacidade,ativa,created_at')
-            .eq('user_id', userId)
-            .eq('ativa', true);
+        return dedupeRequest(`mesas:${userId}`, async () => {
+            const { data, error } = await supabase
+                .from('mesas')
+                .select('id,user_id,numero_mesa,capacidade,ativa,created_at')
+                .eq('user_id', userId)
+                .eq('ativa', true);
 
-        if (!error && data) {
-            const pending = await getPendingActions();
-            const pendingIds = new Set(
-                pending.filter((a: PendingAction) => a.table === 'mesas').map((a: PendingAction) => (a.data as HasId).id)
-            );
-            
-            const toSave = data.filter((item) => !pendingIds.has(item.id));
-            if (toSave.length > 0) {
-                await saveAll('mesas', toSave);
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(
+                    pending.filter((a: PendingAction) => a.table === 'mesas').map((a: PendingAction) => (a.data as HasId).id)
+                );
+                
+                const toSave = data.filter((item) => !pendingIds.has(item.id));
+                if (toSave.length > 0) {
+                    await saveAll('mesas', toSave);
+                }
+                return data as CachedTable[];
             }
-            return data as CachedTable[];
-        }
+            if (error) {
+                console.warn('[dataAccess] Supabase mesas fetch failed, falling back to local:', error.message);
+            }
+            return await getAllByUser<CachedTable>('mesas', userId);
+        });
     }
     return await getAllByUser<CachedTable>('mesas', userId);
 }
 
 export async function fetchMesaById(id: string): Promise<CachedTable | undefined> {
     if (getMode() === 'cloud') {
-        const { data: mesa, error: mesaError } = await supabase.from('mesas').select('id,user_id,numero_mesa,capacidade,ativa,created_at').eq('id', id).single();
-        if (mesaError) throw mesaError;
-        await saveItem('mesas', mesa);
+        return dedupeRequest(`mesa:${id}`, async () => {
+            const { data: mesa, error: mesaError } = await supabase.from('mesas').select('id,user_id,numero_mesa,capacidade,ativa,created_at').eq('id', id).single();
+            if (mesaError) throw mesaError;
+            await saveItem('mesas', mesa);
 
-        const { data: sessions } = await supabase.from('mesa_sessions').select('id,mesa_id,user_id,garcom,status,opened_at,closed_at,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final').eq('mesa_id', id).is('closed_at', null);
-        if (sessions && sessions.length > 0) {
-            await saveAll('mesa_sessions', sessions);
-            const sessionIds = sessions.map(s => s.id);
-            const { data: items } = await supabase.from('mesa_session_items')
-                .select('id,session_id,product_id,product_name,quantidade,preco_unitario,preco_total,observacao,created_at,order_id,enviado_cozinha')
-                .in('session_id', sessionIds);
-            if (items) {
-                await saveAll('mesa_session_items', items);
+            const { data: sessions } = await supabase.from('mesa_sessions').select('id,mesa_id,user_id,garcom,status,opened_at,closed_at,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final').eq('mesa_id', id).is('closed_at', null);
+            if (sessions && sessions.length > 0) {
+                await saveAll('mesa_sessions', sessions);
+                const sessionIds = sessions.map(s => s.id);
+                const { data: items } = await supabase.from('mesa_session_items')
+                    .select('id,session_id,product_id,product_name,quantidade,preco_unitario,preco_total,observacao,created_at,order_id,enviado_cozinha')
+                    .in('session_id', sessionIds);
+                if (items) {
+                    await saveAll('mesa_session_items', items);
+                }
             }
-        }
-        return mesa as unknown as CachedTable;
+            return mesa as unknown as CachedTable;
+        });
     }
     return await getItem<CachedTable>('mesas', id);
 }
 
 export async function fetchMesaSessions(userId: string): Promise<CachedMesaSession[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
-            .from('mesa_sessions')
-            .select('id,mesa_id,user_id,garcom,status,opened_at,closed_at,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final')
-            .eq('user_id', userId)
-            .is('closed_at', null);
+        return dedupeRequest(`mesa_sessions:${userId}`, async () => {
+            const { data, error } = await supabase
+                .from('mesa_sessions')
+                .select('id,mesa_id,user_id,garcom,status,opened_at,closed_at,valor_parcial,payment_method,taxa_servico_percent,desconto,total_final')
+                .eq('user_id', userId)
+                .is('closed_at', null);
 
-        if (!error && data) {
-            await saveAll('mesa_sessions', data);
-            return data as unknown as CachedMesaSession[];
-        }
+            if (!error && data) {
+                await saveAll('mesa_sessions', data);
+                return data as unknown as CachedMesaSession[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase mesa_sessions fetch failed, falling back to local:', error.message);
+            }
+            return getAllByUser<CachedMesaSession>('mesa_sessions', userId);
+        });
     }
     return getAllByUser<CachedMesaSession>('mesa_sessions', userId);
 }
 
 export async function fetchMesaSessionItems(userId: string): Promise<CachedMesaSessionItem[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
-            .from('mesa_session_items')
-            .select('id,session_id,product_id,product_name,quantidade,preco_unitario,preco_total,observacao,created_at,order_id,enviado_cozinha, mesa_sessions!inner(user_id)')
-            .eq('mesa_sessions.user_id', userId);
+        return dedupeRequest(`mesa_session_items:${userId}`, async () => {
+            const { data, error } = await supabase
+                .from('mesa_session_items')
+                .select('id,session_id,product_id,product_name,quantidade,preco_unitario,preco_total,observacao,created_at,order_id,enviado_cozinha, mesa_sessions!inner(user_id)')
+                .eq('mesa_sessions.user_id', userId);
 
-        if (!error && data) {
-            await saveAll('mesa_session_items', data);
-            return data as unknown as CachedMesaSessionItem[];
-        }
+            if (!error && data) {
+                await saveAll('mesa_session_items', data);
+                return data as unknown as CachedMesaSessionItem[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase mesa_session_items fetch failed, falling back to local:', error.message);
+            }
+            // mesa_session_items has no user_id — filter via user-owned sessions
+            const userSessions = await getAllByUser<CachedMesaSession>('mesa_sessions', userId);
+            const sessionIds = new Set(userSessions.map((s) => s.id));
+            const allItems = await getAll<CachedMesaSessionItem>('mesa_session_items');
+            return allItems.filter((item) => sessionIds.has(item.session_id));
+        });
     }
     // mesa_session_items has no user_id — filter via user-owned sessions
     const userSessions = await getAllByUser<CachedMesaSession>('mesa_sessions', userId);
@@ -852,25 +900,30 @@ export async function deleteMesa(id: string): Promise<void> {
 
 export async function fetchEmployeesCached(userId: string): Promise<CachedEmployee[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
-            .from('employees')
-            .select('id,user_id,name,role,phone,email,pin_code,is_active,created_at,is_fixed,permissions,hourly_rate,salario_fixo')
-            .eq('user_id', userId)
-            .limit(100);
+        return dedupeRequest(`employees:${userId}`, async () => {
+            const { data, error } = await supabase
+                .from('employees')
+                .select('id,user_id,name,role,phone,email,pin_code,is_active,created_at,is_fixed,permissions,hourly_rate,salario_fixo')
+                .eq('user_id', userId)
+                .limit(100);
 
-        if (!error && data) {
-            const pending = await getPendingActions();
-            const pendingIds = new Set(
-                pending.filter((a: PendingAction) => a.table === 'employees').map((a: PendingAction) => (a.data as HasId).id)
-            );
-            
-            const toSave = data.filter((item: CachedEmployee) => !pendingIds.has(item.id));
-            if (toSave.length > 0) {
-                await saveAll('employees', toSave);
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(
+                    pending.filter((a: PendingAction) => a.table === 'employees').map((a: PendingAction) => (a.data as HasId).id)
+                );
+                
+                const toSave = data.filter((item: CachedEmployee) => !pendingIds.has(item.id));
+                if (toSave.length > 0) {
+                    await saveAll('employees', toSave);
+                }
+                return data as CachedEmployee[];
             }
-            return data as CachedEmployee[];
-        }
-        console.warn('[dataAccess] Supabase fetch failed, falling back to local:', error?.message);
+            if (error) {
+                console.warn('[dataAccess] Supabase fetch employees failed, falling back to local:', error?.message);
+            }
+            return getAllByUser('employees', userId);
+        });
     }
     return getAllByUser('employees', userId);
 }
@@ -924,14 +977,20 @@ export async function deleteEmployee(id: string): Promise<void> {
 
 export async function fetchLoyaltyRewards(userId: string): Promise<CachedLoyaltyReward[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('loyalty_rewards').select('id,user_id,name,description,points_cost,reward_type,reward_value,min_order_value,is_active,created_at').eq('user_id', userId);
-        if (!error && data) {
-            const pending = await getPendingActions();
-            const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'loyalty_rewards').map((a: PendingAction) => (a.data as HasId).id));
-            const toSave = data.filter((item: CachedLoyaltyReward) => !pendingIds.has(item.id));
-            if (toSave.length > 0) await saveAll('loyalty_rewards', toSave);
-            return data as CachedLoyaltyReward[];
-        }
+        return dedupeRequest(`loyalty_rewards:${userId}`, async () => {
+            const { data, error } = await supabase.from('loyalty_rewards').select('id,user_id,name,description,points_cost,reward_type,reward_value,min_order_value,is_active,created_at').eq('user_id', userId);
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'loyalty_rewards').map((a: PendingAction) => (a.data as HasId).id));
+                const toSave = data.filter((item: CachedLoyaltyReward) => !pendingIds.has(item.id));
+                if (toSave.length > 0) await saveAll('loyalty_rewards', toSave);
+                return data as CachedLoyaltyReward[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase loyalty_rewards fetch failed:', error.message);
+            }
+            return getAllByUser('loyalty_rewards', userId);
+        });
     }
     return getAllByUser('loyalty_rewards', userId);
 }
@@ -966,11 +1025,18 @@ export async function deleteLoyaltyReward(id: string): Promise<void> {
 
 export async function fetchLoyaltySettings(userId: string): Promise<CachedLoyaltySettings | null> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('loyalty_settings').select('id,user_id,points_per_real,min_points_to_redeem,points_expiry_days,tier_bronze_min,tier_silver_min,tier_gold_min,tier_platinum_min,silver_multiplier,gold_multiplier,platinum_multiplier,is_active,updated_at').eq('user_id', userId).single();
-        if (!error && data) {
-            await saveItem('loyalty_settings', data as CachedLoyaltySettings);
-            return data as CachedLoyaltySettings;
-        }
+        return dedupeRequest(`loyalty_settings:${userId}`, async () => {
+            const { data, error } = await supabase.from('loyalty_settings').select('id,user_id,points_per_real,min_points_to_redeem,points_expiry_days,tier_bronze_min,tier_silver_min,tier_gold_min,tier_platinum_min,silver_multiplier,gold_multiplier,platinum_multiplier,is_active,updated_at').eq('user_id', userId).single();
+            if (!error && data) {
+                await saveItem('loyalty_settings', data as CachedLoyaltySettings);
+                return data as CachedLoyaltySettings;
+            }
+            if (error && error.code !== 'PGRST116') {
+                console.warn('[dataAccess] Supabase loyalty_settings fetch failed:', error.message);
+            }
+            const local = await getAll<CachedLoyaltySettings>('loyalty_settings');
+            return local.find(s => s.user_id === userId) || null;
+        });
     }
     const local = await getAll<CachedLoyaltySettings>('loyalty_settings');
     return local.find(s => s.user_id === userId) || null;
@@ -992,14 +1058,20 @@ export async function saveLoyaltySettings(data: Record<string, unknown>): Promis
 
 export async function fetchCoupons(userId: string): Promise<CachedCoupon[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('coupons').select('id,user_id,code,description,discount_type,discount_value,min_order_value,max_discount,usage_limit,usage_count,valid_from,valid_until,active,first_order_only,created_at').eq('user_id', userId);
-        if (!error && data) {
-            const pending = await getPendingActions();
-            const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'coupons').map((a: PendingAction) => (a.data as HasId).id));
-            const toSave = data.filter((item: CachedCoupon) => !pendingIds.has(item.id));
-            if (toSave.length > 0) await saveAll('coupons', toSave);
-            return data as CachedCoupon[];
-        }
+        return dedupeRequest(`coupons:${userId}`, async () => {
+            const { data, error } = await supabase.from('coupons').select('id,user_id,code,description,discount_type,discount_value,min_order_value,max_discount,usage_limit,usage_count,valid_from,valid_until,active,first_order_only,created_at').eq('user_id', userId);
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'coupons').map((a: PendingAction) => (a.data as HasId).id));
+                const toSave = data.filter((item: CachedCoupon) => !pendingIds.has(item.id));
+                if (toSave.length > 0) await saveAll('coupons', toSave);
+                return data as CachedCoupon[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase coupons fetch failed:', error.message);
+            }
+            return getAllByUser('coupons', userId);
+        });
     }
     return getAllByUser('coupons', userId);
 }
@@ -1034,11 +1106,18 @@ export async function deleteCoupon(id: string): Promise<void> {
 
 export async function fetchAppSettings(userId: string): Promise<CachedAppSetting | null> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('app_settings').select('id,user_id,loyalty_enabled,coupons_enabled,updated_at').eq('user_id', userId).single();
-        if (!error && data) {
-            await saveItem('app_settings', data as CachedAppSetting);
-            return data as CachedAppSetting;
-        }
+        return dedupeRequest(`app_settings:${userId}`, async () => {
+            const { data, error } = await supabase.from('app_settings').select('id,user_id,loyalty_enabled,coupons_enabled,updated_at').eq('user_id', userId).single();
+            if (!error && data) {
+                await saveItem('app_settings', data as CachedAppSetting);
+                return data as CachedAppSetting;
+            }
+            if (error && error.code !== 'PGRST116') {
+                console.warn('[dataAccess] Supabase app_settings fetch failed:', error.message);
+            }
+            const local = await getAll<CachedAppSetting>('app_settings');
+            return local.find(s => s.user_id === userId) || null;
+        });
     }
     const local = await getAll<CachedAppSetting>('app_settings');
     return local.find(s => s.user_id === userId) || null;
@@ -1060,40 +1139,61 @@ export async function saveAppSettings(data: Record<string, unknown>): Promise<vo
 
 export async function fetchProductAddons(userId: string): Promise<CachedProductAddon[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('product_addons').select('id,user_id,name,price,available,created_at').eq('user_id', userId);
-        if (!error && data) {
-            await saveAll('product_addons', data);
-            return data as CachedProductAddon[];
-        }
+        return dedupeRequest(`product_addons:${userId}`, async () => {
+            const { data, error } = await supabase.from('product_addons').select('id,user_id,name,price,available,created_at').eq('user_id', userId);
+            if (!error && data) {
+                await saveAll('product_addons', data);
+                return data as CachedProductAddon[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase product_addons fetch failed:', error.message);
+            }
+            return getAllByUser('product_addons', userId);
+        });
     }
     return getAllByUser('product_addons', userId);
 }
 
 export async function fetchAddonGroups(userId: string): Promise<CachedAddonGroup[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase.from('addon_groups').select('id,user_id,name,description,required,max_selection,created_at').eq('user_id', userId);
-        if (!error && data) {
-            await saveAll('addon_groups', data);
-            return data as CachedAddonGroup[];
-        }
+        return dedupeRequest(`addon_groups:${userId}`, async () => {
+            const { data, error } = await supabase.from('addon_groups').select('id,user_id,name,description,required,max_selection,created_at').eq('user_id', userId);
+            if (!error && data) {
+                await saveAll('addon_groups', data);
+                return data as CachedAddonGroup[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase addon_groups fetch failed:', error.message);
+            }
+            return getAllByUser('addon_groups', userId);
+        });
     }
     return getAllByUser('addon_groups', userId);
 }
 
 export async function fetchProductAddonGroups(userId: string): Promise<CachedProductAddonGroup[]> {
     if (getMode() === 'cloud') {
-        // Scope by user's products to avoid fetching all rows globally
-        const { data: userProducts } = await supabase.from('products').select('id').eq('user_id', userId).limit(200);
-        const productIds = userProducts?.map(p => p.id) || [];
-        if (productIds.length === 0) return [];
-        
-        const { data, error } = await supabase.from('product_addon_groups').select('id,product_id,group_id').in('product_id', productIds.slice(0, 100));
-        if (!error && data) {
-            try { await saveAll('product_addon_groups', data); } catch(e) { console.warn('[dataAccess] cache product_addon_groups failed:', e); }
-            return data as CachedProductAddonGroup[];
-        }
+        return dedupeRequest(`product_addon_groups:${userId}`, async () => {
+            // Scope by user's products to avoid fetching all rows globally
+            const { data: userProducts } = await supabase.from('products').select('id').eq('user_id', userId).limit(200);
+            const productIds = userProducts?.map(p => p.id) || [];
+            if (productIds.length === 0) return [];
+            
+            const { data, error } = await supabase.from('product_addon_groups').select('id,product_id,group_id').in('product_id', productIds.slice(0, 100));
+            if (!error && data) {
+                try { await saveAll('product_addon_groups', data); } catch(e) { console.warn('[dataAccess] cache product_addon_groups failed:', e); }
+                return data as CachedProductAddonGroup[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase product_addon_groups fetch failed:', error.message);
+            }
+            return fetchProductAddonGroupsLocal(userId);
+        });
     }
-    // product_addon_groups has no user_id — filter via user-owned products
+    return fetchProductAddonGroupsLocal(userId);
+}
+
+async function fetchProductAddonGroupsLocal(userId: string): Promise<CachedProductAddonGroup[]> {
     const userProducts = await getAllByUser<CachedProduct>('products', userId);
     const productIds = new Set(userProducts.map((p: CachedProduct) => p.id));
     const allPAG = await getAll<CachedProductAddonGroup>('product_addon_groups');
@@ -1102,18 +1202,27 @@ export async function fetchProductAddonGroups(userId: string): Promise<CachedPro
 
 export async function fetchAddonGroupItems(userId: string): Promise<CachedAddonGroupItem[]> {
     if (getMode() === 'cloud') {
-        // Scope by user's addon groups to avoid fetching all rows globally
-        const { data: userGroups } = await supabase.from('addon_groups').select('id').eq('user_id', userId).limit(100);
-        const groupIds = userGroups?.map(g => g.id) || [];
-        if (groupIds.length === 0) return [];
-        
-        const { data, error } = await supabase.from('addon_group_items').select('id,group_id,addon_id').in('group_id', groupIds.slice(0, 100));
-        if (!error && data) {
-            try { await saveAll('addon_group_items', data); } catch(e) { console.warn('[dataAccess] cache addon_group_items failed:', e); }
-            return data as CachedAddonGroupItem[];
-        }
+        return dedupeRequest(`addon_group_items:${userId}`, async () => {
+            // Scope by user's addon groups to avoid fetching all rows globally
+            const { data: userGroups } = await supabase.from('addon_groups').select('id').eq('user_id', userId).limit(100);
+            const groupIds = userGroups?.map(g => g.id) || [];
+            if (groupIds.length === 0) return [];
+            
+            const { data, error } = await supabase.from('addon_group_items').select('id,group_id,addon_id').in('group_id', groupIds.slice(0, 100));
+            if (!error && data) {
+                try { await saveAll('addon_group_items', data); } catch(e) { console.warn('[dataAccess] cache addon_group_items failed:', e); }
+                return data as CachedAddonGroupItem[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase addon_group_items fetch failed:', error.message);
+            }
+            return fetchAddonGroupItemsLocal(userId);
+        });
     }
-    // addon_group_items has no user_id — filter via user-owned addon groups
+    return fetchAddonGroupItemsLocal(userId);
+}
+
+async function fetchAddonGroupItemsLocal(userId: string): Promise<CachedAddonGroupItem[]> {
     const userGroups = await getAllByUser<CachedAddonGroup>('addon_groups', userId);
     const groupIds = new Set(userGroups.map((g: CachedAddonGroup) => g.id));
     const allAGI = await getAll<CachedAddonGroupItem>('addon_group_items');
@@ -1124,31 +1233,39 @@ export async function fetchAddonGroupItems(userId: string): Promise<CachedAddonG
 
 export async function fetchActionLogs(userId: string, limit = 50, offset = 0, filters?: { action?: string; entity?: string; from?: string; to?: string }): Promise<{ data: CachedActionLog[], count: number }> {
     if (getMode() === 'cloud') {
-        let query = supabase
-            .from('action_logs')
-            .select('*', { count: 'exact' })
-            .eq('user_id', userId)
-            .order('created_at', { ascending: false })
-            .range(offset, offset + limit - 1);
-        
-        if (filters?.action) query = query.eq('action_type', filters.action);
-        if (filters?.entity) query = query.eq('entity_type', filters.entity);
-        if (filters?.from) query = query.gte('created_at', filters.from);
-        if (filters?.to) query = query.lte('created_at', filters.to);
+        const cacheKey = `action_logs:${userId}:${limit}:${offset}:${JSON.stringify(filters || {})}`;
+        return dedupeRequest(cacheKey, async () => {
+            let query = supabase
+                .from('action_logs')
+                .select('*', { count: 'exact' })
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .range(offset, offset + limit - 1);
+            
+            if (filters?.action) query = query.eq('action_type', filters.action);
+            if (filters?.entity) query = query.eq('entity_type', filters.entity);
+            if (filters?.from) query = query.gte('created_at', filters.from);
+            if (filters?.to) query = query.lte('created_at', filters.to);
 
-        const { data, error, count } = await query;
+            const { data, error, count } = await query;
 
-        if (!error && data) {
-            // We don't necessarily want to cache ALL historical logs locally to save space
-            // but we can save the most recent chunk
-            if (offset === 0) {
-                await saveAll('action_logs', data);
+            if (!error && data) {
+                // We don't necessarily want to cache ALL historical logs locally to save space
+                // but we can save the most recent chunk
+                if (offset === 0) {
+                    await saveAll('action_logs', data);
+                }
+                return { data: data as CachedActionLog[], count: count || 0 };
             }
-            return { data: data as CachedActionLog[], count: count || 0 };
-        }
+            // Fallback to local on error
+            return fetchActionLogsLocal(userId, limit, offset, filters);
+        });
     }
 
-    // Local fallback
+    return fetchActionLogsLocal(userId, limit, offset, filters);
+}
+
+async function fetchActionLogsLocal(userId: string, limit: number, offset: number, filters?: { action?: string; entity?: string; from?: string; to?: string }): Promise<{ data: CachedActionLog[], count: number }> {
     const all = await getAll<CachedActionLog>('action_logs');
     let filtered = all.filter(l => l.user_id === userId);
     if (filters?.action) filtered = filtered.filter(l => l.action_type === filters.action);
@@ -1233,26 +1350,38 @@ export async function clearActionLogsDAL(userId: string, olderThan?: string): Pr
 
 export async function fetchCashFlow(userId: string, from?: string, to?: string): Promise<CachedCashFlow[]> {
     if (getMode() === 'cloud') {
-        let query = supabase
-            .from('cash_flow')
-            .select('id,user_id,type,category,description,amount,payment_method,transaction_date,created_at')
-            .eq('user_id', userId)
-            .order('transaction_date', { ascending: false });
-        
-        if (from) query = query.gte('transaction_date', from);
-        if (to) query = query.lte('transaction_date', to);
+        const cacheKey = `cash_flow:${userId}:${from || ''}:${to || ''}`;
+        return dedupeRequest(cacheKey, async () => {
+            let query = supabase
+                .from('cash_flow')
+                .select('id,user_id,type,category,description,amount,payment_method,transaction_date,created_at')
+                .eq('user_id', userId)
+                .order('transaction_date', { ascending: false });
+            
+            if (from) query = query.gte('transaction_date', from);
+            if (to) query = query.lte('transaction_date', to);
 
-        const { data, error } = await query;
+            const { data, error } = await query;
 
-        if (!error && data) {
-            const pending = await getPendingActions();
-            const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'cash_flow').map((a: PendingAction) => (a.data as HasId).id));
-            const toSave = data.filter((item: CachedCashFlow) => !pendingIds.has(item.id));
-            if (toSave.length > 0) await saveAll('cash_flow', toSave);
-            return data as CachedCashFlow[];
-        }
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'cash_flow').map((a: PendingAction) => (a.data as HasId).id));
+                const toSave = data.filter((item: CachedCashFlow) => !pendingIds.has(item.id));
+                if (toSave.length > 0) await saveAll('cash_flow', toSave);
+                return data as CachedCashFlow[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase cash_flow fetch failed, falling back to local:', error.message);
+            }
+            return await fetchCashFlowLocal(userId, from, to);
+        });
     }
 
+    return await fetchCashFlowLocal(userId, from, to);
+}
+
+// Helper for local cash flow fetch to avoid duplication
+async function fetchCashFlowLocal(userId: string, from?: string, to?: string): Promise<CachedCashFlow[]> {
     const all = await getAll<CachedCashFlow>('cash_flow');
     let filtered = all.filter(c => c.user_id === userId);
     if (from) filtered = filtered.filter(c => c.transaction_date >= from);
@@ -1314,22 +1443,32 @@ export async function updateProductAddonGroups(productId: string, groupIds: stri
 
 export async function fetchBills(userId: string): Promise<CachedBill[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
-            .from('bills')
-            .select('id,user_id,type,description,category,amount,due_date,payment_date,status,supplier_customer,notes,recurrence,recurrence_end_date,created_at')
-            .eq('user_id', userId)
-            .order('due_date', { ascending: true })
-            .limit(200);
+        return dedupeRequest(`bills:${userId}`, async () => {
+            const { data, error } = await supabase
+                .from('bills')
+                .select('id,user_id,type,description,category,amount,due_date,payment_date,status,supplier_customer,notes,recurrence,recurrence_end_date,created_at')
+                .eq('user_id', userId)
+                .order('due_date', { ascending: true })
+                .limit(200);
 
-        if (!error && data) {
-            const pending = await getPendingActions();
-            const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'bills').map((a: PendingAction) => (a.data as HasId).id));
-            const toSave = data.filter((item: CachedBill) => !pendingIds.has(item.id));
-            if (toSave.length > 0) await saveAll('bills', toSave);
-            return data as CachedBill[];
-        }
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'bills').map((a: PendingAction) => (a.data as HasId).id));
+                const toSave = data.filter((item: CachedBill) => !pendingIds.has(item.id));
+                if (toSave.length > 0) await saveAll('bills', toSave);
+                return data as CachedBill[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase bills fetch failed, falling back to local:', error.message);
+            }
+            return fetchBillsLocal(userId);
+        });
     }
 
+    return fetchBillsLocal(userId);
+}
+
+async function fetchBillsLocal(userId: string): Promise<CachedBill[]> {
     const all = await getAll<CachedBill>('bills');
     return all.filter(b => b.user_id === userId).sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
 }
@@ -1421,20 +1560,30 @@ export async function markBillPaidDAL(
 
 export async function fetchBillCategories(userId: string): Promise<CachedBillCategory[]> {
     if (getMode() === 'cloud') {
-        const { data, error } = await supabase
-            .from('bill_categories')
-            .select('id,user_id,name,type,icon,color,created_at')
-            .eq('user_id', userId);
+        return dedupeRequest(`bill_categories:${userId}`, async () => {
+            const { data, error } = await supabase
+                .from('bill_categories')
+                .select('id,user_id,name,type,icon,color,created_at')
+                .eq('user_id', userId);
 
-        if (!error && data) {
-            const pending = await getPendingActions();
-            const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'bill_categories').map((a: PendingAction) => (a.data as HasId).id));
-            const toSave = data.filter((item: CachedBillCategory) => !pendingIds.has(item.id));
-            if (toSave.length > 0) await saveAll('bill_categories', toSave);
-            return data as CachedBillCategory[];
-        }
+            if (!error && data) {
+                const pending = await getPendingActions();
+                const pendingIds = new Set(pending.filter((a: PendingAction) => a.table === 'bill_categories').map((a: PendingAction) => (a.data as HasId).id));
+                const toSave = data.filter((item: CachedBillCategory) => !pendingIds.has(item.id));
+                if (toSave.length > 0) await saveAll('bill_categories', toSave);
+                return data as CachedBillCategory[];
+            }
+            if (error) {
+                console.warn('[dataAccess] Supabase bill_categories fetch failed, falling back to local:', error.message);
+            }
+            return fetchBillCategoriesLocal(userId);
+        });
     }
 
+    return fetchBillCategoriesLocal(userId);
+}
+
+async function fetchBillCategoriesLocal(userId: string): Promise<CachedBillCategory[]> {
     return (await getAll<CachedBillCategory>('bill_categories')).filter(c => c.user_id === userId);
 }
 

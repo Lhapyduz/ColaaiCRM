@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { FiDelete, FiUser, FiUnlock, FiX, FiAlertCircle } from 'react-icons/fi';
 import Button from '@/components/ui/Button';
-import { checkRateLimit, formatBlockTime } from '@/lib/rateLimiter';
-import { cn } from '@/lib/utils';
+import { checkRateLimit, formatBlockTime } from '@/infra/security/rateLimiter';
+import { cn } from '@/utils/utils';
 import { Portal } from '@/components/ui/Portal';
 
 interface PinPadModalProps {

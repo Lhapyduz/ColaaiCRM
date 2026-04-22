@@ -1,7 +1,7 @@
 'use server';
 
-import { supabaseAdmin } from '@/lib/supabase-admin';
-import { OrderSchema } from '@/lib/schemas';
+import { supabaseAdmin } from '@/infra/persistence/supabase-admin';
+import { OrderSchema } from '@/types/schemas';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -90,7 +90,7 @@ export async function createOrder(rawOrder: z.infer<typeof OrderSchema>) {
 
     try {
         // Disparar a notificação push via server-side de forma separada
-        const { notifyNewOrder } = await import('@/lib/pushNotification');
+        const { notifyNewOrder } = await import('@/services/communication/pushNotification');
         // Usamos catch pra evitar que um erro no firebase/web-push jogue exceção pro cliente
         notifyNewOrder(order.user_id, nextOrderNumber, order.customerName, order.total).catch(console.error);
     } catch (e) {
