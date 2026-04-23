@@ -19,6 +19,7 @@ interface ImageUploadProps {
     placeholder?: string;
     disabled?: boolean;
     aspectRatio?: number;
+    generateThumbnail?: boolean;
 }
 
 // Helper function to create cropped image
@@ -75,12 +76,13 @@ export default function ImageUpload({
     onChange,
     bucket = 'product-images',
     folder = '',
-    maxSizeMB = 0.06, // Reduzido para 60KB - economia de ~40% no storage
-    maxWidthOrHeight = 600, // Reduzido de 800 para 600 - suficiente para cards
-    quality = 0.75, // Ligeiramente menor para economizar mais
+    maxSizeMB = 0.06,           // 60KB target - otimizado para storage
+    maxWidthOrHeight = 1200,     // 1200px - padrão indústria (Uber Eats, iFood)
+    quality = 0.80,             // 80% WebP = equivalente JPEG 85 perceptual
     placeholder = 'Adicionar foto',
     disabled = false,
-    aspectRatio = 1
+    aspectRatio = 1,
+    generateThumbnail = true
 }: ImageUploadProps) {
     const [uploading, setUploading] = useState(false);
     const [preview, setPreview] = useState<string | null>(value);
@@ -101,28 +103,47 @@ export default function ImageUpload({
         setCroppedAreaPixels(croppedAreaPixels);
     }, []);
 
-    const compressAndConvertToWebP = async (blob: Blob): Promise<Blob> => {
-        const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+    const compressAndConvertToWebP = async (blob: Blob, generateThumbnail = false): Promise<{ full: Blob; thumbnail?: Blob }> => {
+    const file = new File([blob], 'image.jpg', { type: 'image/jpeg' });
 
-        const options = {
-            maxSizeMB,
-            maxWidthOrHeight,
-            useWebWorker: true,
-            fileType: 'image/webp' as const,
-            initialQuality: quality,
-        };
-
-        try {
-            const compressedFile = await imageCompression(file, options);
-            return compressedFile;
-        } catch (err) {
-            console.error('Compression error:', err);
-            throw new Error('Erro ao comprimir imagem');
-        }
+    const fullOptions = {
+        maxSizeMB,
+        maxWidthOrHeight,
+        useWebWorker: true,
+        fileType: 'image/webp' as const,
+        initialQuality: quality,
     };
 
-    const uploadToStorage = async (blob: Blob): Promise<string> => {
-        const fileName = `${folder ? folder + '/' : ''}${Date.now()}_${Math.random().toString(36).substring(7)}.webp`;
+    const thumbnailOptions = {
+        maxSizeMB: 0.015,     // 15KB target
+        maxWidthOrHeight: 400,   // Thumbnail size
+        useWebWorker: true,
+        fileType: 'image/webp' as const,
+        initialQuality: 0.6,
+    };
+
+    try {
+        const compressedFile = await imageCompression(file, fullOptions);
+        
+        if (generateThumbnail) {
+            const thumbnailFile = await imageCompression(file, thumbnailOptions);
+            return { full: compressedFile, thumbnail: thumbnailFile };
+        }
+        
+        return { full: compressedFile };
+    } catch (err) {
+        console.error('Compression error:', err);
+        throw new Error('Erro ao comprimir imagem');
+    }
+};
+
+    const uploadToStorage = async (
+        blob: Blob,
+        thumbnailBlob?: Blob
+    ): Promise<{ fullUrl: string; thumbnailUrl?: string }> => {
+        const timestamp = Date.now();
+        const fileName = `${folder ? folder + '/' : ''}${timestamp}.webp`;
+        const thumbFileName = `${folder ? folder + '/' : ''}${timestamp}_thumb.webp`;
 
         const { data, error: uploadError } = await supabase.storage
             .from(bucket)
@@ -141,7 +162,26 @@ export default function ImageUpload({
             .from(bucket)
             .getPublicUrl(data.path);
 
-        return urlData.publicUrl;
+        let thumbnailUrl: string | undefined;
+        
+        if (thumbnailBlob) {
+            const { data: thumbData, error: thumbError } = await supabase.storage
+                .from(bucket)
+                .upload(thumbFileName, thumbnailBlob, {
+                    contentType: 'image/webp',
+                    cacheControl: '31536000',
+                    upsert: false
+                });
+
+            if (!thumbError && thumbData) {
+                const { data: thumbUrlData } = supabase.storage
+                    .from(bucket)
+                    .getPublicUrl(thumbData.path);
+                thumbnailUrl = thumbUrlData.publicUrl;
+            }
+        }
+
+        return { fullUrl: urlData.publicUrl, thumbnailUrl };
     };
 
     const deleteFromStorage = useCallback(async (url: string) => {
@@ -188,15 +228,15 @@ export default function ImageUpload({
 
         try {
             const croppedBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
-            const compressedBlob = await compressAndConvertToWebP(croppedBlob);
+            const { full, thumbnail } = await compressAndConvertToWebP(croppedBlob, generateThumbnail);
 
             if (value) {
                 await deleteFromStorage(value);
             }
 
-            const newUrl = await uploadToStorage(compressedBlob);
-            onChange(newUrl);
-            setPreview(newUrl);
+            const { fullUrl } = await uploadToStorage(full, thumbnail);
+            onChange(fullUrl);
+            setPreview(fullUrl);
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao processar imagem';
             setError(errorMessage);

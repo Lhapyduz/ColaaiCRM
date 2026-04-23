@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, memo } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { cn } from '@/utils/utils';
 
 interface OptimizedImageProps {
@@ -17,6 +17,7 @@ interface OptimizedImageProps {
     priority?: boolean;
     quality?: number;
     sizes?: string;
+    thumbnailSrc?: string;
 }
 
 /**
@@ -25,6 +26,7 @@ interface OptimizedImageProps {
  * - Skeleton loading state
  * - Error fallback handling
  * - Responsive sizing support
+ * - Thumbnail support for mobile
  */
 export const OptimizedImage = memo(function OptimizedImage({
     src,
@@ -39,12 +41,25 @@ export const OptimizedImage = memo(function OptimizedImage({
     priority = false,
     quality = 80,
     sizes = '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
+    thumbnailSrc,
 }: OptimizedImageProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [hasError, setHasError] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    const imageSrc = (thumbnailSrc && isMobile ? thumbnailSrc : src);
 
     // Handle missing or invalid src
-    if (!src || hasError) {
+    if (!imageSrc || hasError) {
         if (fallback) return <>{fallback}</>;
         return (
             <div
@@ -68,7 +83,7 @@ export const OptimizedImage = memo(function OptimizedImage({
 
             {fill ? (
                 <Image
-                    src={src}
+                    src={imageSrc}
                     alt={alt}
                     fill
                     sizes={sizes}
@@ -88,7 +103,7 @@ export const OptimizedImage = memo(function OptimizedImage({
                 />
             ) : (
                 <Image
-                    src={src}
+                    src={imageSrc}
                     alt={alt}
                     width={width || 400}
                     height={height || 300}

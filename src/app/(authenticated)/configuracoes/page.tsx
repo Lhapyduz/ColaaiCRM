@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi';
 import Image from 'next/image';
 import { FaWhatsapp } from 'react-icons/fa';
+import imageCompression from 'browser-image-compression';
 import { useKeyboardShortcuts, Shortcut } from '@/contexts/KeyboardShortcutsContext';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Card from '@/components/ui/Card';
@@ -266,9 +267,38 @@ function ConfiguracoesContent() {
     const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]; if (!file || !user) return; setUploading(true);
         try {
-            const fileExt = file.name.split('.').pop(); const fileName = `${user.id}/logo.${fileExt}`;
-            const { error: uploadError } = await supabase.storage.from('logos').upload(fileName, file, { upsert: true });
+            // Compress and convert to WebP
+            const fileForCompression = new File([file], 'logo.jpg', { type: 'image/jpeg' });
+            const compressionOptions = {
+                maxSizeMB: 0.05,        // 50KB max for logos
+                maxWidthOrHeight: 400,   // 400px max (sufficient for logo display)
+                useWebWorker: true,
+                fileType: 'image/webp' as const,
+                initialQuality: 0.7,
+            };
+            
+            const compressedFile = await imageCompression(fileForCompression, compressionOptions);
+            const timestamp = Date.now();
+            const fileName = `${user.id}/logo_${timestamp}.webp`;
+            
+            const { error: uploadError } = await supabase.storage.from('logos').upload(fileName, compressedFile, { 
+                contentType: 'image/webp',
+                upsert: true 
+            });
             if (uploadError) throw uploadError;
+            
+            // Remove old logo if exists
+            if (userSettings?.logo_url) {
+                try {
+                    const urlParts = userSettings.logo_url.split('/logos/');
+                    if (urlParts[1]) {
+                        await supabase.storage.from('logos').remove([urlParts[1]]);
+                    }
+                } catch (deleteErr) {
+                    console.warn('Could not delete old logo:', deleteErr);
+                }
+            }
+            
             const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(fileName);
             await updateSettings({ logo_url: publicUrl });
             revalidateStoreMenu();
@@ -283,8 +313,12 @@ function ConfiguracoesContent() {
     const handleRemoveLogo = async () => {
         if (!user || !userSettings?.logo_url) return;
         try {
-            const urlParts = userSettings.logo_url.split('/'); const fileName = `${user.id}/${urlParts[urlParts.length - 1]}`;
-            await supabase.storage.from('logos').remove([fileName]); await updateSettings({ logo_url: null });
+            // Handle both old format (logo.png) and new format (logo_timestamp.webp)
+            const urlParts = userSettings.logo_url.split('/logos/');
+            if (urlParts[1]) {
+                await supabase.storage.from('logos').remove([urlParts[1]]);
+            }
+            await updateSettings({ logo_url: null });
             revalidateStoreMenu();
         } catch (error) { console.error('Error removing logo:', error); }
     };
