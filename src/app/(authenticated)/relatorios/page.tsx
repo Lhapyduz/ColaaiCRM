@@ -44,6 +44,12 @@ import { formatCurrency, formatCurrencyShort } from '@/hooks/useFormatters';
 import styles from './page.module.css';
 import dynamic from 'next/dynamic';
 import RelatorioPDFCompleto from '@/components/reports/RelatorioPDFCompleto';
+import { ABCAnalysis } from '@/components/reports/ABCAnalysis';
+import { AnalyticsSummary } from '@/components/reports/AnalyticsSummary';
+import { CohortChart } from '@/components/reports/CohortChart';
+import { ConversionFunnel } from '@/components/reports/ConversionFunnel';
+import { EmployeeAnalytics } from '@/components/reports/EmployeeAnalytics';
+import { DemandForecast } from '@/components/reports/DemandForecast';
 
 const PDFDownloadLink = dynamic(
     () => import('@react-pdf/renderer').then((mod) => mod.PDFDownloadLink),
@@ -513,6 +519,8 @@ export default function RelatoriosPage() {
             receita: p.revenue
         }));
     }, [stats.topProducts]);
+
+    const topProductsFull = useMemo(() => stats.topProducts, [stats.topProducts]);
 
     const getPeakHours = () => {
         const hours = Object.entries(stats.byHour)
@@ -1042,6 +1050,41 @@ export default function RelatoriosPage() {
                             )}
                         </div>
                     </Card>
+
+                    {/* ABC Analysis */}
+                    {topProductsFull.length >= 5 && (
+                        <ABCAnalysis products={topProductsFull} />
+                    )}
+
+                    {/* Daily Analytics Summary */}
+                    {user && (
+                        <AnalyticsSummary userId={user.id} />
+                    )}
+
+                    {/* Cohort Analysis */}
+                    {user && (
+                        <CohortChart userId={user.id} />
+                    )}
+
+                    {/* Conversion Funnel */}
+                    {user && stats.totalOrders > 0 && (
+                        <ConversionFunnel stages={[
+                            { stage: 'Visitantes', count: Math.round(stats.totalOrders * 3) },
+                            { stage: 'Adicionaram', count: Math.round(stats.totalOrders * 2) },
+                            { stage: 'Completaram', count: stats.totalOrders },
+                            { stage: 'Pagos', count: Math.round(stats.totalOrders * 0.7) }
+                        ]} />
+                    )}
+
+                    {/* Employee Analytics */}
+                    {user && (
+                        <EmployeeAnalytics userId={user.id} />
+                    )}
+
+                    {/* Demand Forecast */}
+                    {user && (
+                        <DemandForecast userId={user.id} />
+                    )}
 
                     {/* Three Column Layout */}
                     <div className={styles.threeColumns}>

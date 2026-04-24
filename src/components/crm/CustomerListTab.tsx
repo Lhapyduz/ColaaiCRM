@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { FiSearch, FiMessageCircle, FiFilter, FiUser, FiClock, FiShoppingBag } from 'react-icons/fi';
+import React, { useState, useMemo } from 'react';
+import { FiSearch, FiMessageCircle, FiFilter, FiUser, FiClock, FiShoppingBag, FiTrendingUp } from 'react-icons/fi';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -9,6 +9,14 @@ import { formatCurrency } from '@/hooks/useFormatters';
 import { cn } from '@/utils/utils';
 import { WhatsappSenderModal } from './WhatsappSenderModal';
 import { useCustomersCache, useOrdersCache } from '@/hooks/useDataCache';
+import { 
+    calculateCustomerLTV, 
+    calculateChurnRisk, 
+    calculateEngagementScore, 
+    getChurnRiskLabel, 
+    getChurnRiskColor,
+    getEngagementColor 
+} from '@/utils/analytics';
 
 export interface CustomerCRM {
     id: string;
@@ -150,10 +158,11 @@ export function CustomerListTab() {
                                     />
                                 </th>
                                 <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap">Cliente</th>
-                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap">Telefone</th>
-                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden sm:table-cell">Última Compra</th>
-                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden md:table-cell">Total Pedidos</th>
-                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden sm:table-cell">Gastos</th>
+                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden sm:table-cell">Telefone</th>
+                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden lg:table-cell">Última Compra</th>
+                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden md:table-cell">Pedidos</th>
+                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden sm:table-cell">Ticket Médio</th>
+                                <th className="p-4 text-sm font-semibold text-text-secondary whitespace-nowrap hidden sm:table-cell">LTV Est.</th>
                                 <th className="p-4 text-center text-sm font-semibold text-text-secondary whitespace-nowrap">Status</th>
                             </tr>
                         </thead>
@@ -168,7 +177,9 @@ export function CustomerListTab() {
                                 </tr>
                             ) : (
                                 filteredCustomers.map(customer => {
-                                    const inactive = isInactive(customer.last_order_date);
+                                    const { risk: churnRisk } = calculateChurnRisk(customer.last_order_date);
+                                    const avgOrderValue = calculateCustomerLTV(customer);
+                                    const ltvEstimate = avgOrderValue * ((customer.total_orders || 0) / 3) * 24;
                                     return (
                                         <tr key={customer.id} className={cn(
                                             "border-b border-border hover:bg-bg-tertiary/50 transition-colors",
@@ -190,27 +201,28 @@ export function CustomerListTab() {
                                                     <span className="font-medium text-text-primary">{customer.name}</span>
                                                 </div>
                                             </td>
-                                            <td className="p-4 text-text-secondary whitespace-nowrap">{customer.phone}</td>
-                                            <td className="p-4 text-text-secondary whitespace-nowrap hidden sm:table-cell">
-                                                <div className="flex items-center gap-2">
-                                                    <FiClock className={inactive ? "text-error" : "text-text-muted"} />
-                                                    <span className={inactive ? "text-error" : ""}>{formatDate(customer.last_order_date)}</span>
-                                                </div>
+                                            <td className="p-4 text-text-secondary whitespace-nowrap hidden sm:table-cell">{customer.phone}</td>
+                                            <td className="p-4 text-text-secondary whitespace-nowrap hidden lg:table-cell">
+                                                <span className={churnRisk === 'at_risk' || churnRisk === 'churned' ? 'text-error' : ''}>
+                                                    {formatDate(customer.last_order_date)}
+                                                </span>
                                             </td>
                                             <td className="p-4 text-text-secondary whitespace-nowrap hidden md:table-cell">
-                                                <div className="flex items-center gap-2">
-                                                    <FiShoppingBag className="text-primary hidden md:block" /> {customer.total_orders || 0}
-                                                </div>
+                                                {customer.total_orders || 0}
+                                            </td>
+                                            <td className="p-4 text-text-secondary whitespace-nowrap hidden sm:table-cell">
+                                                R$ {avgOrderValue.toFixed(2)}
                                             </td>
                                             <td className="p-4 font-semibold text-[#27ae60] whitespace-nowrap hidden sm:table-cell">
-                                                {formatCurrency(customer.total_spent || 0)}
+                                                <div className="flex items-center gap-1">
+                                                    <FiTrendingUp size={14} />
+                                                    {formatCurrency(ltvEstimate)}
+                                                </div>
                                             </td>
                                             <td className="p-4 text-center whitespace-nowrap">
-                                                {inactive ? (
-                                                    <span className="px-2 py-1 bg-error/10 text-error rounded-full text-xs font-medium">Inativo</span>
-                                                ) : (
-                                                    <span className="px-2 py-1 bg-[#27ae60]/10 text-[#27ae60] rounded-full text-xs font-medium">Ativo</span>
-                                                )}
+                                                <span className={cn("px-2 py-1 rounded-full text-xs font-medium", getChurnRiskColor(churnRisk))}>
+                                                    {getChurnRiskLabel(churnRisk)}
+                                                </span>
                                             </td>
                                         </tr>
                                     )
